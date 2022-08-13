@@ -90,6 +90,8 @@ const GlobalState = enum {
     event_healer_accept,
     event_forest_wolf,
     event_forest_wolf_1,
+    event_militia_ambush,
+    event_militia_ambush_1,
     fight,
     fight_reward,
     game_over,
@@ -99,6 +101,7 @@ const GlobalState = enum {
 const event_pool = [_]GlobalState{
     GlobalState.event_healer,
     GlobalState.event_forest_wolf,
+    GlobalState.event_militia_ambush,
 };
 
 const EnemyIntent = struct {
@@ -130,6 +133,7 @@ const State = struct {
     enemy_intent_index: usize,
     enemy_intent: [enemy_intent_max_size]EnemyIntent = undefined,
     enemy_reward: Effect,
+    enemy_sprite: [*]const u8 = undefined,
 
     pub fn apply_effect(self: *State, effect: Effect) void {
         switch (effect) {
@@ -375,7 +379,7 @@ pub fn process_fight(s: *State, released_keys: u8) void {
         else => {},
     }
     draw_progress_bar(110, 60, 16, 5, s.enemy_intent_current_time, s.enemy_intent[s.enemy_intent_index].trigger_time);
-    w4.blit(&sprites.enemy_00, 110, 32, sprites.enemy_width, sprites.enemy_height, w4.BLIT_1BPP);
+    w4.blit(state.enemy_sprite, 110, 32, sprites.enemy_width, sprites.enemy_height, w4.BLIT_1BPP);
 
     w4.hline(0, 80, 160);
     draw_spell_list(s.spellbook[0..], &s.pager, 10, 90);
@@ -540,6 +544,7 @@ pub fn process_event_forest_wolf_1(s: *State, released_keys: u8) void {
             .effect = Effect{ .damage_to_player = 7 },
         };
         s.enemy_reward = Effect{ .gold_reward = 10 };
+        s.enemy_sprite = &sprites.enemy_00;
         s.state = GlobalState.fight;
     }
     w4.DRAW_COLORS.* = 0x02;
@@ -547,6 +552,45 @@ pub fn process_event_forest_wolf_1(s: *State, released_keys: u8) void {
     pager.f47_text(&s.pager, "As you pass through the dark woods, you hear a frightening growl behind you.");
     pager.f47_newline(&s.pager);
     pager.f47_text(&s.pager, "A giant lone wolf is snarling at you. You have no choice other than to fight for your life!");
+
+    draw_spell_list(&s.choices, &s.pager, 10, 140);
+}
+
+pub fn process_event_militia_ambush(s: *State, released_keys: u8) void {
+    _ = released_keys;
+    s.set_choices_fight();
+    s.state = GlobalState.event_militia_ambush_1;
+}
+
+pub fn process_event_militia_ambush_1(s: *State, released_keys: u8) void {
+    for (s.choices) |*spell| {
+        spell.process(released_keys);
+    }
+    if (s.choices[0].is_completed()) {
+        s.reset_player_shield();
+        s.reset_enemy_intent();
+        const enemy_max_hp = 30;
+        s.enemy_hp = enemy_max_hp;
+        s.enemy_max_hp = enemy_max_hp;
+        s.enemy_intent_current_time = 0;
+        s.enemy_intent_index = 0;
+        s.enemy_intent[0] = EnemyIntent{
+            .trigger_time = 4 * 60,
+            .effect = Effect{ .damage_to_player = 5 },
+        };
+        //        s.enemy_intent[1] = EnemyIntent{
+        //            .trigger_time = 7 * 60,
+        //            .effect = Effect{ .damage_to_player = 7 },
+        //        };
+        s.enemy_reward = Effect{ .gold_reward = 50 };
+        s.enemy_sprite = &sprites.enemy_militia;
+        s.state = GlobalState.fight;
+    }
+    w4.DRAW_COLORS.* = 0x02;
+    s.pager.set_cursor(10, 10);
+    pager.f47_text(&s.pager, "You spot a lone militia soldier coming your way.");
+    pager.f47_newline(&s.pager);
+    pager.f47_text(&s.pager, "He does not seem aware that you're here.");
 
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 }
@@ -650,6 +694,8 @@ export fn update() void {
         GlobalState.event_healer_accept => process_event_healer_accept(&state, released_keys),
         GlobalState.event_forest_wolf => process_event_forest_wolf(&state, released_keys),
         GlobalState.event_forest_wolf_1 => process_event_forest_wolf_1(&state, released_keys),
+        GlobalState.event_militia_ambush => process_event_militia_ambush(&state, released_keys),
+        GlobalState.event_militia_ambush_1 => process_event_militia_ambush_1(&state, released_keys),
         GlobalState.fight => process_fight(&state, released_keys),
         GlobalState.fight_reward => process_fight_reward(&state, released_keys),
         GlobalState.game_over => process_game_over(&state, released_keys),
