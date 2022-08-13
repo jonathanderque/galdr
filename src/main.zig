@@ -11,6 +11,12 @@ pub fn rand() u64 {
     return (rand_state >> 32) & 0xFFFFFFFF;
 }
 
+const Reward = union(enum(u8)) {
+    no_reward: void,
+    gold_reward: u16,
+    spell_reward: Spell,
+};
+
 const Effect = union(enum(u8)) {
     no_effect: void,
     damage_to_player: i16,
@@ -18,7 +24,6 @@ const Effect = union(enum(u8)) {
     player_healing_max: void,
     player_shield: i16,
     enemy_shield: i16,
-    gold_reward: u16,
     gold_payment: u16,
 };
 
@@ -72,6 +77,10 @@ const Spell = struct {
         return (self.input[self.current_progress] == end_of_spell);
     }
 
+    pub fn is_defined(self: *Spell) bool {
+        return (self.input[0] != end_of_spell);
+    }
+
     pub fn set_spell(self: *Spell, input: []const u8) void {
         var i: usize = 0;
         while (i < self.input.len and i < input.len) : (i += 1) {
@@ -110,6 +119,18 @@ const EnemyIntent = struct {
     effect: Effect,
 };
 
+const RandomReward = struct {
+    probability: u8, // [0-100]
+    reward: Reward,
+
+    pub fn zero() RandomReward {
+        return RandomReward{
+            .probability = 0,
+            .reward = Reward.no_reward,
+        };
+    }
+};
+
 const choices_max_size: usize = 5;
 const spell_book_max_size: usize = 10;
 const visited_events_max_size: usize = 32;
@@ -127,6 +148,7 @@ const State = struct {
     player_shield: i16 = 0,
     player_gold: i16,
     spellbook: [spell_book_max_size]Spell,
+    reward_probability: u8 = 0,
     // enemy
     enemy_hp: i16,
     enemy_max_hp: i16,
@@ -134,8 +156,29 @@ const State = struct {
     enemy_intent_current_time: u16,
     enemy_intent_index: usize,
     enemy_intent: [enemy_intent_max_size]EnemyIntent = undefined,
-    enemy_reward: Effect,
+    enemy_guaranteed_reward: Reward = Reward.no_reward,
+    enemy_random_reward: RandomReward = RandomReward.zero(),
     enemy_sprite: [*]const u8 = undefined,
+
+    pub fn apply_reward(self: *State, reward: Reward) void {
+        switch (reward) {
+            Reward.no_reward => {},
+            Reward.gold_reward => |amount| {
+                self.player_gold += @intCast(i16, amount);
+            },
+            Reward.spell_reward => |spell| {
+                _ = spell;
+                // find the first undefined spell in spellbook
+                var i: usize = 0;
+                while (i < self.spellbook.len and self.spellbook[i].is_defined()) {
+                    i += 1;
+                }
+                if (i < self.spellbook.len) {
+                    self.spellbook[i] = spell;
+                }
+            },
+        }
+    }
 
     pub fn apply_effect(self: *State, effect: Effect) void {
         switch (effect) {
@@ -164,9 +207,6 @@ const State = struct {
                 } else {
                     self.enemy_shield -= dmg;
                 }
-            },
-            Effect.gold_reward => |amount| {
-                self.player_gold += @intCast(i16, amount);
             },
             Effect.gold_payment => |amount| {
                 // warning the event must check beforehand that there is enough gold
@@ -355,6 +395,7 @@ pub fn process_fight(s: *State, released_keys: u8) void {
         }
     } else {
         s.set_choices_confirm();
+        s.reward_probability = @intCast(u8, @mod(rand(), 100));
         s.state = GlobalState.fight_reward;
     }
 
@@ -412,12 +453,33 @@ pub fn process_fight(s: *State, released_keys: u8) void {
     }
 }
 
+pub fn draw_reward(s: *State, reward: Reward) void {
+    switch (reward) {
+        Reward.gold_reward => |amount| {
+            pager.f47_text(&s.pager, "You gained ");
+            pager.f47_number(&s.pager, amount);
+            pager.f47_text(&s.pager, " gold!");
+            pager.f47_newline(&s.pager);
+        },
+        Reward.spell_reward => |spell| {
+            pager.f47_text(&s.pager, "You leared the ");
+            pager.f47_text(&s.pager, spell.name);
+            pager.f47_text(&s.pager, " spell!");
+            pager.f47_newline(&s.pager);
+        },
+        else => {},
+    }
+}
+
 pub fn process_fight_reward(s: *State, released_keys: u8) void {
     for (s.choices) |*spell| {
         spell.process(released_keys);
     }
     if (s.choices[0].is_completed()) {
-        s.apply_effect(s.enemy_reward);
+        s.apply_reward(s.enemy_guaranteed_reward);
+        if (s.reward_probability < s.enemy_random_reward.probability) {
+            s.apply_reward(s.enemy_random_reward.reward);
+        }
         s.state = GlobalState.pick_random_event;
     }
     w4.DRAW_COLORS.* = 0x02;
@@ -425,13 +487,10 @@ pub fn process_fight_reward(s: *State, released_keys: u8) void {
     pager.f47_text(&s.pager, "Victory!!");
     pager.f47_newline(&s.pager);
     pager.f47_newline(&s.pager);
-    switch (s.enemy_reward) {
-        Effect.gold_reward => |amount| {
-            pager.f47_text(&s.pager, "You gained ");
-            pager.f47_number(&s.pager, amount);
-            pager.f47_text(&s.pager, " gold!");
-        },
-        else => {},
+    draw_reward(s, s.enemy_guaranteed_reward);
+
+    if (s.reward_probability < s.enemy_random_reward.probability) {
+        draw_reward(s, s.enemy_random_reward.reward);
     }
 
     w4.blit(state.enemy_sprite, 10, 50, sprites.enemy_width, sprites.enemy_height, w4.BLIT_1BPP);
@@ -444,7 +503,6 @@ pub fn process_game_over(s: *State, released_keys: u8) void {
         spell.process(released_keys);
     }
     if (s.choices[0].is_completed()) {
-        s.apply_effect(s.enemy_reward);
         s.state = GlobalState.end;
     }
     w4.DRAW_COLORS.* = 0x02;
@@ -563,7 +621,16 @@ pub fn process_event_forest_wolf_1(s: *State, released_keys: u8) void {
             .trigger_time = 7 * 60,
             .effect = Effect{ .damage_to_player = 7 },
         };
-        s.enemy_reward = Effect{ .gold_reward = 10 };
+        s.enemy_guaranteed_reward = Reward{ .gold_reward = 10 };
+        var wolf_bite = Spell{
+            .name = "WOLF BITE",
+            .effect = Effect{ .damage_to_enemy = 5 },
+        };
+        wolf_bite.set_spell(&[_]u8{ w4.BUTTON_LEFT, w4.BUTTON_UP, w4.BUTTON_DOWN, w4.BUTTON_1 });
+        s.enemy_random_reward = RandomReward{
+            .probability = 33,
+            .reward = Reward{ .spell_reward = wolf_bite },
+        };
         s.enemy_sprite = &sprites.enemy_00;
         s.state = GlobalState.fight;
     }
@@ -602,7 +669,8 @@ pub fn process_event_militia_ambush_1(s: *State, released_keys: u8) void {
             .trigger_time = 5 * 60,
             .effect = Effect{ .enemy_shield = 3 },
         };
-        s.enemy_reward = Effect{ .gold_reward = 50 };
+        s.enemy_guaranteed_reward = Reward{ .gold_reward = 50 };
+        s.enemy_random_reward = RandomReward.zero();
         s.enemy_sprite = &sprites.enemy_militia;
         s.state = GlobalState.fight;
     }
@@ -658,7 +726,7 @@ export fn start() void {
         .enemy_max_hp = enemy_max_hp,
         .enemy_intent_current_time = 0,
         .enemy_intent_index = 0,
-        .enemy_reward = Effect{ .gold_reward = 10 },
+        .enemy_guaranteed_reward = Reward{ .gold_reward = 10 },
     };
 
     var i: usize = 0;
