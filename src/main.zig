@@ -72,6 +72,8 @@ const Spell = struct {
 
 const GlobalState = enum {
     end,
+    event_forest_wolf,
+    event_forest_wolf_1,
     fight,
     fight_reward,
     game_over,
@@ -126,10 +128,20 @@ const State = struct {
         }
     }
 
+    // TODO refactor set_choices_{confirm,fight}
     pub fn set_choices_confirm(self: *State) void {
         self.reset_choices();
         self.choices[0] = Spell{
             .name = "Confirm",
+            .effect = Effect.no_effect,
+        };
+        state.choices[0].set_spell(&[_]u8{ w4.BUTTON_RIGHT, w4.BUTTON_1 });
+    }
+
+    pub fn set_choices_fight(self: *State) void {
+        self.reset_choices();
+        self.choices[0] = Spell{
+            .name = "Fight!",
             .effect = Effect.no_effect,
         };
         state.choices[0].set_spell(&[_]u8{ w4.BUTTON_RIGHT, w4.BUTTON_1 });
@@ -325,6 +337,35 @@ pub fn process_game_over(s: *State, released_keys: u8) void {
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 }
 
+pub fn process_event_forest_wolf(s: *State, released_keys: u8) void {
+    _ = released_keys;
+    s.set_choices_fight();
+    s.state = GlobalState.event_forest_wolf_1;
+}
+
+pub fn process_event_forest_wolf_1(s: *State, released_keys: u8) void {
+    for (s.choices) |*spell| {
+        spell.process(released_keys);
+    }
+    if (s.choices[0].is_completed()) {
+        const enemy_max_hp = 20;
+        s.enemy_hp = enemy_max_hp;
+        s.enemy_max_hp = enemy_max_hp;
+        s.enemy_intent_current_time = 0;
+        s.enemy_intent_trigger_time = 4 * 60;
+        s.enemy_intent = Effect{ .damage_to_player = 3 };
+        s.enemy_reward = Effect{ .gold_reward = 10 };
+        s.state = GlobalState.fight;
+    }
+    w4.DRAW_COLORS.* = 0x02;
+    s.pager.set_cursor(10, 10);
+    pager.f47_text(&s.pager, "As you pass through the dark woods, you hear a frightening growl behind you.");
+    pager.f47_newline(&s.pager);
+    pager.f47_text(&s.pager, "A giant lone wolf is snarling at you. You have no choice other than to fight for your life!");
+
+    draw_spell_list(&s.choices, &s.pager, 10, 140);
+}
+
 // TODO techical screen/state to debug things, should not be left in the game by the end of the jam
 pub fn process_end(s: *State, released_keys: u8) void {
     _ = released_keys;
@@ -353,7 +394,7 @@ export fn start() void {
         .previous_input = 0,
         .pager = pager.Pager.new(),
         // global state
-        .state = GlobalState.fight,
+        .state = GlobalState.event_forest_wolf,
         .choices = undefined,
         // player
         .player_hp = player_max_hp,
@@ -402,6 +443,8 @@ export fn update() void {
 
     switch (state.state) {
         GlobalState.end => process_end(&state, released_keys),
+        GlobalState.event_forest_wolf => process_event_forest_wolf(&state, released_keys),
+        GlobalState.event_forest_wolf_1 => process_event_forest_wolf_1(&state, released_keys),
         GlobalState.fight => process_fight(&state, released_keys),
         GlobalState.fight_reward => process_fight_reward(&state, released_keys),
         GlobalState.game_over => process_game_over(&state, released_keys),
