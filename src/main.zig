@@ -17,6 +17,7 @@ const Effect = union(enum(u8)) {
     damage_to_enemy: i16,
     player_healing_max: void,
     player_shield: i16,
+    enemy_shield: i16,
     gold_reward: u16,
     gold_payment: u16,
 };
@@ -129,6 +130,7 @@ const State = struct {
     // enemy
     enemy_hp: i16,
     enemy_max_hp: i16,
+    enemy_shield: i16 = 0,
     enemy_intent_current_time: u16,
     enemy_intent_index: usize,
     enemy_intent: [enemy_intent_max_size]EnemyIntent = undefined,
@@ -153,9 +155,14 @@ const State = struct {
                 }
             },
             Effect.damage_to_enemy => |dmg| {
-                self.enemy_hp -= dmg;
-                if (self.enemy_hp < 0) {
-                    self.enemy_hp = 0;
+                if (dmg > self.enemy_shield) {
+                    self.enemy_hp -= (dmg - self.enemy_shield);
+                    self.enemy_shield = 0;
+                    if (self.enemy_hp < 0) {
+                        self.enemy_hp = 0;
+                    }
+                } else {
+                    self.enemy_shield -= dmg;
                 }
             },
             Effect.gold_reward => |amount| {
@@ -170,11 +177,18 @@ const State = struct {
             Effect.player_shield => |amount| {
                 self.player_shield += @intCast(i16, amount);
             },
+            Effect.enemy_shield => |amount| {
+                self.enemy_shield += @intCast(i16, amount);
+            },
         }
     }
 
     pub fn reset_player_shield(self: *State) void {
         self.player_shield = 0;
+    }
+
+    pub fn reset_enemy_shield(self: *State) void {
+        self.enemy_shield = 0;
     }
 
     pub fn reset_enemy_intent(self: *State) void {
@@ -364,17 +378,23 @@ pub fn process_fight(s: *State, released_keys: u8) void {
     w4.blit(&sprites.hero, 20, 32, sprites.hero_width, sprites.hero_height, w4.BLIT_1BPP);
 
     // enemy
-    s.pager.set_cursor(100, 25);
+    s.pager.set_cursor(100, 15);
     pager.f35_text(&s.pager, "HP: ");
     pager.f35_number(&s.pager, s.enemy_hp);
     pager.f35_text(&s.pager, "/");
     pager.f35_number(&s.pager, s.enemy_max_hp);
+    s.pager.set_cursor(90, 25);
+    pager.f35_text(&s.pager, "SHIELD: ");
+    pager.f35_number(&s.pager, s.enemy_shield);
     s.pager.set_cursor(110, 50);
     switch (s.enemy_intent[s.enemy_intent_index].effect) {
         Effect.damage_to_player => |dmg| {
-            _ = dmg;
             // TODO display sword icon
             pager.f47_number(&s.pager, @intCast(i32, dmg));
+        },
+        Effect.enemy_shield => |amount| {
+            // TODO display shield icon
+            pager.f47_number(&s.pager, @intCast(i32, amount));
         },
         else => {},
     }
@@ -414,7 +434,7 @@ pub fn process_fight_reward(s: *State, released_keys: u8) void {
         else => {},
     }
 
-    w4.blit(&sprites.enemy_00, 10, 50, sprites.enemy_width, sprites.enemy_height, w4.BLIT_1BPP);
+    w4.blit(state.enemy_sprite, 10, 50, sprites.enemy_width, sprites.enemy_height, w4.BLIT_1BPP);
 
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 }
@@ -578,10 +598,10 @@ pub fn process_event_militia_ambush_1(s: *State, released_keys: u8) void {
             .trigger_time = 4 * 60,
             .effect = Effect{ .damage_to_player = 5 },
         };
-        //        s.enemy_intent[1] = EnemyIntent{
-        //            .trigger_time = 7 * 60,
-        //            .effect = Effect{ .damage_to_player = 7 },
-        //        };
+        s.enemy_intent[1] = EnemyIntent{
+            .trigger_time = 5 * 60,
+            .effect = Effect{ .enemy_shield = 3 },
+        };
         s.enemy_reward = Effect{ .gold_reward = 50 };
         s.enemy_sprite = &sprites.enemy_militia;
         s.state = GlobalState.fight;
