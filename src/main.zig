@@ -6,7 +6,9 @@ const Effect = union(enum(u8)) {
     no_effect: void,
     damage_to_player: i16,
     damage_to_enemy: i16,
+    player_healing_max: void,
     gold_reward: u16,
+    gold_payment: u16,
 };
 
 const spell_max_size: usize = 8;
@@ -72,6 +74,10 @@ const Spell = struct {
 
 const GlobalState = enum {
     end,
+    event_healer,
+    event_healer_1,
+    event_healer_decline,
+    event_healer_accept,
     event_forest_wolf,
     event_forest_wolf_1,
     fight,
@@ -103,6 +109,9 @@ const State = struct {
     pub fn apply_effect(self: *State, effect: Effect) void {
         switch (effect) {
             Effect.no_effect => {},
+            Effect.player_healing_max => {
+                self.player_hp = self.player_max_hp;
+            },
             Effect.damage_to_player => |dmg| {
                 self.player_hp -= dmg;
                 if (self.player_hp < 0) {
@@ -117,6 +126,12 @@ const State = struct {
             },
             Effect.gold_reward => |amount| {
                 self.player_gold += @intCast(i16, amount);
+            },
+            Effect.gold_payment => |amount| {
+                // warning the event must check beforehand that there is enough gold
+                if (amount <= self.player_gold) {
+                    self.player_gold -= @intCast(i16, amount);
+                }
             },
         }
     }
@@ -143,6 +158,24 @@ const State = struct {
 
     pub fn set_choices_fight(self: *State) void {
         self.set_choices_with_labels_1("Fight!");
+    }
+
+    pub fn set_choices_with_labels_2(self: *State, label1: []const u8, label2: []const u8) void {
+        self.reset_choices();
+        self.choices[0] = Spell{
+            .name = label1,
+            .effect = Effect.no_effect,
+        };
+        state.choices[0].set_spell(&[_]u8{ w4.BUTTON_LEFT, w4.BUTTON_1 });
+        self.choices[1] = Spell{
+            .name = label2,
+            .effect = Effect.no_effect,
+        };
+        state.choices[1].set_spell(&[_]u8{ w4.BUTTON_RIGHT, w4.BUTTON_1 });
+    }
+
+    pub fn set_choices_accept_decline(self: *State) void {
+        self.set_choices_with_labels_2("Decline", "Accept");
     }
 };
 
@@ -335,6 +368,73 @@ pub fn process_game_over(s: *State, released_keys: u8) void {
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 }
 
+pub fn process_event_healer(s: *State, released_keys: u8) void {
+    _ = released_keys;
+    if (s.player_gold >= 10) {
+        s.set_choices_accept_decline();
+    } else {
+        s.set_choices_with_labels_1("You're broke");
+    }
+    s.state = GlobalState.event_healer_1;
+}
+
+pub fn process_event_healer_1(s: *State, released_keys: u8) void {
+    for (s.choices) |*spell| {
+        spell.process(released_keys);
+    }
+    if (s.choices[0].is_completed()) {
+        s.set_choices_confirm();
+        s.state = GlobalState.event_healer_decline;
+    } else if (s.player_gold >= 10 and s.choices[1].is_completed()) {
+        s.apply_effect(Effect{ .gold_payment = 10 });
+        s.apply_effect(Effect.player_healing_max);
+        s.set_choices_confirm();
+        s.state = GlobalState.event_healer_accept;
+    }
+    w4.DRAW_COLORS.* = 0x02;
+    s.pager.set_cursor(10, 10);
+    pager.f47_text(&s.pager, "You stumble upon an old man wearing druid clothes. He says:");
+    pager.f47_newline(&s.pager);
+    pager.f47_text(&s.pager, "\"I can heal your wounds for 10 gold. Are you interested?\"");
+
+    draw_spell_list(&s.choices, &s.pager, 10, 130);
+}
+
+pub fn process_event_healer_decline(s: *State, released_keys: u8) void {
+    for (s.choices) |*spell| {
+        spell.process(released_keys);
+    }
+    if (s.choices[0].is_completed()) {
+        s.set_choices_confirm();
+        s.state = GlobalState.event_forest_wolf;
+    }
+
+    w4.DRAW_COLORS.* = 0x02;
+    s.pager.set_cursor(10, 10);
+    pager.f47_text(&s.pager, "The druid says:");
+    pager.f47_newline(&s.pager);
+    pager.f47_text(&s.pager, "\"As you wish. May you be successful in your endeavours.\"");
+
+    draw_spell_list(&s.choices, &s.pager, 10, 140);
+}
+
+pub fn process_event_healer_accept(s: *State, released_keys: u8) void {
+    for (s.choices) |*spell| {
+        spell.process(released_keys);
+    }
+    if (s.choices[0].is_completed()) {
+        s.set_choices_confirm();
+        s.state = GlobalState.event_forest_wolf;
+    }
+
+    w4.DRAW_COLORS.* = 0x02;
+    s.pager.set_cursor(10, 10);
+    pager.f47_text(&s.pager, "The druid utters weird sounds that only him can understand, but you already feels better.");
+    pager.f47_newline(&s.pager);
+
+    draw_spell_list(&s.choices, &s.pager, 10, 140);
+}
+
 pub fn process_event_forest_wolf(s: *State, released_keys: u8) void {
     _ = released_keys;
     s.set_choices_fight();
@@ -392,13 +492,13 @@ export fn start() void {
         .previous_input = 0,
         .pager = pager.Pager.new(),
         // global state
-        .state = GlobalState.event_forest_wolf,
+        .state = GlobalState.event_healer,
         .choices = undefined,
         // player
         .player_hp = player_max_hp,
         .player_max_hp = player_max_hp,
         .spellbook = undefined,
-        .player_gold = 0,
+        .player_gold = 19,
         // enemy
         .enemy_hp = enemy_max_hp,
         .enemy_max_hp = enemy_max_hp,
@@ -441,6 +541,10 @@ export fn update() void {
 
     switch (state.state) {
         GlobalState.end => process_end(&state, released_keys),
+        GlobalState.event_healer => process_event_healer(&state, released_keys),
+        GlobalState.event_healer_1 => process_event_healer_1(&state, released_keys),
+        GlobalState.event_healer_decline => process_event_healer_decline(&state, released_keys),
+        GlobalState.event_healer_accept => process_event_healer_accept(&state, released_keys),
         GlobalState.event_forest_wolf => process_event_forest_wolf(&state, released_keys),
         GlobalState.event_forest_wolf_1 => process_event_forest_wolf_1(&state, released_keys),
         GlobalState.fight => process_fight(&state, released_keys),
