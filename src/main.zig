@@ -106,6 +106,8 @@ const GlobalState = enum {
     fight_reward,
     game_over,
     pick_random_event,
+    title,
+    title_1,
 };
 
 const event_pool = [_]GlobalState{
@@ -528,6 +530,29 @@ pub fn process_pick_random_event(s: *State, released_keys: u8) void {
     }
 }
 
+pub fn process_title(s: *State, released_keys: u8) void {
+    _ = released_keys;
+    state.set_choices_with_labels_1("Start Game");
+    s.state = GlobalState.title_1;
+}
+
+pub fn process_title_1(s: *State, released_keys: u8) void {
+    for (s.choices) |*spell| {
+        spell.process(released_keys);
+    }
+    if (s.choices[0].is_completed()) {
+        s.state = GlobalState.pick_random_event;
+    }
+
+    // generate randomness
+    _ = rand();
+
+    w4.DRAW_COLORS.* = 0x02;
+    s.pager.set_cursor(58, 50);
+    pager.f47_text(&s.pager, "G A L D R");
+    draw_spell_list(&s.choices, &s.pager, 10, 140);
+}
+
 pub fn process_event_healer(s: *State, released_keys: u8) void {
     _ = released_keys;
     if (s.player_gold >= 10) {
@@ -713,7 +738,7 @@ export fn start() void {
         .previous_input = 0,
         .pager = pager.Pager.new(),
         // global state
-        .state = GlobalState.pick_random_event,
+        .state = GlobalState.title,
         .choices = undefined,
         .visited_events = undefined,
         // player
@@ -788,5 +813,7 @@ export fn update() void {
         GlobalState.fight_reward => process_fight_reward(&state, released_keys),
         GlobalState.game_over => process_game_over(&state, released_keys),
         GlobalState.pick_random_event => process_pick_random_event(&state, released_keys),
+        GlobalState.title => process_title(&state, released_keys),
+        GlobalState.title_1 => process_title_1(&state, released_keys),
     }
 }
