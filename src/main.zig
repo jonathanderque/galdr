@@ -100,9 +100,15 @@ const event_pool = [_]GlobalState{
     GlobalState.event_forest_wolf,
 };
 
+const EnemyIntent = struct {
+    trigger_time: u16,
+    effect: Effect,
+};
+
 const choices_max_size: usize = 5;
 const spell_book_max_size: usize = 10;
 const visited_events_max_size: usize = 32;
+const enemy_intent_max_size: usize = 5;
 const State = struct {
     previous_input: u8,
     pager: pager.Pager,
@@ -119,8 +125,8 @@ const State = struct {
     enemy_hp: i16,
     enemy_max_hp: i16,
     enemy_intent_current_time: u16,
-    enemy_intent_trigger_time: u16,
-    enemy_intent: Effect,
+    enemy_intent_index: usize,
+    enemy_intent: [enemy_intent_max_size]EnemyIntent = undefined,
     enemy_reward: Effect,
 
     pub fn apply_effect(self: *State, effect: Effect) void {
@@ -153,12 +159,23 @@ const State = struct {
         }
     }
 
+    pub fn reset_enemy_intent(self: *State) void {
+        var i: usize = 0;
+        while (i < self.enemy_intent.len) : (i += 1) {
+            self.enemy_intent[i] = EnemyIntent{
+                .trigger_time = 0,
+                .effect = Effect.no_effect,
+            };
+        }
+    }
+
     pub fn reset_visited_events(self: *State) void {
         var i: usize = 0;
         while (i < self.visited_events.len) : (i += 1) {
             self.visited_events[i] = false;
         }
     }
+
     pub fn reset_choices(self: *State) void {
         var i: usize = 0;
         while (i < self.choices.len) : (i += 1) {
@@ -296,9 +313,13 @@ pub fn process_fight(s: *State, released_keys: u8) void {
     // we assume process_fight will be called every frame
     if (s.enemy_hp > 0) {
         s.enemy_intent_current_time += 1;
-        if (s.enemy_intent_current_time >= s.enemy_intent_trigger_time) {
-            s.apply_effect(s.enemy_intent);
+        if (s.enemy_intent_current_time >= s.enemy_intent[s.enemy_intent_index].trigger_time) {
+            s.apply_effect(s.enemy_intent[s.enemy_intent_index].effect);
             s.enemy_intent_current_time = 0;
+            s.enemy_intent_index += 1;
+            if (s.enemy_intent[s.enemy_intent_index].effect == Effect.no_effect) {
+                s.enemy_intent_index = 0;
+            }
         }
     } else {
         s.set_choices_confirm();
@@ -328,7 +349,7 @@ pub fn process_fight(s: *State, released_keys: u8) void {
     pager.f35_text(&s.pager, "/");
     pager.f35_number(&s.pager, s.enemy_max_hp);
     s.pager.set_cursor(110, 50);
-    switch (s.enemy_intent) {
+    switch (s.enemy_intent[s.enemy_intent_index].effect) {
         Effect.damage_to_player => |dmg| {
             _ = dmg;
             // TODO display sword icon
@@ -336,7 +357,7 @@ pub fn process_fight(s: *State, released_keys: u8) void {
         },
         else => {},
     }
-    draw_progress_bar(110, 60, 16, 5, s.enemy_intent_current_time, s.enemy_intent_trigger_time);
+    draw_progress_bar(110, 60, 16, 5, s.enemy_intent_current_time, s.enemy_intent[s.enemy_intent_index].trigger_time);
     w4.blit(&sprites.enemy_00, 110, 32, sprites.enemy_width, sprites.enemy_height, w4.BLIT_1BPP);
 
     w4.hline(0, 80, 160);
@@ -486,12 +507,20 @@ pub fn process_event_forest_wolf_1(s: *State, released_keys: u8) void {
         spell.process(released_keys);
     }
     if (s.choices[0].is_completed()) {
+        state.reset_enemy_intent();
         const enemy_max_hp = 20;
         s.enemy_hp = enemy_max_hp;
         s.enemy_max_hp = enemy_max_hp;
         s.enemy_intent_current_time = 0;
-        s.enemy_intent_trigger_time = 4 * 60;
-        s.enemy_intent = Effect{ .damage_to_player = 3 };
+        s.enemy_intent_index = 0;
+        s.enemy_intent[0] = EnemyIntent{
+            .trigger_time = 4 * 60,
+            .effect = Effect{ .damage_to_player = 3 },
+        };
+        s.enemy_intent[1] = EnemyIntent{
+            .trigger_time = 7 * 60,
+            .effect = Effect{ .damage_to_player = 9 },
+        };
         s.enemy_reward = Effect{ .gold_reward = 10 };
         s.state = GlobalState.fight;
     }
@@ -546,8 +575,7 @@ export fn start() void {
         .enemy_hp = enemy_max_hp,
         .enemy_max_hp = enemy_max_hp,
         .enemy_intent_current_time = 0,
-        .enemy_intent_trigger_time = 4 * 60,
-        .enemy_intent = Effect{ .damage_to_player = 3 },
+        .enemy_intent_index = 0,
         .enemy_reward = Effect{ .gold_reward = 10 },
     };
 
