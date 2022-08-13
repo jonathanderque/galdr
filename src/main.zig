@@ -386,14 +386,14 @@ pub fn process_fight(s: *State, released_keys: u8) void {
     s.pager.set_cursor(90, 25);
     pager.f35_text(&s.pager, "SHIELD: ");
     pager.f35_number(&s.pager, s.enemy_shield);
-    s.pager.set_cursor(110, 50);
+    s.pager.set_cursor(122, 50);
     switch (s.enemy_intent[s.enemy_intent_index].effect) {
         Effect.damage_to_player => |dmg| {
-            // TODO display sword icon
+            w4.blitSub(&sprites.intent, 110, 49, 9, 9, 0, 0, sprites.intent_width, w4.BLIT_1BPP);
             pager.f47_number(&s.pager, @intCast(i32, dmg));
         },
         Effect.enemy_shield => |amount| {
-            // TODO display shield icon
+            w4.blitSub(&sprites.intent, 110, 49, 9, 9, 9, 0, sprites.intent_width, w4.BLIT_1BPP);
             pager.f47_number(&s.pager, @intCast(i32, amount));
         },
         else => {},
