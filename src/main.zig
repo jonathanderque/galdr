@@ -128,23 +128,21 @@ const State = struct {
         }
     }
 
-    // TODO refactor set_choices_{confirm,fight}
-    pub fn set_choices_confirm(self: *State) void {
+    pub fn set_choices_with_labels_1(self: *State, label1: []const u8) void {
         self.reset_choices();
         self.choices[0] = Spell{
-            .name = "Confirm",
+            .name = label1,
             .effect = Effect.no_effect,
         };
         state.choices[0].set_spell(&[_]u8{ w4.BUTTON_RIGHT, w4.BUTTON_1 });
     }
 
+    pub fn set_choices_confirm(self: *State) void {
+        self.set_choices_with_labels_1("Confirm");
+    }
+
     pub fn set_choices_fight(self: *State) void {
-        self.reset_choices();
-        self.choices[0] = Spell{
-            .name = "Fight!",
-            .effect = Effect.no_effect,
-        };
-        state.choices[0].set_spell(&[_]u8{ w4.BUTTON_RIGHT, w4.BUTTON_1 });
+        self.set_choices_with_labels_1("Fight!");
     }
 };
 
