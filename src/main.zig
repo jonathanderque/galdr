@@ -71,9 +71,10 @@ const Spell = struct {
 };
 
 const GlobalState = enum {
+    end,
     fight,
     fight_reward,
-    end,
+    game_over,
 };
 
 const choices_max_size: usize = 5;
@@ -238,6 +239,11 @@ pub fn process_fight(s: *State, released_keys: u8) void {
         s.state = GlobalState.fight_reward;
     }
 
+    if (s.player_hp == 0) {
+        s.set_choices_confirm();
+        s.state = GlobalState.game_over;
+    }
+
     // drawing
     w4.DRAW_COLORS.* = 2;
 
@@ -286,6 +292,7 @@ pub fn process_fight_reward(s: *State, released_keys: u8) void {
         s.apply_effect(s.enemy_reward);
         s.state = GlobalState.end;
     }
+    w4.DRAW_COLORS.* = 0x02;
     s.pager.set_cursor(10, 10);
     pager.f47_text(&s.pager, "Victory!!");
     pager.f47_newline(&s.pager);
@@ -301,6 +308,20 @@ pub fn process_fight_reward(s: *State, released_keys: u8) void {
 
     w4.blit(&sprites.enemy_00, 10, 50, sprites.enemy_width, sprites.enemy_height, w4.BLIT_1BPP);
 
+    draw_spell_list(&s.choices, &s.pager, 10, 140);
+}
+
+pub fn process_game_over(s: *State, released_keys: u8) void {
+    for (s.choices) |*spell| {
+        spell.process(released_keys);
+    }
+    if (s.choices[0].is_completed()) {
+        s.apply_effect(s.enemy_reward);
+        s.state = GlobalState.end;
+    }
+    w4.DRAW_COLORS.* = 0x02;
+    s.pager.set_cursor(58, 50);
+    pager.f47_text(&s.pager, "GAME OVER");
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 }
 
@@ -380,8 +401,9 @@ export fn update() void {
     state.previous_input = gamepad;
 
     switch (state.state) {
+        GlobalState.end => process_end(&state, released_keys),
         GlobalState.fight => process_fight(&state, released_keys),
         GlobalState.fight_reward => process_fight_reward(&state, released_keys),
-        GlobalState.end => process_end(&state, released_keys),
+        GlobalState.game_over => process_game_over(&state, released_keys),
     }
 }
