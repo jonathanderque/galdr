@@ -6,6 +6,7 @@ const Effect = union(enum(u8)) {
     no_effect: void,
     damage_to_player: i16,
     damage_to_enemy: i16,
+    gold_reward: u16,
 };
 
 const spell_max_size: usize = 8;
@@ -69,13 +70,24 @@ const Spell = struct {
     }
 };
 
+const GlobalState = enum {
+    fight,
+    fight_reward,
+    end,
+};
+
+const choices_max_size: usize = 5;
 const spell_book_max_size: usize = 10;
 const State = struct {
     previous_input: u8,
     pager: pager.Pager,
+    // global state
+    state: GlobalState,
+    choices: [spell_book_max_size]Spell,
     // player
     player_hp: i16,
     player_max_hp: i16,
+    player_gold: i16,
     spellbook: [spell_book_max_size]Spell,
     // enemy
     enemy_hp: i16,
@@ -83,6 +95,7 @@ const State = struct {
     enemy_intent_current_time: u16,
     enemy_intent_trigger_time: u16,
     enemy_intent: Effect,
+    enemy_reward: Effect,
 
     pub fn apply_effect(self: *State, effect: Effect) void {
         switch (effect) {
@@ -99,7 +112,26 @@ const State = struct {
                     self.enemy_hp = 0;
                 }
             },
+            Effect.gold_reward => |amount| {
+                self.player_gold += @intCast(i16, amount);
+            },
         }
+    }
+
+    pub fn reset_choices(self: *State) void {
+        var i: usize = 0;
+        while (i < self.choices.len) : (i += 1) {
+            self.choices[i] = Spell.zero();
+        }
+    }
+
+    pub fn set_choices_confirm(self: *State) void {
+        self.reset_choices();
+        self.choices[0] = Spell{
+            .name = "Confirm",
+            .effect = Effect.no_effect,
+        };
+        state.choices[0].set_spell(&[_]u8{ w4.BUTTON_RIGHT, w4.BUTTON_1 });
     }
 };
 
@@ -201,6 +233,9 @@ pub fn process_fight(s: *State, released_keys: u8) void {
             s.apply_effect(s.enemy_intent);
             s.enemy_intent_current_time = 0;
         }
+    } else {
+        s.set_choices_confirm();
+        s.state = GlobalState.fight_reward;
     }
 
     // drawing
@@ -243,6 +278,43 @@ pub fn process_fight(s: *State, released_keys: u8) void {
     }
 }
 
+pub fn process_fight_reward(s: *State, released_keys: u8) void {
+    for (s.choices) |*spell| {
+        spell.process(released_keys);
+    }
+    if (s.choices[0].is_completed()) {
+        s.apply_effect(s.enemy_reward);
+        s.state = GlobalState.end;
+    }
+    s.pager.set_cursor(10, 10);
+    pager.f47_text(&s.pager, "Victory!!");
+    pager.f47_newline(&s.pager);
+    pager.f47_newline(&s.pager);
+    switch (s.enemy_reward) {
+        Effect.gold_reward => |amount| {
+            pager.f47_text(&s.pager, "You gained ");
+            pager.f47_number(&s.pager, amount);
+            pager.f47_text(&s.pager, " gold!");
+        },
+        else => {},
+    }
+
+    w4.blit(&sprites.enemy_00, 10, 50, sprites.enemy_width, sprites.enemy_height, w4.BLIT_1BPP);
+
+    draw_spell_list(&s.choices, &s.pager, 10, 140);
+}
+
+// TODO techical screen/state to debug things, should not be left in the game by the end of the jam
+pub fn process_end(s: *State, released_keys: u8) void {
+    _ = released_keys;
+    s.pager.set_cursor(10, 10);
+    pager.f47_text(&s.pager, "(You will have to reset the cart now)");
+    pager.f47_newline(&s.pager);
+    pager.f47_newline(&s.pager);
+    pager.f47_text(&s.pager, "Gold: ");
+    pager.f47_number(&s.pager, s.player_gold);
+}
+
 var state: State = undefined;
 
 export fn start() void {
@@ -259,16 +331,21 @@ export fn start() void {
     state = State{
         .previous_input = 0,
         .pager = pager.Pager.new(),
+        // global state
+        .state = GlobalState.fight,
+        .choices = undefined,
         // player
         .player_hp = player_max_hp,
         .player_max_hp = player_max_hp,
         .spellbook = undefined,
+        .player_gold = 0,
         // enemy
         .enemy_hp = enemy_max_hp,
         .enemy_max_hp = enemy_max_hp,
         .enemy_intent_current_time = 0,
         .enemy_intent_trigger_time = 4 * 60,
         .enemy_intent = Effect{ .damage_to_player = 3 },
+        .enemy_reward = Effect{ .gold_reward = 10 },
     };
 
     var i: usize = 0;
@@ -302,5 +379,9 @@ export fn update() void {
     const released_keys = state.previous_input & ~gamepad;
     state.previous_input = gamepad;
 
-    process_fight(&state, released_keys);
+    switch (state.state) {
+        GlobalState.fight => process_fight(&state, released_keys),
+        GlobalState.fight_reward => process_fight_reward(&state, released_keys),
+        GlobalState.end => process_end(&state, released_keys),
+    }
 }
