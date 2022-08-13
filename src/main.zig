@@ -16,6 +16,7 @@ const Effect = union(enum(u8)) {
     damage_to_player: i16,
     damage_to_enemy: i16,
     player_healing_max: void,
+    player_shield: i16,
     gold_reward: u16,
     gold_payment: u16,
 };
@@ -119,6 +120,7 @@ const State = struct {
     // player
     player_hp: i16,
     player_max_hp: i16,
+    player_shield: i16 = 0,
     player_gold: i16,
     spellbook: [spell_book_max_size]Spell,
     // enemy
@@ -136,9 +138,14 @@ const State = struct {
                 self.player_hp = self.player_max_hp;
             },
             Effect.damage_to_player => |dmg| {
-                self.player_hp -= dmg;
-                if (self.player_hp < 0) {
-                    self.player_hp = 0;
+                if (dmg > self.player_shield) {
+                    self.player_hp -= (dmg - self.player_shield);
+                    self.player_shield = 0;
+                    if (self.player_hp < 0) {
+                        self.player_hp = 0;
+                    }
+                } else {
+                    self.player_shield -= dmg;
                 }
             },
             Effect.damage_to_enemy => |dmg| {
@@ -156,7 +163,14 @@ const State = struct {
                     self.player_gold -= @intCast(i16, amount);
                 }
             },
+            Effect.player_shield => |amount| {
+                self.player_shield += @intCast(i16, amount);
+            },
         }
+    }
+
+    pub fn reset_player_shield(self: *State) void {
+        self.player_shield = 0;
     }
 
     pub fn reset_enemy_intent(self: *State) void {
@@ -335,11 +349,14 @@ pub fn process_fight(s: *State, released_keys: u8) void {
     w4.DRAW_COLORS.* = 2;
 
     // hero
-    s.pager.set_cursor(25, 25);
+    s.pager.set_cursor(25, 15);
     pager.f35_text(&s.pager, "HP: ");
     pager.f35_number(&s.pager, s.player_hp);
     pager.f35_text(&s.pager, "/");
     pager.f35_number(&s.pager, s.player_max_hp);
+    pager.f35_newline(&s.pager);
+    pager.f35_text(&s.pager, "SHIELD: ");
+    pager.f35_number(&s.pager, s.player_shield);
     w4.blit(&sprites.hero, 20, 32, sprites.hero_width, sprites.hero_height, w4.BLIT_1BPP);
 
     // enemy
@@ -507,7 +524,8 @@ pub fn process_event_forest_wolf_1(s: *State, released_keys: u8) void {
         spell.process(released_keys);
     }
     if (s.choices[0].is_completed()) {
-        state.reset_enemy_intent();
+        s.reset_player_shield();
+        s.reset_enemy_intent();
         const enemy_max_hp = 20;
         s.enemy_hp = enemy_max_hp;
         s.enemy_max_hp = enemy_max_hp;
@@ -519,7 +537,7 @@ pub fn process_event_forest_wolf_1(s: *State, released_keys: u8) void {
         };
         s.enemy_intent[1] = EnemyIntent{
             .trigger_time = 7 * 60,
-            .effect = Effect{ .damage_to_player = 9 },
+            .effect = Effect{ .damage_to_player = 7 },
         };
         s.enemy_reward = Effect{ .gold_reward = 10 };
         s.state = GlobalState.fight;
@@ -603,6 +621,18 @@ export fn start() void {
         w4.BUTTON_1,
         w4.BUTTON_RIGHT,
         w4.BUTTON_2,
+    });
+
+    state.spellbook[2] = Spell{
+        .name = "SHIELD",
+        .effect = Effect{ .player_shield = 2 },
+    };
+
+    state.spellbook[2].set_spell(&[_]u8{
+        w4.BUTTON_DOWN,
+        w4.BUTTON_DOWN,
+        w4.BUTTON_RIGHT,
+        w4.BUTTON_1,
     });
 }
 
