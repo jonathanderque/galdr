@@ -2,6 +2,15 @@ const w4 = @import("wasm4.zig");
 const pager = @import("pager.zig");
 const sprites = @import("sprites.zig");
 
+const rand_a: u64 = 6364136223846793005;
+const rand_c: u64 = 1442695040888963407;
+var rand_state: u64 = 0;
+
+pub fn rand() u64 {
+    rand_state = rand_state * rand_a + rand_c;
+    return (rand_state >> 32) & 0xFFFFFFFF;
+}
+
 const Effect = union(enum(u8)) {
     no_effect: void,
     damage_to_player: i16,
@@ -83,15 +92,23 @@ const GlobalState = enum {
     fight,
     fight_reward,
     game_over,
+    pick_random_event,
+};
+
+const event_pool = [_]GlobalState{
+    GlobalState.event_healer,
+    GlobalState.event_forest_wolf,
 };
 
 const choices_max_size: usize = 5;
 const spell_book_max_size: usize = 10;
+const visited_events_max_size: usize = 32;
 const State = struct {
     previous_input: u8,
     pager: pager.Pager,
     // global state
     state: GlobalState,
+    visited_events: [visited_events_max_size]bool,
     choices: [spell_book_max_size]Spell,
     // player
     player_hp: i16,
@@ -136,6 +153,12 @@ const State = struct {
         }
     }
 
+    pub fn reset_visited_events(self: *State) void {
+        var i: usize = 0;
+        while (i < self.visited_events.len) : (i += 1) {
+            self.visited_events[i] = false;
+        }
+    }
     pub fn reset_choices(self: *State) void {
         var i: usize = 0;
         while (i < self.choices.len) : (i += 1) {
@@ -333,7 +356,7 @@ pub fn process_fight_reward(s: *State, released_keys: u8) void {
     }
     if (s.choices[0].is_completed()) {
         s.apply_effect(s.enemy_reward);
-        s.state = GlobalState.end;
+        s.state = GlobalState.pick_random_event;
     }
     w4.DRAW_COLORS.* = 0x02;
     s.pager.set_cursor(10, 10);
@@ -366,6 +389,23 @@ pub fn process_game_over(s: *State, released_keys: u8) void {
     s.pager.set_cursor(58, 50);
     pager.f47_text(&s.pager, "GAME OVER");
     draw_spell_list(&s.choices, &s.pager, 10, 140);
+}
+
+pub fn process_pick_random_event(s: *State, released_keys: u8) void {
+    _ = released_keys;
+
+    const max_attempts = 128;
+    var attempts: u16 = 0;
+    var idx: usize = @intCast(usize, @mod(rand(), event_pool.len));
+    while (s.visited_events[idx] and attempts < max_attempts) : (attempts += 1) {
+        idx = @intCast(usize, @mod(rand(), event_pool.len));
+    }
+    if (attempts == max_attempts) {
+        s.state = GlobalState.end;
+    } else {
+        s.visited_events[idx] = true;
+        s.state = event_pool[idx];
+    }
 }
 
 pub fn process_event_healer(s: *State, released_keys: u8) void {
@@ -406,7 +446,7 @@ pub fn process_event_healer_decline(s: *State, released_keys: u8) void {
     }
     if (s.choices[0].is_completed()) {
         s.set_choices_confirm();
-        s.state = GlobalState.event_forest_wolf;
+        s.state = GlobalState.pick_random_event;
     }
 
     w4.DRAW_COLORS.* = 0x02;
@@ -424,7 +464,7 @@ pub fn process_event_healer_accept(s: *State, released_keys: u8) void {
     }
     if (s.choices[0].is_completed()) {
         s.set_choices_confirm();
-        s.state = GlobalState.event_forest_wolf;
+        s.state = GlobalState.pick_random_event;
     }
 
     w4.DRAW_COLORS.* = 0x02;
@@ -478,6 +518,8 @@ pub fn process_end(s: *State, released_keys: u8) void {
 var state: State = undefined;
 
 export fn start() void {
+    _ = rand();
+
     w4.PALETTE.* = .{
         0x000000,
         0xcccccc,
@@ -492,8 +534,9 @@ export fn start() void {
         .previous_input = 0,
         .pager = pager.Pager.new(),
         // global state
-        .state = GlobalState.event_healer,
+        .state = GlobalState.pick_random_event,
         .choices = undefined,
+        .visited_events = undefined,
         // player
         .player_hp = player_max_hp,
         .player_max_hp = player_max_hp,
@@ -512,6 +555,8 @@ export fn start() void {
     while (i < state.spellbook.len) : (i += 1) {
         state.spellbook[i] = Spell.zero();
     }
+
+    state.reset_visited_events();
 
     state.spellbook[0] = Spell{
         .name = "FIREBALL",
@@ -550,5 +595,6 @@ export fn update() void {
         GlobalState.fight => process_fight(&state, released_keys),
         GlobalState.fight_reward => process_fight_reward(&state, released_keys),
         GlobalState.game_over => process_game_over(&state, released_keys),
+        GlobalState.pick_random_event => process_pick_random_event(&state, released_keys),
     }
 }
