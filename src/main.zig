@@ -19,6 +19,7 @@ const Reward = union(enum(u8)) {
 
 const Effect = union(enum(u8)) {
     no_effect: void,
+    toggle_inventory_menu: void,
     damage_to_player: i16,
     damage_to_enemy: i16,
     player_healing_max: void,
@@ -105,6 +106,8 @@ const GlobalState = enum {
     fight,
     fight_reward,
     game_over,
+    inventory,
+    inventory_1,
     pick_random_event,
     title,
     title_1,
@@ -140,6 +143,9 @@ const enemy_intent_max_size: usize = 5;
 const State = struct {
     previous_input: u8,
     pager: pager.Pager,
+    spell_index: isize = 0, // index keeping track of which spell is hilighted when displaying inventory
+    inventory_menu_flag: bool = false,
+    inventory_exit_state: GlobalState = GlobalState.end,
     // global state
     state: GlobalState,
     visited_events: [visited_events_max_size]bool,
@@ -151,6 +157,7 @@ const State = struct {
     player_gold: i16,
     spellbook: [spell_book_max_size]Spell,
     reward_probability: u8 = 0,
+    inventory_menu_spell: Spell,
     // enemy
     enemy_hp: i16,
     enemy_max_hp: i16,
@@ -185,6 +192,9 @@ const State = struct {
     pub fn apply_effect(self: *State, effect: Effect) void {
         switch (effect) {
             Effect.no_effect => {},
+            Effect.toggle_inventory_menu => {
+                self.inventory_menu_flag = !self.inventory_menu_flag;
+            },
             Effect.player_healing_max => {
                 self.player_hp = self.player_max_hp;
             },
@@ -266,6 +276,15 @@ const State = struct {
         state.choices[0].set_spell(&[_]u8{ w4.BUTTON_RIGHT, w4.BUTTON_1 });
     }
 
+    pub fn set_choices_back(self: *State) void {
+        self.reset_choices();
+        self.choices[0] = Spell{
+            .name = "Back",
+            .effect = Effect.no_effect,
+        };
+        state.choices[0].set_spell(&[_]u8{ w4.BUTTON_LEFT, w4.BUTTON_1 });
+    }
+
     pub fn set_choices_confirm(self: *State) void {
         self.set_choices_with_labels_1("Confirm");
     }
@@ -343,24 +362,27 @@ pub fn draw_button_2(x: i32, y: i32, fill: bool) void {
     }
 }
 
-pub fn draw_spell(spell: *Spell, p: *pager.Pager, x: i32, y: i32) void {
+pub fn draw_spell_input(input: []const u8, current_progress: usize, x: i32, y: i32) void {
     var i: usize = 0;
     var var_x: i32 = x;
-    p.set_cursor(x, y + 1);
-    pager.f47_text(&state.pager, spell.name);
-    var_x = 10 + (12 * (1 + pager.f47_letter_width));
-    while (i < spell.input.len or spell.input[i] == end_of_spell) : (i += 1) {
-        switch (spell.input[i]) {
-            w4.BUTTON_1 => draw_button_1(var_x, y, i < spell.current_progress),
-            w4.BUTTON_2 => draw_button_2(var_x, y, i < spell.current_progress),
-            w4.BUTTON_LEFT => draw_left_arrow(var_x, y, i < spell.current_progress),
-            w4.BUTTON_RIGHT => draw_right_arrow(var_x, y, i < spell.current_progress),
-            w4.BUTTON_UP => draw_up_arrow(var_x, y, i < spell.current_progress),
-            w4.BUTTON_DOWN => draw_down_arrow(var_x, y, i < spell.current_progress),
+    while (i < input.len or input[i] == end_of_spell) : (i += 1) {
+        switch (input[i]) {
+            w4.BUTTON_1 => draw_button_1(var_x, y, i < current_progress),
+            w4.BUTTON_2 => draw_button_2(var_x, y, i < current_progress),
+            w4.BUTTON_LEFT => draw_left_arrow(var_x, y, i < current_progress),
+            w4.BUTTON_RIGHT => draw_right_arrow(var_x, y, i < current_progress),
+            w4.BUTTON_UP => draw_up_arrow(var_x, y, i < current_progress),
+            w4.BUTTON_DOWN => draw_down_arrow(var_x, y, i < current_progress),
             else => {},
         }
         var_x += 10;
     }
+}
+
+pub fn draw_spell(spell: *Spell, p: *pager.Pager, x: i32, y: i32) void {
+    p.set_cursor(x, y + 1);
+    pager.f47_text(&state.pager, spell.name);
+    draw_spell_input(&spell.input, spell.current_progress, 10 + (12 * (1 + pager.f47_letter_width)), y);
 }
 
 pub fn draw_spell_list(spells: []Spell, p: *pager.Pager, x: i32, y: i32) void {
@@ -379,7 +401,34 @@ pub fn draw_progress_bar(x: i32, y: i32, width: u32, height: u32, v: u32, max: u
     w4.rect(x, y, width * v / max, height);
 }
 
+pub fn draw_effect(x: i32, y: i32, s: *State, effect: Effect) void {
+    switch (effect) {
+        Effect.damage_to_player, Effect.damage_to_enemy => |dmg| {
+            w4.blitSub(&sprites.intent, x, y, 9, 9, 0, 0, sprites.intent_width, w4.BLIT_1BPP);
+            s.pager.set_cursor(x + 12, y + 1);
+            pager.f47_number(&s.pager, @intCast(i32, dmg));
+        },
+        Effect.player_shield, Effect.enemy_shield => |amount| {
+            w4.blitSub(&sprites.intent, x, y, 9, 9, 9, 0, sprites.intent_width, w4.BLIT_1BPP);
+            s.pager.set_cursor(x + 12, y + 1);
+            pager.f47_number(&s.pager, @intCast(i32, amount));
+        },
+        else => {},
+    }
+}
+
 pub fn process_fight(s: *State, released_keys: u8) void {
+    s.inventory_menu_spell.process(released_keys);
+    if (s.inventory_menu_spell.is_completed()) {
+        s.apply_effect(s.inventory_menu_spell.effect);
+        s.inventory_menu_spell.reset();
+    }
+    if (s.inventory_menu_flag) {
+        s.inventory_exit_state = GlobalState.fight;
+        s.state = GlobalState.inventory;
+        return;
+    }
+
     for (s.spellbook) |*spell| {
         spell.process(released_keys);
     }
@@ -430,17 +479,8 @@ pub fn process_fight(s: *State, released_keys: u8) void {
     pager.f35_text(&s.pager, "SHIELD: ");
     pager.f35_number(&s.pager, s.enemy_shield);
     s.pager.set_cursor(122, 50);
-    switch (s.enemy_intent[s.enemy_intent_index].effect) {
-        Effect.damage_to_player => |dmg| {
-            w4.blitSub(&sprites.intent, 110, 49, 9, 9, 0, 0, sprites.intent_width, w4.BLIT_1BPP);
-            pager.f47_number(&s.pager, @intCast(i32, dmg));
-        },
-        Effect.enemy_shield => |amount| {
-            w4.blitSub(&sprites.intent, 110, 49, 9, 9, 9, 0, sprites.intent_width, w4.BLIT_1BPP);
-            pager.f47_number(&s.pager, @intCast(i32, amount));
-        },
-        else => {},
-    }
+    draw_effect(110, 49, s, s.enemy_intent[s.enemy_intent_index].effect);
+
     draw_progress_bar(110, 60, 16, 5, s.enemy_intent_current_time, s.enemy_intent[s.enemy_intent_index].trigger_time);
     w4.blit(state.enemy_sprite, 110, 32, sprites.enemy_width, sprites.enemy_height, w4.BLIT_1BPP);
 
@@ -510,6 +550,75 @@ pub fn process_game_over(s: *State, released_keys: u8) void {
     w4.DRAW_COLORS.* = 0x02;
     s.pager.set_cursor(58, 50);
     pager.f47_text(&s.pager, "GAME OVER");
+    draw_spell_list(&s.choices, &s.pager, 10, 140);
+}
+
+pub fn process_inventory(s: *State, released_keys: u8) void {
+    _ = released_keys;
+    s.set_choices_back();
+    s.state = GlobalState.inventory_1;
+}
+
+pub fn process_inventory_1(s: *State, released_keys: u8) void {
+    for (s.choices) |*spell| {
+        spell.process(released_keys);
+    }
+    if (s.choices[0].is_completed()) {
+        s.inventory_menu_flag = false;
+        s.state = s.inventory_exit_state;
+    }
+    if (released_keys == w4.BUTTON_DOWN) {
+        s.spell_index += 1;
+        if (s.spell_index >= s.spellbook.len) {
+            s.spell_index = 0;
+        } else {
+            while (!s.spellbook[@intCast(usize, s.spell_index)].is_defined() and s.spell_index < s.spellbook.len) {
+                s.spell_index += 1;
+            }
+            if (s.spell_index >= s.spellbook.len) {
+                s.spell_index = 0;
+            }
+        }
+    }
+    if (released_keys == w4.BUTTON_UP) {
+        if (s.spell_index <= 0) {
+            s.spell_index = s.spellbook.len - 1;
+            while (!s.spellbook[@intCast(usize, s.spell_index)].is_defined() and s.spell_index >= 0) {
+                s.spell_index -= 1;
+            }
+            if (s.spell_index <= 0) { // should not happen unless empty spellbook
+                s.spell_index = 0;
+            }
+        } else {
+            s.spell_index -= 1;
+        }
+    }
+
+    w4.DRAW_COLORS.* = 0x02;
+    // draw spell details
+    const x = 10;
+    const y = 10;
+    const spell = s.spellbook[@intCast(usize, s.spell_index)];
+
+    s.pager.set_cursor(x, y);
+    pager.f47_text(&s.pager, spell.name);
+    draw_spell_input(&spell.input, 0, x, y + 2 * (pager.f47_height + 1));
+    draw_effect(x, y + 4 * (pager.f47_height + 1), s, spell.effect);
+
+    w4.hline(0, 80, 160);
+
+    s.pager.set_cursor(10, 90);
+    var i: usize = 0;
+    while (i < s.spellbook.len) : (i += 1) {
+        const y_list = @intCast(i32, 90 + i * (pager.f47_height + 2));
+        s.pager.set_cursor(10, y_list);
+        if (i == s.spell_index) {
+            //    pager.f47_text(&s.pager, ">");
+            w4.blitSub(&sprites.arrows, 12, y_list - 1, 5, 9, 0, 9, sprites.arrows_width, w4.BLIT_1BPP | w4.BLIT_FLIP_X);
+        }
+        s.pager.set_cursor(20, y_list);
+        pager.f47_text(&s.pager, s.spellbook[i].name);
+    }
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 }
 
@@ -746,6 +855,10 @@ export fn start() void {
         .player_max_hp = player_max_hp,
         .spellbook = undefined,
         .player_gold = 19,
+        .inventory_menu_spell = Spell{
+            .name = "inventory menu",
+            .effect = Effect.toggle_inventory_menu,
+        },
         // enemy
         .enemy_hp = enemy_max_hp,
         .enemy_max_hp = enemy_max_hp,
@@ -753,6 +866,7 @@ export fn start() void {
         .enemy_intent_index = 0,
         .enemy_guaranteed_reward = Reward{ .gold_reward = 10 },
     };
+    state.inventory_menu_spell.set_spell(&[_]u8{ w4.BUTTON_2, w4.BUTTON_2, w4.BUTTON_1, w4.BUTTON_1 });
 
     var i: usize = 0;
     while (i < state.spellbook.len) : (i += 1) {
@@ -812,6 +926,8 @@ export fn update() void {
         GlobalState.fight => process_fight(&state, released_keys),
         GlobalState.fight_reward => process_fight_reward(&state, released_keys),
         GlobalState.game_over => process_game_over(&state, released_keys),
+        GlobalState.inventory => process_inventory(&state, released_keys),
+        GlobalState.inventory_1 => process_inventory_1(&state, released_keys),
         GlobalState.pick_random_event => process_pick_random_event(&state, released_keys),
         GlobalState.title => process_title(&state, released_keys),
         GlobalState.title_1 => process_title_1(&state, released_keys),
