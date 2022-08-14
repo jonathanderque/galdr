@@ -546,8 +546,26 @@ pub fn draw_progress_bar(x: i32, y: i32, width: u32, height: u32, v: u32, max: u
     w4.rect(x, y, width * v / max, height);
 }
 
+pub fn draw_progress_bubble(x: i32, y: i32, v: u32, max: u32) void {
+    w4.DRAW_COLORS.* = 0x21;
+    var sprite_index = 9 * (v * 17 / max);
+    if (sprite_index >= sprites.progress_bubble_width) {
+        sprite_index = sprites.progress_bubble_width - 9;
+    }
+    w4.blitSub(&sprites.progress_bubble, x, y, 9, 9, sprite_index, 0, sprites.progress_bubble_width, w4.BLIT_1BPP);
+    w4.DRAW_COLORS.* = 0x02;
+}
+
+pub fn draw_shield(x: i32, y: i32) void {
+    w4.blitSub(&sprites.effects, x, y, 9, 9, 9, 0, sprites.effects_width, w4.BLIT_1BPP);
+}
+
 pub fn draw_coin(x: i32, y: i32) void {
     w4.blitSub(&sprites.effects, x, y, 9, 9, 27, 0, sprites.effects_width, w4.BLIT_1BPP);
+}
+
+pub fn draw_heart(x: i32, y: i32) void {
+    w4.blitSub(&sprites.effects, x, y, 9, 9, 36, 0, sprites.effects_width, w4.BLIT_1BPP);
 }
 
 pub fn draw_effect(x: i32, y: i32, s: *State, effect: Effect) void {
@@ -616,6 +634,47 @@ pub fn draw_spell_inventory_list(x: i32, y: i32, s: *State, list: []Spell, show_
     }
 }
 
+pub fn draw_player_hud(s: *State) void {
+    const x: i32 = 10;
+    const y: i32 = 0;
+    //w4.blitSub(&sprites.effects, x, y, 9, 9, 36, 0, sprites.effects_width, w4.BLIT_1BPP);
+    draw_heart(x, y);
+
+    var i: i32 = 0;
+    while (i < 5) : (i += 1) {
+        w4.blit(&sprites.progress_bar, x + 10 + (i * sprites.progress_bar_width), y + 1, sprites.progress_bar_width, sprites.progress_bar_height, w4.BLIT_1BPP);
+    }
+    w4.rect(x + 10, y + 1, @intCast(u32, @divTrunc(5 * sprites.progress_bar_width * s.player_hp, s.player_max_hp)), sprites.progress_bar_height);
+
+    const hp_x = x + 15 + 5 * sprites.progress_bar_width;
+    s.pager.set_cursor(hp_x, y + 1);
+    pager.f47_number(&s.pager, s.player_hp);
+    pager.f47_text(&s.pager, "/");
+    pager.f47_number(&s.pager, s.player_max_hp);
+    draw_coin(hp_x, y + 11);
+    s.pager.set_cursor(hp_x + 11, y + 12);
+    pager.f47_number(&s.pager, s.player_gold);
+}
+
+pub fn draw_enemy_hud(s: *State) void {
+    const x: i32 = 90;
+    const y: i32 = 80 - 20;
+    _ = s;
+    draw_heart(x, y + 10);
+    var i: i32 = 0;
+    while (i < 2) : (i += 1) {
+        w4.blit(&sprites.progress_bar, x + 10 + (i * sprites.progress_bar_width), y + 11, sprites.progress_bar_width, sprites.progress_bar_height, w4.BLIT_1BPP);
+    }
+    w4.rect(x + 10, y + 11, @intCast(u32, @divTrunc(2 * sprites.progress_bar_width * s.enemy_hp, s.enemy_max_hp)), sprites.progress_bar_height);
+    const hp_x = x + 15 + 2 * sprites.progress_bar_width;
+    s.pager.set_cursor(hp_x, y + 11);
+    pager.f47_number(&s.pager, s.enemy_hp);
+
+    draw_shield(x, y);
+    s.pager.set_cursor(x + 10, y + 1);
+    pager.f47_number(&s.pager, s.enemy_shield);
+}
+
 pub fn process_choices_input(s: *State, released_keys: u8) void {
     for (s.choices) |*spell| {
         spell.process(released_keys);
@@ -663,31 +722,20 @@ pub fn process_fight(s: *State, released_keys: u8) void {
     // drawing
     w4.DRAW_COLORS.* = 2;
 
+    draw_player_hud(s);
+
     // hero
-    s.pager.set_cursor(25, 15);
-    pager.f35_text(&s.pager, "HP: ");
-    pager.f35_number(&s.pager, s.player_hp);
-    pager.f35_text(&s.pager, "/");
-    pager.f35_number(&s.pager, s.player_max_hp);
-    pager.f35_newline(&s.pager);
-    pager.f35_text(&s.pager, "SHIELD: ");
-    pager.f35_number(&s.pager, s.player_shield);
+    draw_shield(10, 20);
+    s.pager.set_cursor(20, 20);
+    pager.f47_number(&s.pager, s.player_shield);
     w4.blit(&sprites.hero, 20, 32, sprites.hero_width, sprites.hero_height, w4.BLIT_1BPP);
 
     // enemy
+    draw_enemy_hud(s);
+    w4.blit(state.enemy_sprite, 105, 42, sprites.enemy_width, sprites.enemy_height, w4.BLIT_1BPP);
     s.pager.set_cursor(100, 15);
-    pager.f35_text(&s.pager, "HP: ");
-    pager.f35_number(&s.pager, s.enemy_hp);
-    pager.f35_text(&s.pager, "/");
-    pager.f35_number(&s.pager, s.enemy_max_hp);
-    s.pager.set_cursor(90, 25);
-    pager.f35_text(&s.pager, "SHIELD: ");
-    pager.f35_number(&s.pager, s.enemy_shield);
-    s.pager.set_cursor(122, 50);
-    draw_effect(110, 49, s, s.enemy_intent[s.enemy_intent_index].effect);
-
-    draw_progress_bar(110, 60, 16, 5, s.enemy_intent_current_time, s.enemy_intent[s.enemy_intent_index].trigger_time);
-    w4.blit(state.enemy_sprite, 110, 32, sprites.enemy_width, sprites.enemy_height, w4.BLIT_1BPP);
+    draw_progress_bubble(100, 32, s.enemy_intent_current_time, s.enemy_intent[s.enemy_intent_index].trigger_time);
+    draw_effect(111, 32, s, s.enemy_intent[s.enemy_intent_index].effect);
 
     w4.hline(0, 80, 160);
     draw_spell_list(s.spellbook[0..], &s.pager, 10, 90);
@@ -728,7 +776,8 @@ pub fn process_fight_reward(s: *State, released_keys: u8) void {
         s.state = GlobalState.pick_random_event;
     }
     w4.DRAW_COLORS.* = 0x02;
-    s.pager.set_cursor(10, 10);
+    draw_player_hud(s);
+    s.pager.set_cursor(10, 30);
     pager.f47_text(&s.pager, "Victory!!");
     pager.f47_newline(&s.pager);
     pager.f47_newline(&s.pager);
@@ -738,7 +787,7 @@ pub fn process_fight_reward(s: *State, released_keys: u8) void {
         draw_reward(s, s.enemy_random_reward.reward);
     }
 
-    w4.blit(state.enemy_sprite, 10, 50, sprites.enemy_width, sprites.enemy_height, w4.BLIT_1BPP);
+    w4.blit(state.enemy_sprite, 10, 70, sprites.enemy_width, sprites.enemy_height, w4.BLIT_1BPP);
 
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 }
@@ -968,7 +1017,8 @@ pub fn process_event_healer_1(s: *State, released_keys: u8) void {
         s.state = GlobalState.event_healer_accept;
     }
     w4.DRAW_COLORS.* = 0x02;
-    s.pager.set_cursor(10, 10);
+    draw_player_hud(s);
+    s.pager.set_cursor(10, 30);
     pager.f47_text(&s.pager, "You stumble upon an old man wearing druid clothes. He says:");
     pager.f47_newline(&s.pager);
     pager.f47_text(&s.pager, "\"I can heal your wounds for 10 gold. Are you interested?\"");
@@ -984,7 +1034,8 @@ pub fn process_event_healer_decline(s: *State, released_keys: u8) void {
     }
 
     w4.DRAW_COLORS.* = 0x02;
-    s.pager.set_cursor(10, 10);
+    draw_player_hud(s);
+    s.pager.set_cursor(10, 30);
     pager.f47_text(&s.pager, "The druid says:");
     pager.f47_newline(&s.pager);
     pager.f47_text(&s.pager, "\"As you wish. May you be successful in your endeavours.\"");
@@ -1000,7 +1051,8 @@ pub fn process_event_healer_accept(s: *State, released_keys: u8) void {
     }
 
     w4.DRAW_COLORS.* = 0x02;
-    s.pager.set_cursor(10, 10);
+    draw_player_hud(s);
+    s.pager.set_cursor(10, 30);
     pager.f47_text(&s.pager, "The druid utters weird sounds that only him can understand, but you already feels better.");
     pager.f47_newline(&s.pager);
 
@@ -1028,7 +1080,8 @@ pub fn process_event_healing_shop_1(s: *State, released_keys: u8) void {
         s.set_choices_shop();
     }
     w4.DRAW_COLORS.* = 0x02;
-    s.pager.set_cursor(10, 10);
+    draw_player_hud(s);
+    s.pager.set_cursor(10, 30);
     pager.f47_text(&s.pager, "The merchant greets you:");
     pager.f47_newline(&s.pager);
     pager.f47_newline(&s.pager);
@@ -1168,7 +1221,8 @@ pub fn process_event_forest_wolf_1(s: *State, released_keys: u8) void {
         s.state = GlobalState.fight;
     }
     w4.DRAW_COLORS.* = 0x02;
-    s.pager.set_cursor(10, 10);
+    draw_player_hud(s);
+    s.pager.set_cursor(10, 30);
     pager.f47_text(&s.pager, "As you pass through the dark woods, you hear a frightening growl behind you.");
     pager.f47_newline(&s.pager);
     pager.f47_text(&s.pager, "A giant lone wolf is snarling at you. You have no choice other than to fight for your life!");
@@ -1206,7 +1260,8 @@ pub fn process_event_militia_ambush_1(s: *State, released_keys: u8) void {
         s.state = GlobalState.fight;
     }
     w4.DRAW_COLORS.* = 0x02;
-    s.pager.set_cursor(10, 10);
+    draw_player_hud(s);
+    s.pager.set_cursor(10, 30);
     pager.f47_text(&s.pager, "You spot a lone militia soldier coming your way.");
     pager.f47_newline(&s.pager);
     pager.f47_text(&s.pager, "He does not seem aware that you're here.");
@@ -1217,7 +1272,8 @@ pub fn process_event_militia_ambush_1(s: *State, released_keys: u8) void {
 // TODO techical screen/state to debug things, should not be left in the game by the end of the jam
 pub fn process_end(s: *State, released_keys: u8) void {
     _ = released_keys;
-    s.pager.set_cursor(10, 10);
+    draw_player_hud(s);
+    s.pager.set_cursor(10, 30);
     pager.f47_text(&s.pager, "(You will have to reset the cart now)");
     pager.f47_newline(&s.pager);
     pager.f47_newline(&s.pager);
