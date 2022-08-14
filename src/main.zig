@@ -654,40 +654,15 @@ pub fn process_inventory(s: *State, released_keys: u8) void {
 }
 
 pub fn process_inventory_1(s: *State, released_keys: u8) void {
-    for (s.choices) |*spell| {
-        spell.process(released_keys);
+    for (s.choices) |*choice| {
+        choice.process(released_keys);
     }
     if (s.choices[0].is_completed()) {
         s.inventory_menu_flag = false;
         s.state = s.inventory_exit_state;
     }
-    // TODO use clamp_index instead
-    if (released_keys == w4.BUTTON_DOWN) {
-        s.spell_index += 1;
-        if (s.spell_index >= s.spellbook.len) {
-            s.spell_index = 0;
-        } else {
-            while (!s.spellbook[@intCast(usize, s.spell_index)].is_defined() and s.spell_index < s.spellbook.len) {
-                s.spell_index += 1;
-            }
-            if (s.spell_index >= s.spellbook.len) {
-                s.spell_index = 0;
-            }
-        }
-    }
-    if (released_keys == w4.BUTTON_UP) {
-        if (s.spell_index <= 0) {
-            s.spell_index = s.spellbook.len - 1;
-            while (!s.spellbook[@intCast(usize, s.spell_index)].is_defined() and s.spell_index >= 0) {
-                s.spell_index -= 1;
-            }
-            if (s.spell_index <= 0) { // should not happen unless empty spellbook
-                s.spell_index = 0;
-            }
-        } else {
-            s.spell_index -= 1;
-        }
-    }
+
+    process_keys_spell_list(s, released_keys, &s.spellbook);
 
     const spell = s.spellbook[@intCast(usize, s.spell_index)];
 
