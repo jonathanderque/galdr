@@ -9,6 +9,7 @@ pub fn build(b: *std.build.Builder) !void {
     lib.initial_memory = 65536;
     lib.max_memory = 65536;
     lib.stack_size = 14752;
+    lib.strip = true;
 
     // Export WASM-4 symbols
     lib.export_symbol_names = &[_][]const u8{ "start", "update" };
