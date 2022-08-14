@@ -404,14 +404,24 @@ pub fn draw_progress_bar(x: i32, y: i32, width: u32, height: u32, v: u32, max: u
 pub fn draw_effect(x: i32, y: i32, s: *State, effect: Effect) void {
     switch (effect) {
         Effect.damage_to_player, Effect.damage_to_enemy => |dmg| {
-            w4.blitSub(&sprites.intent, x, y, 9, 9, 0, 0, sprites.intent_width, w4.BLIT_1BPP);
+            w4.blitSub(&sprites.effects, x, y, 9, 9, 0, 0, sprites.effects_width, w4.BLIT_1BPP);
             s.pager.set_cursor(x + 12, y + 1);
             pager.f47_number(&s.pager, @intCast(i32, dmg));
         },
         Effect.player_shield, Effect.enemy_shield => |amount| {
-            w4.blitSub(&sprites.intent, x, y, 9, 9, 9, 0, sprites.intent_width, w4.BLIT_1BPP);
+            w4.blitSub(&sprites.effects, x, y, 9, 9, 9, 0, sprites.effects_width, w4.BLIT_1BPP);
             s.pager.set_cursor(x + 12, y + 1);
             pager.f47_number(&s.pager, @intCast(i32, amount));
+        },
+        Effect.player_healing_max => {
+            w4.blitSub(&sprites.effects, x, y, 9, 9, 18, 0, sprites.effects_width, w4.BLIT_1BPP);
+            s.pager.set_cursor(x + 12, y + 1);
+            pager.f47_text(&s.pager, "max");
+        },
+        Effect.gold_payment => |amount| {
+            w4.blitSub(&sprites.effects, x, y, 9, 9, 27, 0, sprites.effects_width, w4.BLIT_1BPP);
+            s.pager.set_cursor(x + 12, y + 1);
+            pager.f47_number(&s.pager, -@intCast(i32, amount));
         },
         else => {},
     }
