@@ -616,6 +616,12 @@ pub fn draw_spell_inventory_list(x: i32, y: i32, s: *State, list: []Spell, show_
     }
 }
 
+pub fn process_choices_input(s: *State, released_keys: u8) void {
+    for (s.choices) |*spell| {
+        spell.process(released_keys);
+    }
+}
+
 pub fn process_fight(s: *State, released_keys: u8) void {
     s.inventory_menu_spell.process(released_keys);
     if (s.inventory_menu_spell.is_completed()) {
@@ -713,9 +719,7 @@ pub fn draw_reward(s: *State, reward: Reward) void {
 }
 
 pub fn process_fight_reward(s: *State, released_keys: u8) void {
-    for (s.choices) |*spell| {
-        spell.process(released_keys);
-    }
+    process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         s.apply_reward(s.enemy_guaranteed_reward);
         if (s.reward_probability < s.enemy_random_reward.probability) {
@@ -740,9 +744,7 @@ pub fn process_fight_reward(s: *State, released_keys: u8) void {
 }
 
 pub fn process_game_over(s: *State, released_keys: u8) void {
-    for (s.choices) |*spell| {
-        spell.process(released_keys);
-    }
+    process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         s.state = GlobalState.title;
     }
@@ -759,9 +761,7 @@ pub fn process_inventory(s: *State, released_keys: u8) void {
 }
 
 pub fn process_inventory_1(s: *State, released_keys: u8) void {
-    for (s.choices) |*choice| {
-        choice.process(released_keys);
-    }
+    process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         s.inventory_menu_flag = false;
         s.state = s.inventory_exit_state;
@@ -792,9 +792,7 @@ pub fn process_inventory_full(s: *State, released_keys: u8) void {
 }
 
 pub fn process_inventory_full_1(s: *State, released_keys: u8) void {
-    for (s.choices) |*choice| {
-        choice.process(released_keys);
-    }
+    process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         s.state = GlobalState.inventory_full_2;
         s.set_choices_inventory_full();
@@ -822,9 +820,7 @@ pub fn process_inventory_full_2(s: *State, released_keys: u8) void {
         spell = s.shop_items[@intCast(usize, s.spell_index)];
     }
 
-    for (s.choices) |*choice| {
-        choice.process(released_keys);
-    }
+    process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         // dropping a spell
         if (s.shop_list_index == 0) {
@@ -894,9 +890,7 @@ pub fn process_title(s: *State, released_keys: u8) void {
 }
 
 pub fn process_title_1(s: *State, released_keys: u8) void {
-    for (s.choices) |*spell| {
-        spell.process(released_keys);
-    }
+    process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         s.state = GlobalState.new_game_init;
     }
@@ -963,9 +957,7 @@ pub fn process_event_healer(s: *State, released_keys: u8) void {
 }
 
 pub fn process_event_healer_1(s: *State, released_keys: u8) void {
-    for (s.choices) |*spell| {
-        spell.process(released_keys);
-    }
+    process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         s.set_choices_confirm();
         s.state = GlobalState.event_healer_decline;
@@ -985,9 +977,7 @@ pub fn process_event_healer_1(s: *State, released_keys: u8) void {
 }
 
 pub fn process_event_healer_decline(s: *State, released_keys: u8) void {
-    for (s.choices) |*spell| {
-        spell.process(released_keys);
-    }
+    process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         s.set_choices_confirm();
         s.state = GlobalState.pick_random_event;
@@ -1003,9 +993,7 @@ pub fn process_event_healer_decline(s: *State, released_keys: u8) void {
 }
 
 pub fn process_event_healer_accept(s: *State, released_keys: u8) void {
-    for (s.choices) |*spell| {
-        spell.process(released_keys);
-    }
+    process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         s.set_choices_confirm();
         s.state = GlobalState.pick_random_event;
@@ -1034,9 +1022,7 @@ pub fn process_event_healing_shop(s: *State, released_keys: u8) void {
 }
 
 pub fn process_event_healing_shop_1(s: *State, released_keys: u8) void {
-    for (s.choices) |*choice| {
-        choice.process(released_keys);
-    }
+    process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         s.state = GlobalState.shop;
         s.set_choices_shop();
@@ -1097,9 +1083,7 @@ pub fn process_shop(s: *State, released_keys: u8) void {
         spell = s.shop_items[@intCast(usize, s.spell_index)];
     }
 
-    for (s.choices) |*choice| {
-        choice.process(released_keys);
-    }
+    process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         // selling a spell
         if (s.shop_list_index == 0) {
@@ -1158,9 +1142,7 @@ pub fn process_event_forest_wolf(s: *State, released_keys: u8) void {
 }
 
 pub fn process_event_forest_wolf_1(s: *State, released_keys: u8) void {
-    for (s.choices) |*spell| {
-        spell.process(released_keys);
-    }
+    process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         s.reset_player_shield();
         s.reset_enemy_intent();
@@ -1201,9 +1183,7 @@ pub fn process_event_militia_ambush(s: *State, released_keys: u8) void {
 }
 
 pub fn process_event_militia_ambush_1(s: *State, released_keys: u8) void {
-    for (s.choices) |*spell| {
-        spell.process(released_keys);
-    }
+    process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         s.reset_player_shield();
         s.reset_enemy_intent();
