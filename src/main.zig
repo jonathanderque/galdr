@@ -93,6 +93,80 @@ const Spell = struct {
             self.input[i] = end_of_spell;
         }
     }
+
+    //// spell library
+
+    pub fn spell_fireball() Spell {
+        var s = Spell{
+            .name = "FIREBALL",
+            .price = 5,
+            .effect = Effect{ .damage_to_enemy = 4 },
+        };
+        s.set_spell(&[_]u8{ w4.BUTTON_LEFT, w4.BUTTON_1 });
+        return s;
+    }
+
+    pub fn spell_lightning() Spell {
+        var s = Spell{
+            .name = "LIGHTNING",
+            .price = 9,
+            .effect = Effect{ .damage_to_enemy = 7 },
+        };
+        s.set_spell(&[_]u8{
+            w4.BUTTON_RIGHT,
+            w4.BUTTON_RIGHT,
+            w4.BUTTON_LEFT,
+            w4.BUTTON_1,
+            w4.BUTTON_RIGHT,
+            w4.BUTTON_2,
+        });
+        return s;
+    }
+
+    pub fn spell_shield() Spell {
+        var s = Spell{
+            .name = "SHIELD",
+            .price = 12,
+            .effect = Effect{ .player_shield = 2 },
+        };
+        s.set_spell(&[_]u8{
+            w4.BUTTON_DOWN,
+            w4.BUTTON_DOWN,
+            w4.BUTTON_RIGHT,
+            w4.BUTTON_1,
+        });
+        return s;
+    }
+
+    pub fn spell_wolf_bite() Spell {
+        var wolf_bite = Spell{
+            .name = "WOLF BITE",
+            .price = 9,
+            .effect = Effect{ .damage_to_enemy = 5 },
+        };
+        wolf_bite.set_spell(&[_]u8{ w4.BUTTON_LEFT, w4.BUTTON_UP, w4.BUTTON_DOWN, w4.BUTTON_1 });
+        return wolf_bite;
+    }
+
+    pub fn spell_heal() Spell {
+        var s = Spell{
+            .name = "HEAL",
+            .price = 5,
+            .effect = Effect{ .player_heal = 2 },
+        };
+        s.set_spell(&[_]u8{ w4.BUTTON_LEFT, w4.BUTTON_UP, w4.BUTTON_DOWN, w4.BUTTON_1 });
+        return s;
+    }
+
+    pub fn spell_heal_plus() Spell {
+        var s = Spell{
+            .name = "HEAL+",
+            .price = 12,
+            .effect = Effect{ .player_heal = 5 },
+        };
+        s.set_spell(&[_]u8{ w4.BUTTON_LEFT, w4.BUTTON_UP, w4.BUTTON_DOWN, w4.BUTTON_1 });
+        return s;
+    }
 };
 
 const GlobalState = enum {
@@ -792,18 +866,8 @@ pub fn process_event_healing_shop(s: *State, released_keys: u8) void {
     s.shop_list_index = 0;
     s.shop_gold = 50;
     s.reset_shop_items();
-    s.shop_items[0] = Spell{
-        .name = "HEAL",
-        .price = 5,
-        .effect = Effect{ .player_heal = 2 },
-    };
-    s.shop_items[0].set_spell(&[_]u8{ w4.BUTTON_LEFT, w4.BUTTON_UP, w4.BUTTON_DOWN, w4.BUTTON_1 });
-    s.shop_items[1] = Spell{
-        .name = "HEAL+",
-        .price = 12,
-        .effect = Effect{ .player_heal = 5 },
-    };
-    s.shop_items[1].set_spell(&[_]u8{ w4.BUTTON_LEFT, w4.BUTTON_UP, w4.BUTTON_DOWN, w4.BUTTON_1 });
+    s.shop_items[0] = Spell.spell_heal();
+    s.shop_items[1] = Spell.spell_heal_plus();
 }
 
 pub fn process_event_healing_shop_1(s: *State, released_keys: u8) void {
@@ -945,15 +1009,9 @@ pub fn process_event_forest_wolf_1(s: *State, released_keys: u8) void {
             .effect = Effect{ .damage_to_player = 7 },
         };
         s.enemy_guaranteed_reward = Reward{ .gold_reward = 10 };
-        var wolf_bite = Spell{
-            .name = "WOLF BITE",
-            .price = 9,
-            .effect = Effect{ .damage_to_enemy = 5 },
-        };
-        wolf_bite.set_spell(&[_]u8{ w4.BUTTON_LEFT, w4.BUTTON_UP, w4.BUTTON_DOWN, w4.BUTTON_1 });
         s.enemy_random_reward = RandomReward{
             .probability = 33,
-            .reward = Reward{ .spell_reward = wolf_bite },
+            .reward = Reward{ .spell_reward = Spell.spell_wolf_bite() },
         };
         s.enemy_sprite = &sprites.enemy_00;
         s.state = GlobalState.fight;
@@ -1065,39 +1123,9 @@ export fn start() void {
 
     state.reset_visited_events();
 
-    state.spellbook[0] = Spell{
-        .name = "FIREBALL",
-        .price = 5,
-        .effect = Effect{ .damage_to_enemy = 4 },
-    };
-    state.spellbook[0].set_spell(&[_]u8{ w4.BUTTON_LEFT, w4.BUTTON_1 });
-
-    state.spellbook[1] = Spell{
-        .name = "LIGHTNING",
-        .price = 9,
-        .effect = Effect{ .damage_to_enemy = 7 },
-    };
-    state.spellbook[1].set_spell(&[_]u8{
-        w4.BUTTON_RIGHT,
-        w4.BUTTON_RIGHT,
-        w4.BUTTON_LEFT,
-        w4.BUTTON_1,
-        w4.BUTTON_RIGHT,
-        w4.BUTTON_2,
-    });
-
-    state.spellbook[2] = Spell{
-        .name = "SHIELD",
-        .price = 12,
-        .effect = Effect{ .player_shield = 2 },
-    };
-
-    state.spellbook[2].set_spell(&[_]u8{
-        w4.BUTTON_DOWN,
-        w4.BUTTON_DOWN,
-        w4.BUTTON_RIGHT,
-        w4.BUTTON_1,
-    });
+    state.spellbook[0] = Spell.spell_fireball();
+    state.spellbook[1] = Spell.spell_lightning();
+    state.spellbook[2] = Spell.spell_shield();
 }
 
 export fn update() void {
