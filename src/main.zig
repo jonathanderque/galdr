@@ -22,6 +22,7 @@ const Effect = union(enum(u8)) {
     toggle_inventory_menu: void,
     damage_to_player: i16,
     damage_to_enemy: i16,
+    player_heal: u16,
     player_healing_max: void,
     player_shield: i16,
     enemy_shield: i16,
@@ -42,6 +43,7 @@ const Spell = struct {
         end_of_spell,
         end_of_spell,
     },
+    price: u16 = 0,
     current_progress: usize = 0,
     effect: Effect = Effect.no_effect,
 
@@ -99,6 +101,7 @@ const GlobalState = enum {
     event_healer_1,
     event_healer_decline,
     event_healer_accept,
+    event_healing_shop,
     event_forest_wolf,
     event_forest_wolf_1,
     event_militia_ambush,
@@ -109,12 +112,14 @@ const GlobalState = enum {
     inventory,
     inventory_1,
     pick_random_event,
+    shop,
     title,
     title_1,
 };
 
 const event_pool = [_]GlobalState{
     GlobalState.event_healer,
+    GlobalState.event_healing_shop,
     GlobalState.event_forest_wolf,
     GlobalState.event_militia_ambush,
 };
@@ -136,10 +141,30 @@ const RandomReward = struct {
     }
 };
 
+pub fn add_spell_to_list(spell: Spell, spell_list: []Spell) void {
+    // find the first undefined spell in spellbook
+    var i: usize = 0;
+    while (i < spell_list.len and spell_list[i].is_defined()) {
+        i += 1;
+    }
+    if (i < spell_list.len) {
+        spell_list[i] = spell;
+    }
+}
+
+pub fn remove_nth_spell_from_list(n: usize, spell_list: []Spell) void {
+    var i: usize = n + 1;
+    while (i < spell_list.len) : (i += 1) {
+        spell_list[i - 1] = spell_list[i];
+    }
+    spell_list[spell_list.len - 1] = Spell.zero();
+}
+
 const choices_max_size: usize = 5;
 const spell_book_max_size: usize = 10;
 const visited_events_max_size: usize = 32;
 const enemy_intent_max_size: usize = 5;
+const shop_items_max_size: usize = 5;
 const State = struct {
     previous_input: u8,
     pager: pager.Pager,
@@ -168,6 +193,10 @@ const State = struct {
     enemy_guaranteed_reward: Reward = Reward.no_reward,
     enemy_random_reward: RandomReward = RandomReward.zero(),
     enemy_sprite: [*]const u8 = undefined,
+    // shop
+    shop_items: [shop_items_max_size]Spell = undefined,
+    shop_list_index: usize = 0, // 0= player_inventory 1= shop_inventory
+    shop_gold: i16 = 0,
 
     pub fn apply_reward(self: *State, reward: Reward) void {
         switch (reward) {
@@ -176,7 +205,6 @@ const State = struct {
                 self.player_gold += @intCast(i16, amount);
             },
             Reward.spell_reward => |spell| {
-                _ = spell;
                 // find the first undefined spell in spellbook
                 var i: usize = 0;
                 while (i < self.spellbook.len and self.spellbook[i].is_defined()) {
@@ -194,6 +222,12 @@ const State = struct {
             Effect.no_effect => {},
             Effect.toggle_inventory_menu => {
                 self.inventory_menu_flag = !self.inventory_menu_flag;
+            },
+            Effect.player_heal => |amount| {
+                self.player_hp += @intCast(i16, amount);
+                if (self.player_hp >= self.player_max_hp) {
+                    self.player_hp = self.player_max_hp;
+                }
             },
             Effect.player_healing_max => {
                 self.player_hp = self.player_max_hp;
@@ -232,6 +266,13 @@ const State = struct {
             Effect.enemy_shield => |amount| {
                 self.enemy_shield += @intCast(i16, amount);
             },
+        }
+    }
+
+    pub fn reset_shop_items(self: *State) void {
+        var i: usize = 0;
+        while (i < self.shop_items.len) : (i += 1) {
+            self.shop_items[i] = Spell.zero();
         }
     }
 
@@ -309,6 +350,12 @@ const State = struct {
 
     pub fn set_choices_accept_decline(self: *State) void {
         self.set_choices_with_labels_2("Decline", "Accept");
+    }
+
+    pub fn set_choices_shop(self: *State) void {
+        self.set_choices_with_labels_2("Buy/Sell", "Exit");
+        state.choices[0].set_spell(&[_]u8{w4.BUTTON_1});
+        state.choices[1].set_spell(&[_]u8{w4.BUTTON_2});
     }
 };
 
@@ -401,6 +448,10 @@ pub fn draw_progress_bar(x: i32, y: i32, width: u32, height: u32, v: u32, max: u
     w4.rect(x, y, width * v / max, height);
 }
 
+pub fn draw_coin(x: i32, y: i32) void {
+    w4.blitSub(&sprites.effects, x, y, 9, 9, 27, 0, sprites.effects_width, w4.BLIT_1BPP);
+}
+
 pub fn draw_effect(x: i32, y: i32, s: *State, effect: Effect) void {
     switch (effect) {
         Effect.damage_to_player, Effect.damage_to_enemy => |dmg| {
@@ -413,17 +464,57 @@ pub fn draw_effect(x: i32, y: i32, s: *State, effect: Effect) void {
             s.pager.set_cursor(x + 12, y + 1);
             pager.f47_number(&s.pager, @intCast(i32, amount));
         },
+        Effect.player_heal => |amount| {
+            w4.blitSub(&sprites.effects, x, y, 9, 9, 18, 0, sprites.effects_width, w4.BLIT_1BPP);
+            s.pager.set_cursor(x + 12, y + 1);
+            pager.f47_number(&s.pager, amount);
+        },
         Effect.player_healing_max => {
             w4.blitSub(&sprites.effects, x, y, 9, 9, 18, 0, sprites.effects_width, w4.BLIT_1BPP);
             s.pager.set_cursor(x + 12, y + 1);
             pager.f47_text(&s.pager, "max");
         },
         Effect.gold_payment => |amount| {
-            w4.blitSub(&sprites.effects, x, y, 9, 9, 27, 0, sprites.effects_width, w4.BLIT_1BPP);
+            draw_coin(x, y);
             s.pager.set_cursor(x + 12, y + 1);
             pager.f47_number(&s.pager, -@intCast(i32, amount));
         },
         else => {},
+    }
+}
+
+pub fn draw_shop_party(x: i32, y: i23, s: *State, name: []const u8, gold_amount: i16) void {
+    s.pager.set_cursor(x, y);
+    pager.f47_text(&s.pager, name);
+    pager.f47_text(&s.pager, " * ");
+    draw_coin(s.pager.cursor_x, y - 1);
+    s.pager.set_cursor(s.pager.cursor_x + 11, y);
+    pager.f47_number(&s.pager, gold_amount);
+}
+
+pub fn draw_spell_details(x: i32, y: i32, s: *State, spell: Spell) void {
+    s.pager.set_cursor(x, y);
+    pager.f47_text(&s.pager, spell.name);
+    pager.f47_text(&s.pager, " * ");
+    draw_effect(s.pager.cursor_x, y - 1, s, spell.effect);
+    pager.f47_text(&s.pager, " * ");
+    draw_coin(s.pager.cursor_x, y - 1);
+    s.pager.set_cursor(s.pager.cursor_x + 11, y);
+    pager.f47_number(&s.pager, spell.price);
+    draw_spell_input(&spell.input, 0, x, y + 2 * (pager.f47_height + 1));
+}
+
+// draws a list of spell names + cursor
+pub fn draw_spell_inventory_list(x: i32, y: i32, s: *State, list: []Spell, show_cursor: bool) void {
+    var i: usize = 0;
+    while (i < list.len) : (i += 1) {
+        const y_list = y + @intCast(i32, i * (pager.f47_height + 2));
+        s.pager.set_cursor(x, y_list);
+        if (show_cursor and i == s.spell_index) {
+            w4.blitSub(&sprites.arrows, x + 2, y_list - 1, 5, 9, 0, 9, sprites.arrows_width, w4.BLIT_1BPP | w4.BLIT_FLIP_X);
+        }
+        s.pager.set_cursor(x + 10, y_list);
+        pager.f47_text(&s.pager, list[i].name);
     }
 }
 
@@ -577,6 +668,7 @@ pub fn process_inventory_1(s: *State, released_keys: u8) void {
         s.inventory_menu_flag = false;
         s.state = s.inventory_exit_state;
     }
+    // TODO use clamp_index instead
     if (released_keys == w4.BUTTON_DOWN) {
         s.spell_index += 1;
         if (s.spell_index >= s.spellbook.len) {
@@ -604,31 +696,13 @@ pub fn process_inventory_1(s: *State, released_keys: u8) void {
         }
     }
 
-    w4.DRAW_COLORS.* = 0x02;
-    // draw spell details
-    const x = 10;
-    const y = 10;
     const spell = s.spellbook[@intCast(usize, s.spell_index)];
 
-    s.pager.set_cursor(x, y);
-    pager.f47_text(&s.pager, spell.name);
-    draw_spell_input(&spell.input, 0, x, y + 2 * (pager.f47_height + 1));
-    draw_effect(x, y + 4 * (pager.f47_height + 1), s, spell.effect);
-
+    w4.DRAW_COLORS.* = 0x02;
+    draw_spell_details(10, 10, s, spell);
     w4.hline(0, 80, 160);
+    draw_spell_inventory_list(10, 90, s, &s.spellbook, true);
 
-    s.pager.set_cursor(10, 90);
-    var i: usize = 0;
-    while (i < s.spellbook.len) : (i += 1) {
-        const y_list = @intCast(i32, 90 + i * (pager.f47_height + 2));
-        s.pager.set_cursor(10, y_list);
-        if (i == s.spell_index) {
-            //    pager.f47_text(&s.pager, ">");
-            w4.blitSub(&sprites.arrows, 12, y_list - 1, 5, 9, 0, 9, sprites.arrows_width, w4.BLIT_1BPP | w4.BLIT_FLIP_X);
-        }
-        s.pager.set_cursor(20, y_list);
-        pager.f47_text(&s.pager, s.spellbook[i].name);
-    }
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 }
 
@@ -739,6 +813,125 @@ pub fn process_event_healer_accept(s: *State, released_keys: u8) void {
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 }
 
+pub fn process_event_healing_shop(s: *State, released_keys: u8) void {
+    _ = released_keys;
+
+    s.state = GlobalState.shop;
+    s.set_choices_shop();
+
+    s.spell_index = 0;
+    s.shop_list_index = 0;
+    s.shop_gold = 50;
+    s.reset_shop_items();
+    s.shop_items[0] = Spell{
+        .name = "HEAL",
+        .price = 5,
+        .effect = Effect{ .player_heal = 2 },
+    };
+    s.shop_items[0].set_spell(&[_]u8{ w4.BUTTON_LEFT, w4.BUTTON_UP, w4.BUTTON_DOWN, w4.BUTTON_1 });
+    s.shop_items[1] = Spell{
+        .name = "HEAL+",
+        .price = 12,
+        .effect = Effect{ .player_heal = 5 },
+    };
+    s.shop_items[1].set_spell(&[_]u8{ w4.BUTTON_LEFT, w4.BUTTON_UP, w4.BUTTON_DOWN, w4.BUTTON_1 });
+}
+
+pub fn process_keys_spell_list(s: *State, released_keys: u8, spell_list: []Spell) void {
+    if (released_keys == w4.BUTTON_DOWN) {
+        s.spell_index += 1;
+        while (!spell_list[@intCast(usize, s.spell_index)].is_defined() and s.spell_index < spell_list.len) {
+            s.spell_index += 1;
+        }
+        if (s.spell_index >= spell_list.len) {
+            s.spell_index = 0;
+        }
+    }
+    // switch from one list to the other -> make sure we are within bounds of the new list
+    if (released_keys == w4.BUTTON_LEFT or released_keys == w4.BUTTON_RIGHT) {
+        while (!spell_list[@intCast(usize, s.spell_index)].is_defined() and s.spell_index >= 0) {
+            s.spell_index -= 1;
+        }
+        if (s.spell_index <= 0) { // should not happen unless empty spell list
+            s.spell_index = 0;
+        }
+    }
+    if (released_keys == w4.BUTTON_UP) {
+        s.spell_index -= 1;
+        if (s.spell_index < 0) {
+            s.spell_index = @intCast(isize, spell_list.len - 1);
+            while (!spell_list[@intCast(usize, s.spell_index)].is_defined() and s.spell_index >= 0) {
+                s.spell_index -= 1;
+            }
+            if (s.spell_index <= 0) { // should not happen unless empty spell list
+                s.spell_index = 0;
+            }
+        }
+    }
+}
+
+pub fn process_shop(s: *State, released_keys: u8) void {
+    if (released_keys == w4.BUTTON_LEFT or released_keys == w4.BUTTON_RIGHT) {
+        s.shop_list_index = 1 - s.shop_list_index;
+    }
+    var spell: Spell = undefined;
+    if (s.shop_list_index == 0) {
+        process_keys_spell_list(s, released_keys, &s.spellbook);
+        spell = s.spellbook[@intCast(usize, s.spell_index)];
+    }
+    if (s.shop_list_index == 1) {
+        process_keys_spell_list(s, released_keys, &s.shop_items);
+        spell = s.shop_items[@intCast(usize, s.spell_index)];
+    }
+
+    for (s.choices) |*choice| {
+        choice.process(released_keys);
+    }
+    if (s.choices[0].is_completed()) {
+        // selling a spell
+        if (s.shop_list_index == 0) {
+            s.player_gold += @intCast(i16, spell.price);
+            s.shop_gold -= @intCast(i16, spell.price);
+            add_spell_to_list(spell, &s.shop_items);
+            remove_nth_spell_from_list(@intCast(usize, s.spell_index), &s.spellbook);
+        }
+        // buying a spell
+        if (s.shop_list_index == 1) {
+            s.player_gold -= @intCast(i16, spell.price);
+            s.shop_gold += @intCast(i16, spell.price);
+            add_spell_to_list(spell, &s.spellbook);
+            remove_nth_spell_from_list(@intCast(usize, s.spell_index), &s.shop_items);
+        }
+        s.choices[0].reset();
+    }
+    if (s.choices[1].is_completed()) {
+        if (s.player_gold >= 0 and s.shop_gold >= 0) {
+            s.state = GlobalState.pick_random_event;
+        }
+        s.choices[1].reset();
+    }
+
+    w4.DRAW_COLORS.* = 0x02;
+    draw_spell_details(10, 10, s, spell);
+    w4.hline(0, 40, 160);
+
+    draw_shop_party(10, 50, s, "YOU", s.player_gold);
+    draw_spell_inventory_list(10, 70, s, &s.spellbook, s.shop_list_index == 0);
+
+    draw_shop_party(90, 50, s, "SHOP", s.shop_gold);
+    draw_spell_inventory_list(90, 70, s, &s.shop_items, s.shop_list_index == 1);
+
+    draw_spell_list(&s.choices, &s.pager, 10, 140);
+
+    if (s.player_gold < 0 or s.shop_gold < 0) {
+        s.pager.set_cursor(85, 140);
+        pager.f47_text(&s.pager, "Can't leave. ");
+        s.pager.set_cursor(85, 150);
+        pager.f47_text(&s.pager, "Not enough");
+        draw_coin(s.pager.cursor_x + 3, 150 - 1);
+    }
+}
+
 pub fn process_event_forest_wolf(s: *State, released_keys: u8) void {
     _ = released_keys;
     s.set_choices_fight();
@@ -768,6 +961,7 @@ pub fn process_event_forest_wolf_1(s: *State, released_keys: u8) void {
         s.enemy_guaranteed_reward = Reward{ .gold_reward = 10 };
         var wolf_bite = Spell{
             .name = "WOLF BITE",
+            .price = 9,
             .effect = Effect{ .damage_to_enemy = 5 },
         };
         wolf_bite.set_spell(&[_]u8{ w4.BUTTON_LEFT, w4.BUTTON_UP, w4.BUTTON_DOWN, w4.BUTTON_1 });
@@ -887,12 +1081,14 @@ export fn start() void {
 
     state.spellbook[0] = Spell{
         .name = "FIREBALL",
+        .price = 5,
         .effect = Effect{ .damage_to_enemy = 4 },
     };
     state.spellbook[0].set_spell(&[_]u8{ w4.BUTTON_LEFT, w4.BUTTON_1 });
 
     state.spellbook[1] = Spell{
         .name = "LIGHTNING",
+        .price = 9,
         .effect = Effect{ .damage_to_enemy = 7 },
     };
     state.spellbook[1].set_spell(&[_]u8{
@@ -906,6 +1102,7 @@ export fn start() void {
 
     state.spellbook[2] = Spell{
         .name = "SHIELD",
+        .price = 12,
         .effect = Effect{ .player_shield = 2 },
     };
 
@@ -929,6 +1126,7 @@ export fn update() void {
         GlobalState.event_healer_1 => process_event_healer_1(&state, released_keys),
         GlobalState.event_healer_decline => process_event_healer_decline(&state, released_keys),
         GlobalState.event_healer_accept => process_event_healer_accept(&state, released_keys),
+        GlobalState.event_healing_shop => process_event_healing_shop(&state, released_keys),
         GlobalState.event_forest_wolf => process_event_forest_wolf(&state, released_keys),
         GlobalState.event_forest_wolf_1 => process_event_forest_wolf_1(&state, released_keys),
         GlobalState.event_militia_ambush => process_event_militia_ambush(&state, released_keys),
@@ -939,6 +1137,7 @@ export fn update() void {
         GlobalState.inventory => process_inventory(&state, released_keys),
         GlobalState.inventory_1 => process_inventory_1(&state, released_keys),
         GlobalState.pick_random_event => process_pick_random_event(&state, released_keys),
+        GlobalState.shop => process_shop(&state, released_keys),
         GlobalState.title => process_title(&state, released_keys),
         GlobalState.title_1 => process_title_1(&state, released_keys),
     }
