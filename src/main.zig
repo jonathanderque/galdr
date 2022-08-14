@@ -205,14 +205,7 @@ const State = struct {
                 self.player_gold += @intCast(i16, amount);
             },
             Reward.spell_reward => |spell| {
-                // find the first undefined spell in spellbook
-                var i: usize = 0;
-                while (i < self.spellbook.len and self.spellbook[i].is_defined()) {
-                    i += 1;
-                }
-                if (i < self.spellbook.len) {
-                    self.spellbook[i] = spell;
-                }
+                add_spell_to_list(spell, &self.spellbook);
             },
         }
     }
