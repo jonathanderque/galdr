@@ -80,7 +80,7 @@ const Spell = struct {
         return (self.input[self.current_progress] == end_of_spell);
     }
 
-    pub fn is_defined(self: *Spell) bool {
+    pub fn is_defined(self: *const Spell) bool {
         return (self.input[0] != end_of_spell);
     }
 
@@ -245,8 +245,19 @@ pub fn remove_nth_spell_from_list(n: usize, spell_list: []Spell) void {
     spell_list[spell_list.len - 1] = Spell.zero();
 }
 
+pub fn get_spell_list_size(spell_list: []Spell) usize {
+    var size: usize = 0;
+    for (spell_list) |spell| {
+        if (spell.is_defined()) {
+            size += 1;
+        }
+    }
+    return size;
+}
+
 const choices_max_size: usize = 5;
-const spell_book_max_size: usize = 10;
+const spell_book_full_size: usize = 8;
+const spell_book_max_size: usize = 2 * spell_book_full_size;
 const visited_events_max_size: usize = 32;
 const enemy_intent_max_size: usize = 5;
 const shop_items_max_size: usize = 5;
@@ -1007,7 +1018,7 @@ pub fn process_shop(s: *State, released_keys: u8) void {
         s.choices[0].reset();
     }
     if (s.choices[1].is_completed()) {
-        if (s.player_gold >= 0 and s.shop_gold >= 0) {
+        if (s.player_gold >= 0 and s.shop_gold >= 0 and get_spell_list_size(&s.spellbook) < spell_book_full_size) {
             s.state = GlobalState.pick_random_event;
         }
         s.choices[1].reset();
@@ -1025,6 +1036,12 @@ pub fn process_shop(s: *State, released_keys: u8) void {
 
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 
+    if (get_spell_list_size(&s.spellbook) >= spell_book_full_size) {
+        s.pager.set_cursor(85, 140);
+        pager.f47_text(&s.pager, "Can't leave. ");
+        s.pager.set_cursor(85, 150);
+        pager.f47_text(&s.pager, "Spellbook full");
+    }
     if (s.player_gold < 0 or s.shop_gold < 0) {
         s.pager.set_cursor(85, 140);
         pager.f47_text(&s.pager, "Can't leave. ");
