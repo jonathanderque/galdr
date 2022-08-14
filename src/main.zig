@@ -102,6 +102,7 @@ const GlobalState = enum {
     event_healer_decline,
     event_healer_accept,
     event_healing_shop,
+    event_healing_shop_1,
     event_forest_wolf,
     event_forest_wolf_1,
     event_militia_ambush,
@@ -784,8 +785,8 @@ pub fn process_event_healer_accept(s: *State, released_keys: u8) void {
 pub fn process_event_healing_shop(s: *State, released_keys: u8) void {
     _ = released_keys;
 
-    s.state = GlobalState.shop;
-    s.set_choices_shop();
+    s.state = GlobalState.event_healing_shop_1;
+    s.set_choices_confirm();
 
     s.spell_index = 0;
     s.shop_list_index = 0;
@@ -803,6 +804,23 @@ pub fn process_event_healing_shop(s: *State, released_keys: u8) void {
         .effect = Effect{ .player_heal = 5 },
     };
     s.shop_items[1].set_spell(&[_]u8{ w4.BUTTON_LEFT, w4.BUTTON_UP, w4.BUTTON_DOWN, w4.BUTTON_1 });
+}
+
+pub fn process_event_healing_shop_1(s: *State, released_keys: u8) void {
+    for (s.choices) |*choice| {
+        choice.process(released_keys);
+    }
+    if (s.choices[0].is_completed()) {
+        s.state = GlobalState.shop;
+        s.set_choices_shop();
+    }
+    w4.DRAW_COLORS.* = 0x02;
+    s.pager.set_cursor(10, 10);
+    pager.f47_text(&s.pager, "The merchant greets you:");
+    pager.f47_newline(&s.pager);
+    pager.f47_newline(&s.pager);
+    pager.f47_text(&s.pager, "\"Welcome to Hildan's Heap of Heals!\"");
+    draw_spell_list(&s.choices, &s.pager, 10, 140);
 }
 
 pub fn process_keys_spell_list(s: *State, released_keys: u8, spell_list: []Spell) void {
@@ -1095,6 +1113,7 @@ export fn update() void {
         GlobalState.event_healer_decline => process_event_healer_decline(&state, released_keys),
         GlobalState.event_healer_accept => process_event_healer_accept(&state, released_keys),
         GlobalState.event_healing_shop => process_event_healing_shop(&state, released_keys),
+        GlobalState.event_healing_shop_1 => process_event_healing_shop_1(&state, released_keys),
         GlobalState.event_forest_wolf => process_event_forest_wolf(&state, released_keys),
         GlobalState.event_forest_wolf_1 => process_event_forest_wolf_1(&state, released_keys),
         GlobalState.event_militia_ambush => process_event_militia_ambush(&state, released_keys),
