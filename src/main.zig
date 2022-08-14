@@ -195,6 +195,9 @@ const GlobalState = enum {
     game_over,
     inventory,
     inventory_1,
+    inventory_full,
+    inventory_full_1,
+    inventory_full_2,
     new_game_init,
     pick_random_event,
     shop,
@@ -443,6 +446,12 @@ const State = struct {
 
     pub fn set_choices_shop(self: *State) void {
         self.set_choices_with_labels_2("Buy/Sell", "Exit");
+        state.choices[0].set_spell(&[_]u8{w4.BUTTON_1});
+        state.choices[1].set_spell(&[_]u8{w4.BUTTON_2});
+    }
+
+    pub fn set_choices_inventory_full(self: *State) void {
+        self.set_choices_with_labels_2("Pick/Discard", "Exit");
         state.choices[0].set_spell(&[_]u8{w4.BUTTON_1});
         state.choices[1].set_spell(&[_]u8{w4.BUTTON_2});
     }
@@ -770,8 +779,99 @@ pub fn process_inventory_1(s: *State, released_keys: u8) void {
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 }
 
+pub fn process_inventory_full(s: *State, released_keys: u8) void {
+    _ = released_keys;
+
+    s.state = GlobalState.inventory_full_1;
+    s.set_choices_confirm();
+
+    s.spell_index = 0;
+    s.shop_list_index = 0;
+    s.shop_gold = 0;
+    s.reset_shop_items();
+}
+
+pub fn process_inventory_full_1(s: *State, released_keys: u8) void {
+    for (s.choices) |*choice| {
+        choice.process(released_keys);
+    }
+    if (s.choices[0].is_completed()) {
+        s.state = GlobalState.inventory_full_2;
+        s.set_choices_inventory_full();
+    }
+    w4.DRAW_COLORS.* = 0x02;
+    s.pager.set_cursor(10, 10);
+    pager.f47_text(&s.pager, "Your spellbook is full!!");
+    pager.f47_newline(&s.pager);
+    pager.f47_newline(&s.pager);
+    pager.f47_text(&s.pager, "You should discard some spells before continuing your adventure.");
+    draw_spell_list(&s.choices, &s.pager, 10, 140);
+}
+
+pub fn process_inventory_full_2(s: *State, released_keys: u8) void {
+    if (released_keys == w4.BUTTON_LEFT or released_keys == w4.BUTTON_RIGHT) {
+        s.shop_list_index = 1 - s.shop_list_index;
+    }
+    var spell: Spell = undefined;
+    if (s.shop_list_index == 0) {
+        process_keys_spell_list(s, released_keys, &s.spellbook);
+        spell = s.spellbook[@intCast(usize, s.spell_index)];
+    }
+    if (s.shop_list_index == 1) {
+        process_keys_spell_list(s, released_keys, &s.shop_items);
+        spell = s.shop_items[@intCast(usize, s.spell_index)];
+    }
+
+    for (s.choices) |*choice| {
+        choice.process(released_keys);
+    }
+    if (s.choices[0].is_completed()) {
+        // dropping a spell
+        if (s.shop_list_index == 0) {
+            add_spell_to_list(spell, &s.shop_items);
+            remove_nth_spell_from_list(@intCast(usize, s.spell_index), &s.spellbook);
+        }
+        // picking up a spell
+        if (s.shop_list_index == 1) {
+            add_spell_to_list(spell, &s.spellbook);
+            remove_nth_spell_from_list(@intCast(usize, s.spell_index), &s.shop_items);
+        }
+        s.choices[0].reset();
+    }
+    if (s.choices[1].is_completed()) {
+        if (get_spell_list_size(&s.spellbook) < spell_book_full_size) {
+            s.reset_shop_items();
+            s.state = GlobalState.pick_random_event;
+        }
+        s.choices[1].reset();
+    }
+
+    draw_spell_details(10, 10, s, spell);
+    w4.hline(0, 40, 160);
+
+    draw_shop_party(10, 50, s, "YOU", s.player_gold);
+    draw_spell_inventory_list(10, 70, s, &s.spellbook, s.shop_list_index == 0);
+
+    draw_shop_party(90, 50, s, "GROUND", s.shop_gold);
+    draw_spell_inventory_list(90, 70, s, &s.shop_items, s.shop_list_index == 1);
+
+    draw_spell_list(&s.choices, &s.pager, 10, 140);
+
+    if (get_spell_list_size(&s.spellbook) >= spell_book_full_size) {
+        s.pager.set_cursor(85, 140);
+        pager.f47_text(&s.pager, "Can't leave. ");
+        s.pager.set_cursor(85, 150);
+        pager.f47_text(&s.pager, "Spellbook full");
+    }
+}
+
 pub fn process_pick_random_event(s: *State, released_keys: u8) void {
     _ = released_keys;
+
+    if (get_spell_list_size(&s.spellbook) >= spell_book_full_size) {
+        s.state = GlobalState.inventory_full;
+        return;
+    }
 
     const max_attempts = 128;
     var attempts: u16 = 0;
@@ -1181,6 +1281,9 @@ export fn update() void {
         GlobalState.game_over => process_game_over(&state, released_keys),
         GlobalState.inventory => process_inventory(&state, released_keys),
         GlobalState.inventory_1 => process_inventory_1(&state, released_keys),
+        GlobalState.inventory_full => process_inventory_full(&state, released_keys),
+        GlobalState.inventory_full_1 => process_inventory_full_1(&state, released_keys),
+        GlobalState.inventory_full_2 => process_inventory_full_2(&state, released_keys),
         GlobalState.new_game_init => process_new_game_init(&state, released_keys),
         GlobalState.pick_random_event => process_pick_random_event(&state, released_keys),
         GlobalState.shop => process_shop(&state, released_keys),
