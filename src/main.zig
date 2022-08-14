@@ -96,6 +96,15 @@ const Spell = struct {
 
     //// spell library
 
+    pub fn spell_inventory_menu() Spell {
+        var s = Spell{
+            .name = "_inventory menu",
+            .effect = Effect.toggle_inventory_menu,
+        };
+        s.set_spell(&[_]u8{ w4.BUTTON_2, w4.BUTTON_2, w4.BUTTON_1, w4.BUTTON_1 });
+        return s;
+    }
+
     pub fn spell_fireball() Spell {
         var s = Spell{
             .name = "FIREBALL",
@@ -186,6 +195,7 @@ const GlobalState = enum {
     game_over,
     inventory,
     inventory_1,
+    new_game_init,
     pick_random_event,
     shop,
     title,
@@ -241,29 +251,29 @@ const visited_events_max_size: usize = 32;
 const enemy_intent_max_size: usize = 5;
 const shop_items_max_size: usize = 5;
 const State = struct {
-    previous_input: u8,
-    pager: pager.Pager,
+    previous_input: u8 = 0,
+    pager: pager.Pager = undefined,
     spell_index: isize = 0, // index keeping track of which spell is hilighted when displaying inventory
     inventory_menu_flag: bool = false,
-    inventory_exit_state: GlobalState = GlobalState.end,
+    inventory_exit_state: GlobalState = GlobalState.title,
     // global state
-    state: GlobalState,
-    visited_events: [visited_events_max_size]bool,
-    choices: [spell_book_max_size]Spell,
+    state: GlobalState = GlobalState.title,
+    visited_events: [visited_events_max_size]bool = undefined,
+    choices: [spell_book_max_size]Spell = undefined,
     // player
-    player_hp: i16,
-    player_max_hp: i16,
+    player_hp: i16 = 0,
+    player_max_hp: i16 = 0,
     player_shield: i16 = 0,
-    player_gold: i16,
-    spellbook: [spell_book_max_size]Spell,
+    player_gold: i16 = 0,
+    spellbook: [spell_book_max_size]Spell = undefined,
     reward_probability: u8 = 0,
-    inventory_menu_spell: Spell,
+    inventory_menu_spell: Spell = undefined,
     // enemy
-    enemy_hp: i16,
-    enemy_max_hp: i16,
+    enemy_hp: i16 = 0,
+    enemy_max_hp: i16 = 0,
     enemy_shield: i16 = 0,
-    enemy_intent_current_time: u16,
-    enemy_intent_index: usize,
+    enemy_intent_current_time: u16 = 0,
+    enemy_intent_index: usize = 0,
     enemy_intent: [enemy_intent_max_size]EnemyIntent = undefined,
     enemy_guaranteed_reward: Reward = Reward.no_reward,
     enemy_random_reward: RandomReward = RandomReward.zero(),
@@ -714,7 +724,7 @@ pub fn process_game_over(s: *State, released_keys: u8) void {
         spell.process(released_keys);
     }
     if (s.choices[0].is_completed()) {
-        s.state = GlobalState.end;
+        s.state = GlobalState.title;
     }
     w4.DRAW_COLORS.* = 0x02;
     s.pager.set_cursor(58, 50);
@@ -759,7 +769,7 @@ pub fn process_pick_random_event(s: *State, released_keys: u8) void {
         idx = @intCast(usize, @mod(rand(), event_pool.len));
     }
     if (attempts == max_attempts) {
-        s.state = GlobalState.end;
+        s.state = GlobalState.end; // TODO remove this once we have enough fights/events
     } else {
         s.visited_events[idx] = true;
         s.state = event_pool[idx];
@@ -777,7 +787,7 @@ pub fn process_title_1(s: *State, released_keys: u8) void {
         spell.process(released_keys);
     }
     if (s.choices[0].is_completed()) {
-        s.state = GlobalState.pick_random_event;
+        s.state = GlobalState.new_game_init;
     }
 
     // generate randomness
@@ -787,6 +797,48 @@ pub fn process_title_1(s: *State, released_keys: u8) void {
     s.pager.set_cursor(58, 50);
     pager.f47_text(&s.pager, "G A L D R");
     draw_spell_list(&s.choices, &s.pager, 10, 140);
+}
+
+pub fn process_new_game_init(s: *State, released_keys: u8) void {
+    _ = released_keys;
+
+    const player_max_hp = 40;
+    const enemy_max_hp = 20;
+
+    state = State{
+        .previous_input = 0,
+        .pager = pager.Pager.new(),
+        // global state
+        .state = GlobalState.title,
+        .choices = undefined,
+        .visited_events = undefined,
+        // player
+        .player_hp = player_max_hp,
+        .player_max_hp = player_max_hp,
+        .spellbook = undefined,
+        .player_gold = 19,
+        .inventory_menu_spell = Spell.spell_inventory_menu(),
+
+        // enemy
+        .enemy_hp = enemy_max_hp,
+        .enemy_max_hp = enemy_max_hp,
+        .enemy_intent_current_time = 0,
+        .enemy_intent_index = 0,
+        .enemy_guaranteed_reward = Reward{ .gold_reward = 10 },
+    };
+
+    var i: usize = 0;
+    while (i < state.spellbook.len) : (i += 1) {
+        state.spellbook[i] = Spell.zero();
+    }
+
+    state.reset_visited_events();
+
+    state.spellbook[0] = Spell.spell_fireball();
+    state.spellbook[1] = Spell.spell_lightning();
+    state.spellbook[2] = Spell.spell_shield();
+
+    s.state = GlobalState.pick_random_event;
 }
 
 pub fn process_event_healer(s: *State, released_keys: u8) void {
@@ -1079,8 +1131,6 @@ pub fn process_end(s: *State, released_keys: u8) void {
 var state: State = undefined;
 
 export fn start() void {
-    _ = rand();
-
     w4.PALETTE.* = .{
         0x000000,
         0xcccccc,
@@ -1088,44 +1138,7 @@ export fn start() void {
         0xcc5555,
     };
 
-    const player_max_hp = 40;
-    const enemy_max_hp = 20;
-
-    state = State{
-        .previous_input = 0,
-        .pager = pager.Pager.new(),
-        // global state
-        .state = GlobalState.title,
-        .choices = undefined,
-        .visited_events = undefined,
-        // player
-        .player_hp = player_max_hp,
-        .player_max_hp = player_max_hp,
-        .spellbook = undefined,
-        .player_gold = 19,
-        .inventory_menu_spell = Spell{
-            .name = "inventory menu",
-            .effect = Effect.toggle_inventory_menu,
-        },
-        // enemy
-        .enemy_hp = enemy_max_hp,
-        .enemy_max_hp = enemy_max_hp,
-        .enemy_intent_current_time = 0,
-        .enemy_intent_index = 0,
-        .enemy_guaranteed_reward = Reward{ .gold_reward = 10 },
-    };
-    state.inventory_menu_spell.set_spell(&[_]u8{ w4.BUTTON_2, w4.BUTTON_2, w4.BUTTON_1, w4.BUTTON_1 });
-
-    var i: usize = 0;
-    while (i < state.spellbook.len) : (i += 1) {
-        state.spellbook[i] = Spell.zero();
-    }
-
-    state.reset_visited_events();
-
-    state.spellbook[0] = Spell.spell_fireball();
-    state.spellbook[1] = Spell.spell_lightning();
-    state.spellbook[2] = Spell.spell_shield();
+    state = State{};
 }
 
 export fn update() void {
@@ -1151,6 +1164,7 @@ export fn update() void {
         GlobalState.game_over => process_game_over(&state, released_keys),
         GlobalState.inventory => process_inventory(&state, released_keys),
         GlobalState.inventory_1 => process_inventory_1(&state, released_keys),
+        GlobalState.new_game_init => process_new_game_init(&state, released_keys),
         GlobalState.pick_random_event => process_pick_random_event(&state, released_keys),
         GlobalState.shop => process_shop(&state, released_keys),
         GlobalState.title => process_title(&state, released_keys),
