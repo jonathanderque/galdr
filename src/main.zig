@@ -106,6 +106,51 @@ const Spell = struct {
         return s;
     }
 
+    pub fn spell_title_tutorial() Spell {
+        var s = Spell{
+            .name = "Tutorial",
+            .effect = Effect.no_effect,
+        };
+        s.set_spell(&[_]u8{w4.BUTTON_1});
+        return s;
+    }
+
+    pub fn spell_title_start_game() Spell {
+        var s = Spell{
+            .name = "Start Game",
+            .effect = Effect.no_effect,
+        };
+        s.set_spell(&[_]u8{ w4.BUTTON_RIGHT, w4.BUTTON_2 });
+        return s;
+    }
+
+    pub fn spell_tutorial_basics_next() Spell {
+        var s = Spell{
+            .name = "NEXT",
+            .effect = Effect.no_effect,
+        };
+        s.set_spell(&[_]u8{ w4.BUTTON_RIGHT, w4.BUTTON_1 });
+        return s;
+    }
+
+    pub fn spell_tutorial_synergies_heal() Spell {
+        var s = Spell{
+            .name = "HEAL",
+            .effect = Effect.no_effect,
+        };
+        s.set_spell(&[_]u8{ w4.BUTTON_LEFT, w4.BUTTON_1 });
+        return s;
+    }
+
+    pub fn spell_tutorial_synergies_next() Spell {
+        var s = Spell{
+            .name = "NEXT",
+            .effect = Effect.no_effect,
+        };
+        s.set_spell(&[_]u8{ w4.BUTTON_LEFT, w4.BUTTON_1, w4.BUTTON_RIGHT, w4.BUTTON_1 });
+        return s;
+    }
+
     pub fn spell_sword() Spell {
         var s = Spell{
             .name = "SWORD",
@@ -240,6 +285,9 @@ const GlobalState = enum {
     shop,
     title,
     title_1,
+    tutorial_basics,
+    tutorial_synergies,
+    tutorial_pause_menu,
 };
 
 const Area = struct {
@@ -1249,13 +1297,19 @@ pub fn process_pick_random_event(s: *State, released_keys: u8) void {
 
 pub fn process_title(s: *State, released_keys: u8) void {
     _ = released_keys;
-    state.set_choices_with_labels_1("Start Game");
+    s.reset_choices();
+    s.choices[0] = Spell.spell_title_tutorial();
+    s.choices[1] = Spell.spell_title_start_game();
     s.state = GlobalState.title_1;
 }
 
 pub fn process_title_1(s: *State, released_keys: u8) void {
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
+        s.reset_choices();
+        s.choices[0] = Spell.spell_tutorial_basics_next();
+        s.state = GlobalState.tutorial_basics;
+    } else if (s.choices[1].is_completed()) {
         s.state = GlobalState.new_game_init;
     }
 
@@ -1265,6 +1319,86 @@ pub fn process_title_1(s: *State, released_keys: u8) void {
     w4.DRAW_COLORS.* = 0x02;
     s.pager.set_cursor(58, 50);
     pager.f47_text(&s.pager, "G A L D R");
+    draw_spell_list(&s.choices, &s.pager, 10, 140);
+}
+
+pub fn process_tutorial_basics(s: *State, released_keys: u8) void {
+    process_choices_input(s, released_keys);
+    if (s.choices[0].is_completed()) {
+        s.choices[0] = Spell.spell_tutorial_synergies_heal();
+        s.choices[1] = Spell.spell_tutorial_synergies_next();
+        s.state = GlobalState.tutorial_synergies;
+    }
+    s.pager.set_cursor(10, 10);
+    pager.f47_text(&s.pager, "Welcome to GALDR!");
+    pager.f47_newline(&s.pager);
+    pager.f47_newline(&s.pager);
+    pager.f47_text(&s.pager, "We will explain you first how to cast spells.");
+    pager.f47_newline(&s.pager);
+    pager.f47_newline(&s.pager);
+    pager.f47_text(&s.pager, "Look at the bottom of the screen, ");
+    pager.f47_text(&s.pager, "to cast the NEXT spell:");
+    pager.f47_newline(&s.pager);
+    pager.f47_newline(&s.pager);
+    pager.f47_text(&s.pager, " 1. press and release ");
+    draw_right_arrow(s.pager.cursor_x, s.pager.cursor_y, false);
+    s.pager.set_cursor(s.pager.cursor_x + 11, s.pager.cursor_y);
+    pager.f47_newline(&s.pager);
+    pager.f47_newline(&s.pager);
+    pager.f47_text(&s.pager, " 2. press and release ");
+    draw_button_1(s.pager.cursor_x, s.pager.cursor_y, false);
+
+    draw_spell_list(&s.choices, &s.pager, 10, 140);
+}
+
+pub fn process_tutorial_synergies(s: *State, released_keys: u8) void {
+    process_choices_input(s, released_keys);
+    if (s.choices[1].is_completed()) {
+        s.reset_choices();
+        s.choices[0] = Spell.spell_tutorial_basics_next();
+        s.state = GlobalState.tutorial_pause_menu;
+    }
+    s.pager.set_cursor(10, 10);
+    pager.f47_text(&s.pager, "You now have a second spell in your spellbook, you can now HEAL as well!");
+    pager.f47_newline(&s.pager);
+    pager.f47_newline(&s.pager);
+    pager.f47_text(&s.pager, "Look carefully; you'll notice similarities between the input needed for these two spells.");
+    pager.f47_newline(&s.pager);
+    pager.f47_text(&s.pager, "Because your input applies for all spells, casting NEXT will also cast HEAL!");
+    pager.f47_newline(&s.pager);
+    pager.f47_newline(&s.pager);
+    pager.f47_text(&s.pager, "Building a spellbook with such synergies is key to becoming a great wizard!");
+
+    if (s.choices[0].is_completed()) {
+        draw_heart(100, 140);
+        s.pager.set_cursor(110, 140);
+        pager.f47_text(&s.pager, "+ 1");
+    }
+    draw_spell_list(&s.choices, &s.pager, 10, 140);
+}
+
+pub fn process_tutorial_pause_menu(s: *State, released_keys: u8) void {
+    process_choices_input(s, released_keys);
+    if (s.choices[0].is_completed()) {
+        s.reset_choices();
+        s.state = GlobalState.title;
+    }
+    s.pager.set_cursor(10, 10);
+    pager.f47_text(&s.pager, "When fighting in battles, it can be difficult to remember the effect of all spells.");
+    pager.f47_newline(&s.pager);
+    pager.f47_newline(&s.pager);
+    pager.f47_text(&s.pager, "Dont worry!");
+    pager.f47_newline(&s.pager);
+    pager.f47_text(&s.pager, "Casting ");
+    draw_button_2(s.pager.cursor_x, s.pager.cursor_y - 1, false);
+    draw_button_2(s.pager.cursor_x + 11, s.pager.cursor_y - 1, false);
+    draw_button_1(s.pager.cursor_x + 22, s.pager.cursor_y - 1, false);
+    draw_button_1(s.pager.cursor_x + 33, s.pager.cursor_y - 1, false);
+    s.pager.set_cursor(s.pager.cursor_x + 44, s.pager.cursor_y);
+    pager.f47_text(&s.pager, " will get you in the Trance of the Pause Menu.");
+    pager.f47_newline(&s.pager);
+    pager.f47_newline(&s.pager);
+    pager.f47_text(&s.pager, "The Pause Menu stops time and lets you inspect your spellbook.");
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 }
 
@@ -1777,5 +1911,8 @@ export fn update() void {
         GlobalState.shop => process_shop(&state, released_keys),
         GlobalState.title => process_title(&state, released_keys),
         GlobalState.title_1 => process_title_1(&state, released_keys),
+        GlobalState.tutorial_basics => process_tutorial_basics(&state, released_keys),
+        GlobalState.tutorial_synergies => process_tutorial_synergies(&state, released_keys),
+        GlobalState.tutorial_pause_menu => process_tutorial_pause_menu(&state, released_keys),
     }
 }
