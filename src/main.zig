@@ -1070,10 +1070,7 @@ pub fn process_title_1(s: *State, released_keys: u8) void {
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 }
 
-pub fn process_new_game_init(s: *State, released_keys: u8) void {
-    _ = released_keys;
-    _ = s; // TODO the code below should initiat s, not state
-
+pub fn process_new_game_init() void {
     const player_max_hp = 40;
     const enemy_max_hp = 20;
 
@@ -1717,7 +1714,7 @@ export fn update() void {
         GlobalState.inventory_full => process_inventory_full(&state, released_keys),
         GlobalState.inventory_full_1 => process_inventory_full_1(&state, released_keys),
         GlobalState.inventory_full_2 => process_inventory_full_2(&state, released_keys),
-        GlobalState.new_game_init => process_new_game_init(&state, released_keys),
+        GlobalState.new_game_init => process_new_game_init(),
         GlobalState.pick_random_event => process_pick_random_event(&state, released_keys),
         GlobalState.shop => process_shop(&state, released_keys),
         GlobalState.title => process_title(&state, released_keys),
