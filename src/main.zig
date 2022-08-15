@@ -270,7 +270,12 @@ const forest_area = Area{
     },
 };
 
-const area_pool = [_]Area{
+const easy_area_pool = [_]Area{
+    forest_area,
+    swamp_area,
+};
+
+const medium_area_pool = [_]Area{
     forest_area,
     swamp_area,
 };
@@ -336,6 +341,7 @@ const State = struct {
     // global state
     state: GlobalState = GlobalState.title,
     area: Area = undefined,
+    area_counter: usize = 0,
     area_event_counter: usize = 0,
     crossroad_index_1: usize = 0,
     crossroad_index_2: usize = 0,
@@ -1118,9 +1124,18 @@ pub fn process_new_game_init() void {
     state.spellbook[2] = Spell.spell_shield();
 }
 
+pub fn current_area_pool(s: *State) []const Area {
+    return switch (s.area_counter) {
+        0 => &easy_area_pool,
+        1 => &medium_area_pool,
+        else => unreachable,
+    };
+}
+
 pub fn process_crossroad(s: *State, released_keys: u8) void {
     _ = released_keys;
     // pick two areas / setup choices
+    const area_pool = current_area_pool(s);
     s.crossroad_index_1 = @intCast(usize, @mod(rand(), area_pool.len));
     s.crossroad_index_2 = @intCast(usize, @mod(rand(), area_pool.len));
     while (s.crossroad_index_2 == s.crossroad_index_1) {
@@ -1144,14 +1159,17 @@ pub fn process_crossroad_1(s: *State, released_keys: u8) void {
     pager.f47_newline(&s.pager);
     pager.f47_text(&s.pager, "Please pick your path carefully.");
     draw_spell_list(&s.choices, &s.pager, 10, 140);
+    const area_pool = current_area_pool(s);
     if (s.choices[0].is_completed()) {
         s.area = area_pool[s.crossroad_index_1];
+        s.area_counter += 1;
         s.area_event_counter = 0;
         s.reset_visited_events();
         s.state = GlobalState.pick_random_event;
     } else if (s.choices[1].is_completed()) {
         s.area = area_pool[s.crossroad_index_2];
         s.area_event_counter = 0;
+        s.area_counter += 1;
         s.reset_visited_events();
         s.state = GlobalState.pick_random_event;
     }
