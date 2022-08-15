@@ -198,6 +198,8 @@ const Spell = struct {
 
 const GlobalState = enum {
     end,
+    crossroad,
+    crossroad_1,
     event_cavern_man,
     event_cavern_man_1,
     event_coin_muncher,
@@ -239,17 +241,36 @@ const GlobalState = enum {
     title_1,
 };
 
-const event_pool = [_]GlobalState{
-    GlobalState.event_cavern_man,
-    GlobalState.event_coin_muncher,
-    GlobalState.event_healer,
-    GlobalState.event_healing_shop,
-    GlobalState.event_forest_wolf,
-    GlobalState.event_militia_ambush,
-    GlobalState.event_snake_pit,
-    GlobalState.event_swamp_creature,
-    GlobalState.event_swamp_people,
-    GlobalState.event_sun_fountain,
+const Area = struct {
+    name: []const u8,
+    event_pool: []const GlobalState,
+};
+
+const swamp_area = Area{
+    .name = "SWAMP",
+    .event_pool = &[_]GlobalState{
+        GlobalState.event_swamp_creature,
+        GlobalState.event_swamp_people,
+        GlobalState.event_snake_pit,
+        GlobalState.event_healer,
+    },
+};
+
+const forest_area = Area{
+    .name = "FOREST",
+    .event_pool = &[_]GlobalState{
+        GlobalState.event_coin_muncher,
+        GlobalState.event_sun_fountain,
+        GlobalState.event_forest_wolf,
+        GlobalState.event_cavern_man,
+        GlobalState.event_militia_ambush,
+        GlobalState.event_healing_shop,
+    },
+};
+
+const area_pool = [_]Area{
+    forest_area,
+    swamp_area,
 };
 
 const EnemyIntent = struct {
@@ -312,6 +333,9 @@ const State = struct {
     inventory_exit_state: GlobalState = GlobalState.title,
     // global state
     state: GlobalState = GlobalState.title,
+    event_pool: []const GlobalState = undefined,
+    crossroad_index_1: usize = 0,
+    crossroad_index_2: usize = 0,
     visited_events: [visited_events_max_size]bool = undefined,
     choices: [spell_book_max_size]Spell = undefined,
     // player
@@ -1013,15 +1037,15 @@ pub fn process_pick_random_event(s: *State, released_keys: u8) void {
 
     const max_attempts = 128;
     var attempts: u16 = 0;
-    var idx: usize = @intCast(usize, @mod(rand(), event_pool.len));
+    var idx: usize = @intCast(usize, @mod(rand(), s.event_pool.len));
     while (s.visited_events[idx] and attempts < max_attempts) : (attempts += 1) {
-        idx = @intCast(usize, @mod(rand(), event_pool.len));
+        idx = @intCast(usize, @mod(rand(), s.event_pool.len));
     }
     if (attempts == max_attempts) {
-        s.state = GlobalState.end; // TODO remove this once we have enough fights/events
+        s.state = GlobalState.crossroad;
     } else {
         s.visited_events[idx] = true;
-        s.state = event_pool[idx];
+        s.state = s.event_pool[idx];
     }
 }
 
@@ -1048,6 +1072,7 @@ pub fn process_title_1(s: *State, released_keys: u8) void {
 
 pub fn process_new_game_init(s: *State, released_keys: u8) void {
     _ = released_keys;
+    _ = s; // TODO the code below should initiat s, not state
 
     const player_max_hp = 40;
     const enemy_max_hp = 20;
@@ -1056,8 +1081,9 @@ pub fn process_new_game_init(s: *State, released_keys: u8) void {
         .previous_input = 0,
         .pager = pager.Pager.new(),
         // global state
-        .state = GlobalState.title,
+        .state = GlobalState.crossroad,
         .choices = undefined,
+        .event_pool = swamp_area.event_pool,
         .visited_events = undefined,
         // player
         .player_hp = player_max_hp,
@@ -1079,13 +1105,46 @@ pub fn process_new_game_init(s: *State, released_keys: u8) void {
         state.spellbook[i] = Spell.zero();
     }
 
-    state.reset_visited_events();
-
     state.spellbook[0] = Spell.spell_fireball();
     state.spellbook[1] = Spell.spell_lightning();
     state.spellbook[2] = Spell.spell_shield();
+}
 
-    s.state = GlobalState.pick_random_event;
+pub fn process_crossroad(s: *State, released_keys: u8) void {
+    _ = released_keys;
+    // pick two areas / setup choices
+    s.crossroad_index_1 = @intCast(usize, @mod(rand(), area_pool.len));
+    s.crossroad_index_2 = @intCast(usize, @mod(rand(), area_pool.len));
+    while (s.crossroad_index_2 == s.crossroad_index_1) {
+        s.crossroad_index_2 = @intCast(usize, @mod(rand(), area_pool.len));
+    }
+    s.set_choices_with_labels_2(area_pool[s.crossroad_index_1].name, area_pool[s.crossroad_index_2].name);
+    s.enemy_sprite = &sprites.crossroad;
+    s.state = GlobalState.crossroad_1;
+}
+
+pub fn process_crossroad_1(s: *State, released_keys: u8) void {
+    process_choices_input(s, released_keys);
+    // display choices / manage user input
+    w4.DRAW_COLORS.* = 2;
+    draw_player_hud(s);
+    w4.blit(&sprites.hero, 20, 32, sprites.hero_width, sprites.hero_height, w4.BLIT_1BPP);
+    w4.blit(state.enemy_sprite, 105, 42, sprites.enemy_width, sprites.enemy_height, w4.BLIT_1BPP);
+    w4.hline(0, 80, 160);
+    s.pager.set_cursor(10, 90);
+    pager.f47_text(&s.pager, "You arrive at a crossroad.");
+    pager.f47_newline(&s.pager);
+    pager.f47_text(&s.pager, "Please pick your path carefully.");
+    draw_spell_list(&s.choices, &s.pager, 10, 140);
+    if (s.choices[0].is_completed()) {
+        s.event_pool = area_pool[s.crossroad_index_1].event_pool;
+        s.reset_visited_events();
+        s.state = GlobalState.pick_random_event;
+    } else if (s.choices[1].is_completed()) {
+        s.event_pool = area_pool[s.crossroad_index_2].event_pool;
+        s.reset_visited_events();
+        s.state = GlobalState.pick_random_event;
+    }
 }
 
 pub fn process_event_cavern_man(s: *State, released_keys: u8) void {
@@ -1622,6 +1681,8 @@ export fn update() void {
 
     switch (state.state) {
         GlobalState.end => process_end(&state, released_keys),
+        GlobalState.crossroad => process_crossroad(&state, released_keys),
+        GlobalState.crossroad_1 => process_crossroad_1(&state, released_keys),
         GlobalState.event_cavern_man => process_event_cavern_man(&state, released_keys),
         GlobalState.event_cavern_man_1 => process_event_cavern_man_1(&state, released_keys),
         GlobalState.event_coin_muncher => setup_fight(&state, GlobalState.event_coin_muncher_1),
