@@ -187,6 +187,8 @@ const Spell = struct {
 
 const GlobalState = enum {
     end,
+    event_coin_muncher,
+    event_coin_muncher_1,
     event_healer,
     event_healer_1,
     event_healer_decline,
@@ -219,6 +221,7 @@ const GlobalState = enum {
 };
 
 const event_pool = [_]GlobalState{
+    GlobalState.event_coin_muncher,
     GlobalState.event_healer,
     GlobalState.event_healing_shop,
     GlobalState.event_forest_wolf,
@@ -1045,6 +1048,41 @@ pub fn process_new_game_init(s: *State, released_keys: u8) void {
     s.state = GlobalState.pick_random_event;
 }
 
+pub fn process_event_coin_muncher(s: *State, released_keys: u8) void {
+    _ = released_keys;
+    s.set_choices_fight();
+    s.state = GlobalState.event_coin_muncher_1;
+}
+
+pub fn process_event_coin_muncher_1(s: *State, released_keys: u8) void {
+    process_choices_input(s, released_keys);
+    if (s.choices[0].is_completed()) {
+        s.reset_player_shield();
+        s.reset_enemy_intent();
+        const enemy_max_hp = 10;
+        s.enemy_hp = enemy_max_hp;
+        s.enemy_max_hp = enemy_max_hp;
+        s.enemy_intent_current_time = 0;
+        s.enemy_intent_index = 0;
+        s.enemy_intent[0] = EnemyIntent{
+            .trigger_time = 1 * 60,
+            .effect = Effect{ .gold_payment = 1 },
+        };
+        s.enemy_guaranteed_reward = Reward.no_reward;
+        s.enemy_random_reward = RandomReward.zero();
+        s.enemy_sprite = &sprites.enemy_coin_muncher;
+        s.state = GlobalState.fight;
+    }
+    w4.DRAW_COLORS.* = 0x02;
+    draw_player_hud(s);
+    s.pager.set_cursor(10, 30);
+    pager.f47_text(&s.pager, "You suddenly wake up with something brushing against your leg!");
+    pager.f47_newline(&s.pager);
+    pager.f47_text(&s.pager, "You discover a Coin Muncher feeding on the content of your purse!!");
+
+    draw_spell_list(&s.choices, &s.pager, 10, 140);
+}
+
 pub fn process_event_healer(s: *State, released_keys: u8) void {
     _ = released_keys;
     if (s.player_gold >= 10) {
@@ -1442,6 +1480,8 @@ export fn update() void {
 
     switch (state.state) {
         GlobalState.end => process_end(&state, released_keys),
+        GlobalState.event_coin_muncher => process_event_coin_muncher(&state, released_keys),
+        GlobalState.event_coin_muncher_1 => process_event_coin_muncher_1(&state, released_keys),
         GlobalState.event_healer => process_event_healer(&state, released_keys),
         GlobalState.event_healer_1 => process_event_healer_1(&state, released_keys),
         GlobalState.event_healer_decline => process_event_healer_decline(&state, released_keys),
