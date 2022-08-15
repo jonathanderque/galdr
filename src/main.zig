@@ -197,6 +197,12 @@ const GlobalState = enum {
     event_forest_wolf_1,
     event_militia_ambush,
     event_militia_ambush_1,
+    event_sun_fountain,
+    event_sun_fountain_1,
+    event_sun_fountain_skip,
+    event_sun_fountain_damage,
+    event_sun_fountain_heal,
+    event_sun_fountain_refresh,
     fight,
     fight_reward,
     game_over,
@@ -217,6 +223,7 @@ const event_pool = [_]GlobalState{
     GlobalState.event_healing_shop,
     GlobalState.event_forest_wolf,
     GlobalState.event_militia_ambush,
+    GlobalState.event_sun_fountain,
 };
 
 const EnemyIntent = struct {
@@ -1312,6 +1319,96 @@ pub fn process_event_militia_ambush_1(s: *State, released_keys: u8) void {
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 }
 
+pub fn process_event_sun_fountain(s: *State, released_keys: u8) void {
+    _ = released_keys;
+    s.set_choices_with_labels_2("Skip", "Drink");
+    s.state = GlobalState.event_sun_fountain_1;
+}
+
+pub fn process_event_sun_fountain_1(s: *State, released_keys: u8) void {
+    process_choices_input(s, released_keys);
+    if (s.choices[0].is_completed()) {
+        s.set_choices_confirm();
+        s.state = GlobalState.event_sun_fountain_skip;
+        return;
+    }
+    if (s.choices[1].is_completed()) {
+        s.set_choices_confirm();
+        if (s.player_alignment < -20) {
+            s.state = GlobalState.event_sun_fountain_damage;
+            s.apply_effect(Effect{ .damage_to_player = 5 });
+        } else if (s.player_alignment > 20) {
+            s.state = GlobalState.event_sun_fountain_heal;
+            s.apply_effect(Effect{ .player_heal = 10 });
+        } else {
+            s.state = GlobalState.event_sun_fountain_refresh;
+        }
+        return;
+    }
+    w4.DRAW_COLORS.* = 0x02;
+    draw_player_hud(s);
+    s.pager.set_cursor(10, 30);
+    pager.f47_text(&s.pager, "You come across a white fountain basking in a pillar of light.");
+    pager.f47_newline(&s.pager);
+    pager.f47_text(&s.pager, "You feel thirsty. Do you want to drink from the fountain?");
+
+    draw_spell_list(&s.choices, &s.pager, 10, 140);
+}
+
+pub fn process_event_sun_fountain_skip(s: *State, released_keys: u8) void {
+    process_choices_input(s, released_keys);
+    if (s.choices[0].is_completed()) {
+        s.state = GlobalState.pick_random_event;
+    }
+    w4.DRAW_COLORS.* = 0x02;
+    draw_player_hud(s);
+    s.pager.set_cursor(10, 30);
+    pager.f47_text(&s.pager, "Such a fountain in the middle of nowhere seems strange. You continue your journey without drinking from it.");
+    draw_spell_list(&s.choices, &s.pager, 10, 140);
+}
+
+pub fn process_event_sun_fountain_damage(s: *State, released_keys: u8) void {
+    process_choices_input(s, released_keys);
+    if (s.choices[0].is_completed()) {
+        s.state = GlobalState.pick_random_event;
+    }
+    w4.DRAW_COLORS.* = 0x02;
+    draw_player_hud(s);
+    s.pager.set_cursor(10, 30);
+    pager.f47_text(&s.pager, "The water has a foul taste and your belly immediately hurts.");
+    pager.f47_newline(&s.pager);
+    pager.f47_text(&s.pager, "You cast a spell to improve your condition but do not fully recover.");
+    draw_spell_list(&s.choices, &s.pager, 10, 140);
+}
+
+pub fn process_event_sun_fountain_heal(s: *State, released_keys: u8) void {
+    process_choices_input(s, released_keys);
+    if (s.choices[0].is_completed()) {
+        s.state = GlobalState.pick_random_event;
+    }
+    w4.DRAW_COLORS.* = 0x02;
+    draw_player_hud(s);
+    s.pager.set_cursor(10, 30);
+    pager.f47_text(&s.pager, "The water is cool and you feel calm and relaxed.");
+    pager.f47_newline(&s.pager);
+    pager.f47_text(&s.pager, "After resting for a bit, you move on to your next adventure.");
+    draw_spell_list(&s.choices, &s.pager, 10, 140);
+}
+
+pub fn process_event_sun_fountain_refresh(s: *State, released_keys: u8) void {
+    process_choices_input(s, released_keys);
+    if (s.choices[0].is_completed()) {
+        s.state = GlobalState.pick_random_event;
+    }
+    w4.DRAW_COLORS.* = 0x02;
+    draw_player_hud(s);
+    s.pager.set_cursor(10, 30);
+    pager.f47_text(&s.pager, "The water is tepid and tasteless.");
+    pager.f47_newline(&s.pager);
+    pager.f47_text(&s.pager, "After resting for a bit, you move on to your next adventure.");
+    draw_spell_list(&s.choices, &s.pager, 10, 140);
+}
+
 // TODO techical screen/state to debug things, should not be left in the game by the end of the jam
 pub fn process_end(s: *State, released_keys: u8) void {
     _ = released_keys;
@@ -1355,6 +1452,12 @@ export fn update() void {
         GlobalState.event_forest_wolf_1 => process_event_forest_wolf_1(&state, released_keys),
         GlobalState.event_militia_ambush => process_event_militia_ambush(&state, released_keys),
         GlobalState.event_militia_ambush_1 => process_event_militia_ambush_1(&state, released_keys),
+        GlobalState.event_sun_fountain => process_event_sun_fountain(&state, released_keys),
+        GlobalState.event_sun_fountain_1 => process_event_sun_fountain_1(&state, released_keys),
+        GlobalState.event_sun_fountain_skip => process_event_sun_fountain_skip(&state, released_keys),
+        GlobalState.event_sun_fountain_damage => process_event_sun_fountain_damage(&state, released_keys),
+        GlobalState.event_sun_fountain_heal => process_event_sun_fountain_heal(&state, released_keys),
+        GlobalState.event_sun_fountain_refresh => process_event_sun_fountain_refresh(&state, released_keys),
         GlobalState.fight => process_fight(&state, released_keys),
         GlobalState.fight_reward => process_fight_reward(&state, released_keys),
         GlobalState.game_over => process_game_over(&state, released_keys),
