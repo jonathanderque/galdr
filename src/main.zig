@@ -199,6 +199,8 @@ const Spell = struct {
 const GlobalState = enum {
     crossroad,
     crossroad_1,
+    event_boss,
+    event_boss_1,
     event_cavern_man,
     event_cavern_man_1,
     event_coin_muncher,
@@ -270,6 +272,14 @@ const forest_area = Area{
     },
 };
 
+const boss_area = Area{
+    .name = "ECLIPSE",
+    .event_count = 1,
+    .event_pool = &[_]GlobalState{
+        GlobalState.event_boss,
+    },
+};
+
 const easy_area_pool = [_]Area{
     forest_area,
     swamp_area,
@@ -278,6 +288,10 @@ const easy_area_pool = [_]Area{
 const medium_area_pool = [_]Area{
     forest_area,
     swamp_area,
+};
+
+const boss_area_pool = [_]Area{
+    boss_area,
 };
 
 const EnemyIntent = struct {
@@ -1128,18 +1142,29 @@ pub fn current_area_pool(s: *State) []const Area {
     return switch (s.area_counter) {
         0 => &easy_area_pool,
         1 => &medium_area_pool,
+        2 => &boss_area_pool,
         else => unreachable,
     };
 }
 
 pub fn process_crossroad(s: *State, released_keys: u8) void {
     _ = released_keys;
+
+    if (s.area_counter == 3) {
+        s.state = GlobalState.title;
+        return;
+    }
+
     // pick two areas / setup choices
     const area_pool = current_area_pool(s);
     s.crossroad_index_1 = @intCast(usize, @mod(rand(), area_pool.len));
-    s.crossroad_index_2 = @intCast(usize, @mod(rand(), area_pool.len));
-    while (s.crossroad_index_2 == s.crossroad_index_1) {
+    if (area_pool.len > 1) {
         s.crossroad_index_2 = @intCast(usize, @mod(rand(), area_pool.len));
+        while (s.crossroad_index_2 == s.crossroad_index_1) {
+            s.crossroad_index_2 = @intCast(usize, @mod(rand(), area_pool.len));
+        }
+    } else {
+        s.crossroad_index_2 = s.crossroad_index_1;
     }
     s.set_choices_with_labels_2(area_pool[s.crossroad_index_1].name, area_pool[s.crossroad_index_2].name);
     s.enemy_sprite = &sprites.crossroad;
@@ -1158,6 +1183,7 @@ pub fn process_crossroad_1(s: *State, released_keys: u8) void {
     pager.f47_text(&s.pager, "You arrive at a crossroad.");
     pager.f47_newline(&s.pager);
     pager.f47_text(&s.pager, "Please pick your path carefully.");
+    pager.f47_newline(&s.pager);
     draw_spell_list(&s.choices, &s.pager, 10, 140);
     const area_pool = current_area_pool(s);
     if (s.choices[0].is_completed()) {
@@ -1173,6 +1199,37 @@ pub fn process_crossroad_1(s: *State, released_keys: u8) void {
         s.reset_visited_events();
         s.state = GlobalState.pick_random_event;
     }
+}
+
+pub fn process_event_boss_1(s: *State, released_keys: u8) void {
+    process_choices_input(s, released_keys);
+    if (s.choices[0].is_completed()) {
+        s.reset_player_shield();
+        s.reset_enemy_intent();
+        const enemy_max_hp = 100;
+        s.enemy_hp = enemy_max_hp;
+        s.enemy_max_hp = enemy_max_hp;
+        s.enemy_intent_current_time = 0;
+        s.enemy_intent_index = 0;
+        s.enemy_intent[0] = EnemyIntent{
+            .trigger_time = 3 * 60,
+            .effect = Effect{ .damage_to_player = 14 },
+        };
+        s.enemy_intent[1] = EnemyIntent{
+            .trigger_time = 7 * 60,
+            .effect = Effect{ .enemy_shield = 10 },
+        };
+        s.enemy_guaranteed_reward = Reward.no_reward;
+        s.enemy_random_reward = RandomReward.zero();
+        s.enemy_sprite = &sprites.enemy_boss;
+        s.state = GlobalState.fight;
+    }
+    w4.DRAW_COLORS.* = 0x02;
+    draw_player_hud(s);
+    s.pager.set_cursor(10, 30);
+    pager.f47_text(&s.pager, "Be prepared, this is it!");
+
+    draw_spell_list(&s.choices, &s.pager, 10, 140);
 }
 
 pub fn process_event_cavern_man(s: *State, released_keys: u8) void {
@@ -1539,6 +1596,7 @@ pub fn process_event_swamp_people_1(s: *State, released_keys: u8) void {
             .effect = Effect{ .enemy_shield = 1 },
         };
         s.enemy_guaranteed_reward = Reward{ .gold_reward = 2 };
+        // TODO reset random reward
         s.enemy_sprite = &sprites.enemy_swamp_people;
         s.state = GlobalState.fight;
     }
@@ -1698,6 +1756,8 @@ export fn update() void {
     switch (state.state) {
         GlobalState.crossroad => process_crossroad(&state, released_keys),
         GlobalState.crossroad_1 => process_crossroad_1(&state, released_keys),
+        GlobalState.event_boss => setup_fight(&state, GlobalState.event_boss_1),
+        GlobalState.event_boss_1 => process_event_boss_1(&state, released_keys),
         GlobalState.event_cavern_man => process_event_cavern_man(&state, released_keys),
         GlobalState.event_cavern_man_1 => process_event_cavern_man_1(&state, released_keys),
         GlobalState.event_coin_muncher => setup_fight(&state, GlobalState.event_coin_muncher_1),
