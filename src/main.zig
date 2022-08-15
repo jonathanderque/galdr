@@ -242,11 +242,13 @@ const GlobalState = enum {
 
 const Area = struct {
     name: []const u8,
+    event_count: usize, // player is expected to play even_count events out of the total pool
     event_pool: []const GlobalState,
 };
 
 const swamp_area = Area{
     .name = "SWAMP",
+    .event_count = 3,
     .event_pool = &[_]GlobalState{
         GlobalState.event_swamp_creature,
         GlobalState.event_swamp_people,
@@ -257,6 +259,7 @@ const swamp_area = Area{
 
 const forest_area = Area{
     .name = "FOREST",
+    .event_count = 4,
     .event_pool = &[_]GlobalState{
         GlobalState.event_coin_muncher,
         GlobalState.event_sun_fountain,
@@ -332,7 +335,8 @@ const State = struct {
     inventory_exit_state: GlobalState = GlobalState.title,
     // global state
     state: GlobalState = GlobalState.title,
-    event_pool: []const GlobalState = undefined,
+    area: Area = undefined,
+    area_event_counter: usize = 0,
     crossroad_index_1: usize = 0,
     crossroad_index_2: usize = 0,
     visited_events: [visited_events_max_size]bool = undefined,
@@ -1034,17 +1038,23 @@ pub fn process_pick_random_event(s: *State, released_keys: u8) void {
         return;
     }
 
+    if (s.area_event_counter >= s.area.event_count) {
+        s.state = GlobalState.crossroad;
+        return;
+    }
+    s.area_event_counter += 1;
+
     const max_attempts = 128;
     var attempts: u16 = 0;
-    var idx: usize = @intCast(usize, @mod(rand(), s.event_pool.len));
+    var idx: usize = @intCast(usize, @mod(rand(), s.area.event_pool.len));
     while (s.visited_events[idx] and attempts < max_attempts) : (attempts += 1) {
-        idx = @intCast(usize, @mod(rand(), s.event_pool.len));
+        idx = @intCast(usize, @mod(rand(), s.area.event_pool.len));
     }
     if (attempts == max_attempts) {
         s.state = GlobalState.crossroad;
     } else {
         s.visited_events[idx] = true;
-        s.state = s.event_pool[idx];
+        s.state = s.area.event_pool[idx];
     }
 }
 
@@ -1079,7 +1089,7 @@ pub fn process_new_game_init() void {
         // global state
         .state = GlobalState.crossroad,
         .choices = undefined,
-        .event_pool = swamp_area.event_pool,
+        .area = swamp_area,
         .visited_events = undefined,
         // player
         .player_hp = player_max_hp,
@@ -1133,11 +1143,13 @@ pub fn process_crossroad_1(s: *State, released_keys: u8) void {
     pager.f47_text(&s.pager, "Please pick your path carefully.");
     draw_spell_list(&s.choices, &s.pager, 10, 140);
     if (s.choices[0].is_completed()) {
-        s.event_pool = area_pool[s.crossroad_index_1].event_pool;
+        s.area = area_pool[s.crossroad_index_1];
+        s.area_event_counter = 0;
         s.reset_visited_events();
         s.state = GlobalState.pick_random_event;
     } else if (s.choices[1].is_completed()) {
-        s.event_pool = area_pool[s.crossroad_index_2].event_pool;
+        s.area = area_pool[s.crossroad_index_2];
+        s.area_event_counter = 0;
         s.reset_visited_events();
         s.state = GlobalState.pick_random_event;
     }
