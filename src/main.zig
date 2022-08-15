@@ -828,7 +828,18 @@ pub fn draw_enemy_hud(s: *State) void {
 
 pub fn setup_fight(s: *State, fight_state: GlobalState) void {
     s.set_choices_fight();
+
+    // player reset
+    s.reset_player_shield();
     s.reset_spellbook();
+
+    // enemy reset
+    s.reset_enemy_intent();
+    s.enemy_intent_current_time = 0;
+    s.enemy_intent_index = 0;
+    s.enemy_guaranteed_reward = Reward.no_reward;
+    s.enemy_random_reward = RandomReward.zero();
+
     s.state = fight_state;
 }
 
@@ -1204,13 +1215,9 @@ pub fn process_crossroad_1(s: *State, released_keys: u8) void {
 pub fn process_event_boss_1(s: *State, released_keys: u8) void {
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
-        s.reset_player_shield();
-        s.reset_enemy_intent();
         const enemy_max_hp = 100;
         s.enemy_hp = enemy_max_hp;
         s.enemy_max_hp = enemy_max_hp;
-        s.enemy_intent_current_time = 0;
-        s.enemy_intent_index = 0;
         s.enemy_intent[0] = EnemyIntent{
             .trigger_time = 3 * 60,
             .effect = Effect{ .damage_to_player = 14 },
@@ -1219,8 +1226,6 @@ pub fn process_event_boss_1(s: *State, released_keys: u8) void {
             .trigger_time = 7 * 60,
             .effect = Effect{ .enemy_shield = 10 },
         };
-        s.enemy_guaranteed_reward = Reward.no_reward;
-        s.enemy_random_reward = RandomReward.zero();
         s.enemy_sprite = &sprites.enemy_boss;
         s.state = GlobalState.fight;
     }
@@ -1261,19 +1266,13 @@ pub fn process_event_cavern_man_1(s: *State, released_keys: u8) void {
 pub fn process_event_coin_muncher_1(s: *State, released_keys: u8) void {
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
-        s.reset_player_shield();
-        s.reset_enemy_intent();
         const enemy_max_hp = 10;
         s.enemy_hp = enemy_max_hp;
         s.enemy_max_hp = enemy_max_hp;
-        s.enemy_intent_current_time = 0;
-        s.enemy_intent_index = 0;
         s.enemy_intent[0] = EnemyIntent{
             .trigger_time = 1 * 60,
             .effect = Effect{ .gold_payment = 1 },
         };
-        s.enemy_guaranteed_reward = Reward.no_reward;
-        s.enemy_random_reward = RandomReward.zero();
         s.enemy_sprite = &sprites.enemy_coin_muncher;
         s.state = GlobalState.fight;
     }
@@ -1483,13 +1482,9 @@ pub fn process_shop(s: *State, released_keys: u8) void {
 pub fn process_event_forest_wolf_1(s: *State, released_keys: u8) void {
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
-        s.reset_player_shield();
-        s.reset_enemy_intent();
         const enemy_max_hp = 20;
         s.enemy_hp = enemy_max_hp;
         s.enemy_max_hp = enemy_max_hp;
-        s.enemy_intent_current_time = 0;
-        s.enemy_intent_index = 0;
         s.enemy_intent[0] = EnemyIntent{
             .trigger_time = 4 * 60,
             .effect = Effect{ .damage_to_player = 3 },
@@ -1519,13 +1514,9 @@ pub fn process_event_forest_wolf_1(s: *State, released_keys: u8) void {
 pub fn process_event_militia_ambush_1(s: *State, released_keys: u8) void {
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
-        s.reset_player_shield();
-        s.reset_enemy_intent();
         const enemy_max_hp = 30;
         s.enemy_hp = enemy_max_hp;
         s.enemy_max_hp = enemy_max_hp;
-        s.enemy_intent_current_time = 0;
-        s.enemy_intent_index = 0;
         s.enemy_intent[0] = EnemyIntent{
             .trigger_time = 4 * 60,
             .effect = Effect{ .damage_to_player = 5 },
@@ -1535,7 +1526,6 @@ pub fn process_event_militia_ambush_1(s: *State, released_keys: u8) void {
             .effect = Effect{ .enemy_shield = 3 },
         };
         s.enemy_guaranteed_reward = Reward{ .gold_reward = 50 };
-        s.enemy_random_reward = RandomReward.zero();
         s.enemy_sprite = &sprites.enemy_militia;
         s.state = GlobalState.fight;
     }
@@ -1552,13 +1542,9 @@ pub fn process_event_militia_ambush_1(s: *State, released_keys: u8) void {
 pub fn process_event_snake_pit_1(s: *State, released_keys: u8) void {
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
-        s.reset_player_shield();
-        s.reset_enemy_intent();
         const enemy_max_hp = 15;
         s.enemy_hp = enemy_max_hp;
         s.enemy_max_hp = enemy_max_hp;
-        s.enemy_intent_current_time = 0;
-        s.enemy_intent_index = 0;
         s.enemy_intent[0] = EnemyIntent{
             .trigger_time = 4 * 60,
             .effect = Effect{ .damage_to_player = 3 },
@@ -1580,13 +1566,9 @@ pub fn process_event_snake_pit_1(s: *State, released_keys: u8) void {
 pub fn process_event_swamp_people_1(s: *State, released_keys: u8) void {
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
-        s.reset_player_shield();
-        s.reset_enemy_intent();
         const enemy_max_hp = 15;
         s.enemy_hp = enemy_max_hp;
         s.enemy_max_hp = enemy_max_hp;
-        s.enemy_intent_current_time = 0;
-        s.enemy_intent_index = 0;
         s.enemy_intent[0] = EnemyIntent{
             .trigger_time = 4 * 60,
             .effect = Effect{ .damage_to_player = 5 },
@@ -1596,7 +1578,6 @@ pub fn process_event_swamp_people_1(s: *State, released_keys: u8) void {
             .effect = Effect{ .enemy_shield = 1 },
         };
         s.enemy_guaranteed_reward = Reward{ .gold_reward = 2 };
-        // TODO reset random reward
         s.enemy_sprite = &sprites.enemy_swamp_people;
         s.state = GlobalState.fight;
     }
@@ -1613,13 +1594,9 @@ pub fn process_event_swamp_people_1(s: *State, released_keys: u8) void {
 pub fn process_event_swamp_creature_1(s: *State, released_keys: u8) void {
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
-        s.reset_player_shield();
-        s.reset_enemy_intent();
         const enemy_max_hp = 15;
         s.enemy_hp = enemy_max_hp;
         s.enemy_max_hp = enemy_max_hp;
-        s.enemy_intent_current_time = 0;
-        s.enemy_intent_index = 0;
         s.enemy_intent[0] = EnemyIntent{
             .trigger_time = 5 * 60,
             .effect = Effect{ .damage_to_player = 9 },
