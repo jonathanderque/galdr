@@ -759,6 +759,15 @@ pub fn draw_enemy_hud(s: *State) void {
     pager.f47_number(&s.pager, s.enemy_shield);
 }
 
+////////////////////////////////////////////////////////////////////
+/////      EVENTS           ////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
+
+pub fn setup_fight(s: *State, fight_state: GlobalState) void {
+    s.set_choices_fight();
+    s.state = fight_state;
+}
+
 pub fn process_choices_input(s: *State, released_keys: u8) void {
     for (s.choices) |*spell| {
         spell.process(released_keys);
@@ -1088,12 +1097,6 @@ pub fn process_event_cavern_man_1(s: *State, released_keys: u8) void {
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 }
 
-pub fn process_event_coin_muncher(s: *State, released_keys: u8) void {
-    _ = released_keys;
-    s.set_choices_fight();
-    s.state = GlobalState.event_coin_muncher_1;
-}
-
 pub fn process_event_coin_muncher_1(s: *State, released_keys: u8) void {
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
@@ -1316,12 +1319,6 @@ pub fn process_shop(s: *State, released_keys: u8) void {
     }
 }
 
-pub fn process_event_forest_wolf(s: *State, released_keys: u8) void {
-    _ = released_keys;
-    s.set_choices_fight();
-    s.state = GlobalState.event_forest_wolf_1;
-}
-
 pub fn process_event_forest_wolf_1(s: *State, released_keys: u8) void {
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
@@ -1356,12 +1353,6 @@ pub fn process_event_forest_wolf_1(s: *State, released_keys: u8) void {
     pager.f47_text(&s.pager, "A giant lone wolf is snarling at you. You have no choice other than to fight for your life!");
 
     draw_spell_list(&s.choices, &s.pager, 10, 140);
-}
-
-pub fn process_event_militia_ambush(s: *State, released_keys: u8) void {
-    _ = released_keys;
-    s.set_choices_fight();
-    s.state = GlobalState.event_militia_ambush_1;
 }
 
 pub fn process_event_militia_ambush_1(s: *State, released_keys: u8) void {
@@ -1522,7 +1513,7 @@ export fn update() void {
         GlobalState.end => process_end(&state, released_keys),
         GlobalState.event_cavern_man => process_event_cavern_man(&state, released_keys),
         GlobalState.event_cavern_man_1 => process_event_cavern_man_1(&state, released_keys),
-        GlobalState.event_coin_muncher => process_event_coin_muncher(&state, released_keys),
+        GlobalState.event_coin_muncher => setup_fight(&state, GlobalState.event_coin_muncher_1),
         GlobalState.event_coin_muncher_1 => process_event_coin_muncher_1(&state, released_keys),
         GlobalState.event_healer => process_event_healer(&state, released_keys),
         GlobalState.event_healer_1 => process_event_healer_1(&state, released_keys),
@@ -1530,9 +1521,9 @@ export fn update() void {
         GlobalState.event_healer_accept => process_event_healer_accept(&state, released_keys),
         GlobalState.event_healing_shop => process_event_healing_shop(&state, released_keys),
         GlobalState.event_healing_shop_1 => process_event_healing_shop_1(&state, released_keys),
-        GlobalState.event_forest_wolf => process_event_forest_wolf(&state, released_keys),
+        GlobalState.event_forest_wolf => setup_fight(&state, GlobalState.event_forest_wolf_1),
         GlobalState.event_forest_wolf_1 => process_event_forest_wolf_1(&state, released_keys),
-        GlobalState.event_militia_ambush => process_event_militia_ambush(&state, released_keys),
+        GlobalState.event_militia_ambush => setup_fight(&state, GlobalState.event_militia_ambush_1),
         GlobalState.event_militia_ambush_1 => process_event_militia_ambush_1(&state, released_keys),
         GlobalState.event_sun_fountain => process_event_sun_fountain(&state, released_keys),
         GlobalState.event_sun_fountain_1 => process_event_sun_fountain_1(&state, released_keys),
