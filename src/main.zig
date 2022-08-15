@@ -954,6 +954,11 @@ pub fn draw_enemy_hud(s: *State) void {
 /////      EVENTS           ////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
 
+const Dialog = union(enum) {
+    newline: void,
+    text: []const u8,
+};
+
 pub fn setup_fight(s: *State, fight_state: GlobalState) void {
     s.set_choices_fight();
 
@@ -969,6 +974,29 @@ pub fn setup_fight(s: *State, fight_state: GlobalState) void {
     s.enemy.random_reward = RandomReward.zero();
 
     s.state = fight_state;
+}
+
+pub fn fight_intro(s: *State, released_keys: u8, enemy: Enemy, dialog: []const Dialog) void {
+    process_choices_input(s, released_keys);
+    if (s.choices[0].is_completed()) {
+        s.enemy = enemy;
+        s.state = GlobalState.fight;
+    }
+    w4.DRAW_COLORS.* = 0x02;
+    draw_player_hud(s);
+    s.pager.set_cursor(10, 30);
+    for (dialog) |elem| {
+        switch (elem) {
+            Dialog.newline => {
+                pager.f47_newline(&s.pager);
+            },
+            Dialog.text => |t| {
+                pager.f47_text(&s.pager, t);
+            },
+        }
+    }
+
+    draw_spell_list(&s.choices, &s.pager, 10, 140);
 }
 
 pub fn process_choices_input(s: *State, released_keys: u8) void {
@@ -1335,19 +1363,9 @@ pub fn process_crossroad_1(s: *State, released_keys: u8) void {
     }
 }
 
-pub fn process_event_boss_1(s: *State, released_keys: u8) void {
-    process_choices_input(s, released_keys);
-    if (s.choices[0].is_completed()) {
-        s.enemy = Enemy.enemy_boss();
-        s.state = GlobalState.fight;
-    }
-    w4.DRAW_COLORS.* = 0x02;
-    draw_player_hud(s);
-    s.pager.set_cursor(10, 30);
-    pager.f47_text(&s.pager, "Be prepared, this is it!");
-
-    draw_spell_list(&s.choices, &s.pager, 10, 140);
-}
+const boss_dialog = [_]Dialog{
+    Dialog{ .text = "Be prepared, this is it!" },
+};
 
 pub fn process_event_cavern_man(s: *State, released_keys: u8) void {
     _ = released_keys;
@@ -1375,21 +1393,11 @@ pub fn process_event_cavern_man_1(s: *State, released_keys: u8) void {
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 }
 
-pub fn process_event_coin_muncher_1(s: *State, released_keys: u8) void {
-    process_choices_input(s, released_keys);
-    if (s.choices[0].is_completed()) {
-        s.enemy = Enemy.enemy_coin_muncher();
-        s.state = GlobalState.fight;
-    }
-    w4.DRAW_COLORS.* = 0x02;
-    draw_player_hud(s);
-    s.pager.set_cursor(10, 30);
-    pager.f47_text(&s.pager, "You suddenly wake up with something brushing against your leg!");
-    pager.f47_newline(&s.pager);
-    pager.f47_text(&s.pager, "You discover a Coin Muncher feeding on the content of your purse!!");
-
-    draw_spell_list(&s.choices, &s.pager, 10, 140);
-}
+const coin_muncher_dialog = [_]Dialog{
+    Dialog{ .text = "You suddenly wake up with something brushing against your leg!" },
+    Dialog.newline,
+    Dialog{ .text = "You discover a Coin Muncher feeding on the content of your purse!!" },
+};
 
 pub fn process_event_healer(s: *State, released_keys: u8) void {
     _ = released_keys;
@@ -1584,87 +1592,37 @@ pub fn process_shop(s: *State, released_keys: u8) void {
     }
 }
 
-pub fn process_event_forest_wolf_1(s: *State, released_keys: u8) void {
-    process_choices_input(s, released_keys);
-    if (s.choices[0].is_completed()) {
-        s.enemy = Enemy.enemy_forest_wolf();
-        s.state = GlobalState.fight;
-    }
-    w4.DRAW_COLORS.* = 0x02;
-    draw_player_hud(s);
-    s.pager.set_cursor(10, 30);
-    pager.f47_text(&s.pager, "As you pass through the dark woods, you hear a frightening growl behind you.");
-    pager.f47_newline(&s.pager);
-    pager.f47_text(&s.pager, "A giant lone wolf is snarling at you. You have no choice other than to fight for your life!");
+const forest_wolf_dialog = [_]Dialog{
+    Dialog{ .text = "As you pass through the dark woods, you hear a frightening growl behind you." },
+    Dialog.newline,
+    Dialog{ .text = "A giant lone wolf is snarling at you. You have no choice other than to fight for your life!" },
+};
 
-    draw_spell_list(&s.choices, &s.pager, 10, 140);
-}
+const militia_ambush_dialog = [_]Dialog{
+    Dialog{ .text = "You spot a lone militia soldier coming your way." },
+    Dialog.newline,
+    Dialog{ .text = "He does not seem aware that you're here." },
+};
 
-pub fn process_event_militia_ambush_1(s: *State, released_keys: u8) void {
-    process_choices_input(s, released_keys);
-    if (s.choices[0].is_completed()) {
-        s.enemy = Enemy.enemy_militia_ambush();
-        s.state = GlobalState.fight;
-    }
-    w4.DRAW_COLORS.* = 0x02;
-    draw_player_hud(s);
-    s.pager.set_cursor(10, 30);
-    pager.f47_text(&s.pager, "You spot a lone militia soldier coming your way.");
-    pager.f47_newline(&s.pager);
-    pager.f47_text(&s.pager, "He does not seem aware that you're here.");
+const snake_pit_dialog = [_]Dialog{
+    Dialog{ .text = "You fall into a large man-made pit that someone filled with snakes!" },
+    Dialog.newline,
+    Dialog{ .text = "You can't get out safely without dealing with your slithery foes first." },
+};
 
-    draw_spell_list(&s.choices, &s.pager, 10, 140);
-}
+const swamp_people_dialog = [_]Dialog{
+    Dialog{ .text = "Swamp people do not have a reputation of being friendly" },
+    Dialog.newline,
+    Dialog{ .text = "You are about to confirm this as you ran into one of them unexpectedly." },
+};
 
-pub fn process_event_snake_pit_1(s: *State, released_keys: u8) void {
-    process_choices_input(s, released_keys);
-    if (s.choices[0].is_completed()) {
-        s.enemy = Enemy.enemy_snake_pit();
-        s.state = GlobalState.fight;
-    }
-    w4.DRAW_COLORS.* = 0x02;
-    draw_player_hud(s);
-    s.pager.set_cursor(10, 30);
-    pager.f47_text(&s.pager, "You fall into a large man-made pit that someone filled with snakes!");
-    pager.f47_newline(&s.pager);
-    pager.f47_text(&s.pager, "You can't get out safely without dealing with your slithery foes first.");
-
-    draw_spell_list(&s.choices, &s.pager, 10, 140);
-}
-
-pub fn process_event_swamp_people_1(s: *State, released_keys: u8) void {
-    process_choices_input(s, released_keys);
-    if (s.choices[0].is_completed()) {
-        s.enemy = Enemy.enemy_swamp_people();
-        s.state = GlobalState.fight;
-    }
-    w4.DRAW_COLORS.* = 0x02;
-    draw_player_hud(s);
-    s.pager.set_cursor(10, 30);
-    pager.f47_text(&s.pager, "Swamp people do not have a reputation of being friendly");
-    pager.f47_newline(&s.pager);
-    pager.f47_text(&s.pager, "You are about to confirm this as you ran into one of them unexpectedly.");
-
-    draw_spell_list(&s.choices, &s.pager, 10, 140);
-}
-
-pub fn process_event_swamp_creature_1(s: *State, released_keys: u8) void {
-    process_choices_input(s, released_keys);
-    if (s.choices[0].is_completed()) {
-        s.enemy = Enemy.enemy_swamp_creature();
-        s.state = GlobalState.fight;
-    }
-    w4.DRAW_COLORS.* = 0x02;
-    draw_player_hud(s);
-    s.pager.set_cursor(10, 30);
-    pager.f47_text(&s.pager, "You observe a large creature moving in the swamp.");
-    pager.f47_newline(&s.pager);
-    pager.f47_text(&s.pager, "It seems to move towards your direction!");
-    pager.f47_newline(&s.pager);
-    pager.f47_text(&s.pager, "Before you can even flee, the large creature is onto you.");
-
-    draw_spell_list(&s.choices, &s.pager, 10, 140);
-}
+const swamp_creature_dialog = [_]Dialog{
+    Dialog{ .text = "You observe a large creature moving in the swamp." },
+    Dialog.newline,
+    Dialog{ .text = "It seems to move towards your direction!" },
+    Dialog.newline,
+    Dialog{ .text = "Before you can even flee, the large creature is onto you." },
+};
 
 pub fn process_event_sun_fountain(s: *State, released_keys: u8) void {
     _ = released_keys;
@@ -1779,11 +1737,11 @@ export fn update() void {
         GlobalState.crossroad => process_crossroad(&state, released_keys),
         GlobalState.crossroad_1 => process_crossroad_1(&state, released_keys),
         GlobalState.event_boss => setup_fight(&state, GlobalState.event_boss_1),
-        GlobalState.event_boss_1 => process_event_boss_1(&state, released_keys),
+        GlobalState.event_boss_1 => fight_intro(&state, released_keys, Enemy.enemy_boss(), &boss_dialog),
         GlobalState.event_cavern_man => process_event_cavern_man(&state, released_keys),
         GlobalState.event_cavern_man_1 => process_event_cavern_man_1(&state, released_keys),
         GlobalState.event_coin_muncher => setup_fight(&state, GlobalState.event_coin_muncher_1),
-        GlobalState.event_coin_muncher_1 => process_event_coin_muncher_1(&state, released_keys),
+        GlobalState.event_coin_muncher_1 => fight_intro(&state, released_keys, Enemy.enemy_coin_muncher(), &coin_muncher_dialog),
         GlobalState.event_healer => process_event_healer(&state, released_keys),
         GlobalState.event_healer_1 => process_event_healer_1(&state, released_keys),
         GlobalState.event_healer_decline => process_event_healer_decline(&state, released_keys),
@@ -1791,15 +1749,15 @@ export fn update() void {
         GlobalState.event_healing_shop => process_event_healing_shop(&state, released_keys),
         GlobalState.event_healing_shop_1 => process_event_healing_shop_1(&state, released_keys),
         GlobalState.event_forest_wolf => setup_fight(&state, GlobalState.event_forest_wolf_1),
-        GlobalState.event_forest_wolf_1 => process_event_forest_wolf_1(&state, released_keys),
+        GlobalState.event_forest_wolf_1 => fight_intro(&state, released_keys, Enemy.enemy_forest_wolf(), &forest_wolf_dialog),
         GlobalState.event_militia_ambush => setup_fight(&state, GlobalState.event_militia_ambush_1),
-        GlobalState.event_militia_ambush_1 => process_event_militia_ambush_1(&state, released_keys),
+        GlobalState.event_militia_ambush_1 => fight_intro(&state, released_keys, Enemy.enemy_militia_ambush(), &militia_ambush_dialog),
         GlobalState.event_snake_pit => setup_fight(&state, GlobalState.event_snake_pit_1),
-        GlobalState.event_snake_pit_1 => process_event_snake_pit_1(&state, released_keys),
+        GlobalState.event_snake_pit_1 => fight_intro(&state, released_keys, Enemy.enemy_snake_pit(), &snake_pit_dialog),
         GlobalState.event_swamp_people => setup_fight(&state, GlobalState.event_swamp_people_1),
-        GlobalState.event_swamp_people_1 => process_event_swamp_people_1(&state, released_keys),
+        GlobalState.event_swamp_people_1 => fight_intro(&state, released_keys, Enemy.enemy_swamp_people(), &swamp_people_dialog),
         GlobalState.event_swamp_creature => setup_fight(&state, GlobalState.event_swamp_creature_1),
-        GlobalState.event_swamp_creature_1 => process_event_swamp_creature_1(&state, released_keys),
+        GlobalState.event_swamp_creature_1 => fight_intro(&state, released_keys, Enemy.enemy_swamp_creature(), &swamp_creature_dialog),
         GlobalState.event_sun_fountain => process_event_sun_fountain(&state, released_keys),
         GlobalState.event_sun_fountain_1 => process_event_sun_fountain_1(&state, released_keys),
         GlobalState.event_sun_fountain_skip => process_event_sun_fountain_skip(&state, released_keys),
