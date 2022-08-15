@@ -311,6 +311,22 @@ const RandomReward = struct {
     }
 };
 
+const Enemy = struct {
+    hp: i16 = 0,
+    max_hp: i16 = 0,
+    shield: i16 = 0,
+    intent_current_time: u16 = 0,
+    intent_index: usize = 0,
+    intent: [enemy_intent_max_size]EnemyIntent = undefined,
+    guaranteed_reward: Reward = Reward.no_reward,
+    random_reward: RandomReward = RandomReward.zero(),
+    sprite: [*]const u8 = undefined,
+
+    pub fn zero() Enemy {
+        return Enemy{};
+    }
+};
+
 pub fn add_spell_to_list(spell: Spell, spell_list: []Spell) void {
     // find the first undefined spell in spellbook
     var i: usize = 0;
@@ -371,15 +387,7 @@ const State = struct {
     reward_probability: u8 = 0,
     inventory_menu_spell: Spell = undefined,
     // enemy
-    enemy_hp: i16 = 0,
-    enemy_max_hp: i16 = 0,
-    enemy_shield: i16 = 0,
-    enemy_intent_current_time: u16 = 0,
-    enemy_intent_index: usize = 0,
-    enemy_intent: [enemy_intent_max_size]EnemyIntent = undefined,
-    enemy_guaranteed_reward: Reward = Reward.no_reward,
-    enemy_random_reward: RandomReward = RandomReward.zero(),
-    enemy_sprite: [*]const u8 = undefined,
+    enemy: Enemy = Enemy.zero(),
     // shop
     shop_items: [shop_items_max_size]Spell = undefined,
     shop_list_index: usize = 0, // 0= player_inventory 1= shop_inventory
@@ -424,14 +432,14 @@ const State = struct {
                 }
             },
             Effect.damage_to_enemy => |dmg| {
-                if (dmg > self.enemy_shield) {
-                    self.enemy_hp -= (dmg - self.enemy_shield);
-                    self.enemy_shield = 0;
-                    if (self.enemy_hp < 0) {
-                        self.enemy_hp = 0;
+                if (dmg > self.enemy.shield) {
+                    self.enemy.hp -= (dmg - self.enemy.shield);
+                    self.enemy.shield = 0;
+                    if (self.enemy.hp < 0) {
+                        self.enemy.hp = 0;
                     }
                 } else {
-                    self.enemy_shield -= dmg;
+                    self.enemy.shield -= dmg;
                 }
             },
             Effect.gold_payment => |amount| {
@@ -444,7 +452,7 @@ const State = struct {
                 self.player_shield += @intCast(i16, amount);
             },
             Effect.enemy_shield => |amount| {
-                self.enemy_shield += @intCast(i16, amount);
+                self.enemy.shield += @intCast(i16, amount);
             },
         }
     }
@@ -483,8 +491,8 @@ const State = struct {
 
     pub fn reset_enemy_intent(self: *State) void {
         var i: usize = 0;
-        while (i < self.enemy_intent.len) : (i += 1) {
-            self.enemy_intent[i] = EnemyIntent{
+        while (i < self.enemy.intent.len) : (i += 1) {
+            self.enemy.intent[i] = EnemyIntent{
                 .trigger_time = 0,
                 .effect = Effect.no_effect,
             };
@@ -812,14 +820,14 @@ pub fn draw_enemy_hud(s: *State) void {
     while (i < 2) : (i += 1) {
         w4.blit(&sprites.progress_bar, x + 10 + (i * sprites.progress_bar_width), y + 11, sprites.progress_bar_width, sprites.progress_bar_height, w4.BLIT_1BPP);
     }
-    w4.rect(x + 10, y + 11, @intCast(u32, @divTrunc(2 * sprites.progress_bar_width * s.enemy_hp, s.enemy_max_hp)), sprites.progress_bar_height);
+    w4.rect(x + 10, y + 11, @intCast(u32, @divTrunc(2 * sprites.progress_bar_width * s.enemy.hp, s.enemy.max_hp)), sprites.progress_bar_height);
     const hp_x = x + 15 + 2 * sprites.progress_bar_width;
     s.pager.set_cursor(hp_x, y + 11);
-    pager.f47_number(&s.pager, s.enemy_hp);
+    pager.f47_number(&s.pager, s.enemy.hp);
 
     draw_shield(x, y);
     s.pager.set_cursor(x + 10, y + 1);
-    pager.f47_number(&s.pager, s.enemy_shield);
+    pager.f47_number(&s.pager, s.enemy.shield);
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -835,10 +843,10 @@ pub fn setup_fight(s: *State, fight_state: GlobalState) void {
 
     // enemy reset
     s.reset_enemy_intent();
-    s.enemy_intent_current_time = 0;
-    s.enemy_intent_index = 0;
-    s.enemy_guaranteed_reward = Reward.no_reward;
-    s.enemy_random_reward = RandomReward.zero();
+    s.enemy.intent_current_time = 0;
+    s.enemy.intent_index = 0;
+    s.enemy.guaranteed_reward = Reward.no_reward;
+    s.enemy.random_reward = RandomReward.zero();
 
     s.state = fight_state;
 }
@@ -866,14 +874,14 @@ pub fn process_fight(s: *State, released_keys: u8) void {
     }
 
     // we assume process_fight will be called every frame
-    if (s.enemy_hp > 0) {
-        s.enemy_intent_current_time += 1;
-        if (s.enemy_intent_current_time >= s.enemy_intent[s.enemy_intent_index].trigger_time) {
-            s.apply_effect(s.enemy_intent[s.enemy_intent_index].effect);
-            s.enemy_intent_current_time = 0;
-            s.enemy_intent_index += 1;
-            if (s.enemy_intent[s.enemy_intent_index].effect == Effect.no_effect) {
-                s.enemy_intent_index = 0;
+    if (s.enemy.hp > 0) {
+        s.enemy.intent_current_time += 1;
+        if (s.enemy.intent_current_time >= s.enemy.intent[s.enemy.intent_index].trigger_time) {
+            s.apply_effect(s.enemy.intent[s.enemy.intent_index].effect);
+            s.enemy.intent_current_time = 0;
+            s.enemy.intent_index += 1;
+            if (s.enemy.intent[s.enemy.intent_index].effect == Effect.no_effect) {
+                s.enemy.intent_index = 0;
             }
         }
     } else {
@@ -900,10 +908,10 @@ pub fn process_fight(s: *State, released_keys: u8) void {
 
     // enemy
     draw_enemy_hud(s);
-    w4.blit(state.enemy_sprite, 105, 42, sprites.enemy_width, sprites.enemy_height, w4.BLIT_1BPP);
+    w4.blit(state.enemy.sprite, 105, 42, sprites.enemy_width, sprites.enemy_height, w4.BLIT_1BPP);
     s.pager.set_cursor(100, 15);
-    draw_progress_bubble(100, 32, s.enemy_intent_current_time, s.enemy_intent[s.enemy_intent_index].trigger_time);
-    draw_effect(111, 32, s, s.enemy_intent[s.enemy_intent_index].effect);
+    draw_progress_bubble(100, 32, s.enemy.intent_current_time, s.enemy.intent[s.enemy.intent_index].trigger_time);
+    draw_effect(111, 32, s, s.enemy.intent[s.enemy.intent_index].effect);
 
     w4.hline(0, 80, 160);
     draw_spell_list(s.spellbook[0..], &s.pager, 10, 90);
@@ -920,9 +928,9 @@ pub fn process_fight(s: *State, released_keys: u8) void {
 pub fn process_fight_reward(s: *State, released_keys: u8) void {
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
-        s.apply_reward(s.enemy_guaranteed_reward);
-        if (s.reward_probability < s.enemy_random_reward.probability) {
-            s.apply_reward(s.enemy_random_reward.reward);
+        s.apply_reward(s.enemy.guaranteed_reward);
+        if (s.reward_probability < s.enemy.random_reward.probability) {
+            s.apply_reward(s.enemy.random_reward.reward);
         }
         s.state = GlobalState.pick_random_event;
     }
@@ -932,13 +940,13 @@ pub fn process_fight_reward(s: *State, released_keys: u8) void {
     pager.f47_text(&s.pager, "Victory!!");
     pager.f47_newline(&s.pager);
     pager.f47_newline(&s.pager);
-    draw_reward(s, s.enemy_guaranteed_reward);
+    draw_reward(s, s.enemy.guaranteed_reward);
 
-    if (s.reward_probability < s.enemy_random_reward.probability) {
-        draw_reward(s, s.enemy_random_reward.reward);
+    if (s.reward_probability < s.enemy.random_reward.probability) {
+        draw_reward(s, s.enemy.random_reward.reward);
     }
 
-    w4.blit(state.enemy_sprite, 10, 70, sprites.enemy_width, sprites.enemy_height, w4.BLIT_1BPP);
+    w4.blit(state.enemy.sprite, 10, 70, sprites.enemy_width, sprites.enemy_height, w4.BLIT_1BPP);
 
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 }
@@ -1114,7 +1122,6 @@ pub fn process_title_1(s: *State, released_keys: u8) void {
 
 pub fn process_new_game_init() void {
     const player_max_hp = 40;
-    const enemy_max_hp = 20;
 
     state = State{
         .previous_input = 0,
@@ -1132,11 +1139,7 @@ pub fn process_new_game_init() void {
         .inventory_menu_spell = Spell.spell_inventory_menu(),
 
         // enemy
-        .enemy_hp = enemy_max_hp,
-        .enemy_max_hp = enemy_max_hp,
-        .enemy_intent_current_time = 0,
-        .enemy_intent_index = 0,
-        .enemy_guaranteed_reward = Reward{ .gold_reward = 10 },
+        .enemy = Enemy.zero(),
     };
 
     var i: usize = 0;
@@ -1178,7 +1181,7 @@ pub fn process_crossroad(s: *State, released_keys: u8) void {
         s.crossroad_index_2 = s.crossroad_index_1;
     }
     s.set_choices_with_labels_2(area_pool[s.crossroad_index_1].name, area_pool[s.crossroad_index_2].name);
-    s.enemy_sprite = &sprites.crossroad;
+    s.enemy.sprite = &sprites.crossroad;
     s.state = GlobalState.crossroad_1;
 }
 
@@ -1188,7 +1191,7 @@ pub fn process_crossroad_1(s: *State, released_keys: u8) void {
     w4.DRAW_COLORS.* = 2;
     draw_player_hud(s);
     w4.blit(&sprites.hero, 20, 32, sprites.hero_width, sprites.hero_height, w4.BLIT_1BPP);
-    w4.blit(state.enemy_sprite, 105, 42, sprites.enemy_width, sprites.enemy_height, w4.BLIT_1BPP);
+    w4.blit(state.enemy.sprite, 105, 42, sprites.enemy_width, sprites.enemy_height, w4.BLIT_1BPP);
     w4.hline(0, 80, 160);
     s.pager.set_cursor(10, 90);
     pager.f47_text(&s.pager, "You arrive at a crossroad.");
@@ -1216,17 +1219,17 @@ pub fn process_event_boss_1(s: *State, released_keys: u8) void {
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         const enemy_max_hp = 100;
-        s.enemy_hp = enemy_max_hp;
-        s.enemy_max_hp = enemy_max_hp;
-        s.enemy_intent[0] = EnemyIntent{
+        s.enemy.hp = enemy_max_hp;
+        s.enemy.max_hp = enemy_max_hp;
+        s.enemy.intent[0] = EnemyIntent{
             .trigger_time = 3 * 60,
             .effect = Effect{ .damage_to_player = 14 },
         };
-        s.enemy_intent[1] = EnemyIntent{
+        s.enemy.intent[1] = EnemyIntent{
             .trigger_time = 7 * 60,
             .effect = Effect{ .enemy_shield = 10 },
         };
-        s.enemy_sprite = &sprites.enemy_boss;
+        s.enemy.sprite = &sprites.enemy_boss;
         s.state = GlobalState.fight;
     }
     w4.DRAW_COLORS.* = 0x02;
@@ -1247,7 +1250,7 @@ pub fn process_event_cavern_man_1(s: *State, released_keys: u8) void {
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         s.set_choices_confirm(); // reset choices
-        s.enemy_guaranteed_reward = Reward{ .spell_reward = Spell.spell_sword() };
+        s.enemy.guaranteed_reward = Reward{ .spell_reward = Spell.spell_sword() };
         s.state = GlobalState.fight_reward;
         return;
     }
@@ -1267,13 +1270,13 @@ pub fn process_event_coin_muncher_1(s: *State, released_keys: u8) void {
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         const enemy_max_hp = 10;
-        s.enemy_hp = enemy_max_hp;
-        s.enemy_max_hp = enemy_max_hp;
-        s.enemy_intent[0] = EnemyIntent{
+        s.enemy.hp = enemy_max_hp;
+        s.enemy.max_hp = enemy_max_hp;
+        s.enemy.intent[0] = EnemyIntent{
             .trigger_time = 1 * 60,
             .effect = Effect{ .gold_payment = 1 },
         };
-        s.enemy_sprite = &sprites.enemy_coin_muncher;
+        s.enemy.sprite = &sprites.enemy_coin_muncher;
         s.state = GlobalState.fight;
     }
     w4.DRAW_COLORS.* = 0x02;
@@ -1483,22 +1486,22 @@ pub fn process_event_forest_wolf_1(s: *State, released_keys: u8) void {
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         const enemy_max_hp = 20;
-        s.enemy_hp = enemy_max_hp;
-        s.enemy_max_hp = enemy_max_hp;
-        s.enemy_intent[0] = EnemyIntent{
+        s.enemy.hp = enemy_max_hp;
+        s.enemy.max_hp = enemy_max_hp;
+        s.enemy.intent[0] = EnemyIntent{
             .trigger_time = 4 * 60,
             .effect = Effect{ .damage_to_player = 3 },
         };
-        s.enemy_intent[1] = EnemyIntent{
+        s.enemy.intent[1] = EnemyIntent{
             .trigger_time = 7 * 60,
             .effect = Effect{ .damage_to_player = 7 },
         };
-        s.enemy_guaranteed_reward = Reward{ .gold_reward = 10 };
-        s.enemy_random_reward = RandomReward{
+        s.enemy.guaranteed_reward = Reward{ .gold_reward = 10 };
+        s.enemy.random_reward = RandomReward{
             .probability = 33,
             .reward = Reward{ .spell_reward = Spell.spell_wolf_bite() },
         };
-        s.enemy_sprite = &sprites.enemy_wolf;
+        s.enemy.sprite = &sprites.enemy_wolf;
         s.state = GlobalState.fight;
     }
     w4.DRAW_COLORS.* = 0x02;
@@ -1515,18 +1518,18 @@ pub fn process_event_militia_ambush_1(s: *State, released_keys: u8) void {
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         const enemy_max_hp = 30;
-        s.enemy_hp = enemy_max_hp;
-        s.enemy_max_hp = enemy_max_hp;
-        s.enemy_intent[0] = EnemyIntent{
+        s.enemy.hp = enemy_max_hp;
+        s.enemy.max_hp = enemy_max_hp;
+        s.enemy.intent[0] = EnemyIntent{
             .trigger_time = 4 * 60,
             .effect = Effect{ .damage_to_player = 5 },
         };
-        s.enemy_intent[1] = EnemyIntent{
+        s.enemy.intent[1] = EnemyIntent{
             .trigger_time = 5 * 60,
             .effect = Effect{ .enemy_shield = 3 },
         };
-        s.enemy_guaranteed_reward = Reward{ .gold_reward = 50 };
-        s.enemy_sprite = &sprites.enemy_militia;
+        s.enemy.guaranteed_reward = Reward{ .gold_reward = 50 };
+        s.enemy.sprite = &sprites.enemy_militia;
         s.state = GlobalState.fight;
     }
     w4.DRAW_COLORS.* = 0x02;
@@ -1543,14 +1546,14 @@ pub fn process_event_snake_pit_1(s: *State, released_keys: u8) void {
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         const enemy_max_hp = 15;
-        s.enemy_hp = enemy_max_hp;
-        s.enemy_max_hp = enemy_max_hp;
-        s.enemy_intent[0] = EnemyIntent{
+        s.enemy.hp = enemy_max_hp;
+        s.enemy.max_hp = enemy_max_hp;
+        s.enemy.intent[0] = EnemyIntent{
             .trigger_time = 4 * 60,
             .effect = Effect{ .damage_to_player = 3 },
         };
-        s.enemy_guaranteed_reward = Reward{ .gold_reward = 2 };
-        s.enemy_sprite = &sprites.enemy_snake;
+        s.enemy.guaranteed_reward = Reward{ .gold_reward = 2 };
+        s.enemy.sprite = &sprites.enemy_snake;
         s.state = GlobalState.fight;
     }
     w4.DRAW_COLORS.* = 0x02;
@@ -1567,18 +1570,18 @@ pub fn process_event_swamp_people_1(s: *State, released_keys: u8) void {
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         const enemy_max_hp = 15;
-        s.enemy_hp = enemy_max_hp;
-        s.enemy_max_hp = enemy_max_hp;
-        s.enemy_intent[0] = EnemyIntent{
+        s.enemy.hp = enemy_max_hp;
+        s.enemy.max_hp = enemy_max_hp;
+        s.enemy.intent[0] = EnemyIntent{
             .trigger_time = 4 * 60,
             .effect = Effect{ .damage_to_player = 5 },
         };
-        s.enemy_intent[1] = EnemyIntent{
+        s.enemy.intent[1] = EnemyIntent{
             .trigger_time = 1 * 60,
             .effect = Effect{ .enemy_shield = 1 },
         };
-        s.enemy_guaranteed_reward = Reward{ .gold_reward = 2 };
-        s.enemy_sprite = &sprites.enemy_swamp_people;
+        s.enemy.guaranteed_reward = Reward{ .gold_reward = 2 };
+        s.enemy.sprite = &sprites.enemy_swamp_people;
         s.state = GlobalState.fight;
     }
     w4.DRAW_COLORS.* = 0x02;
@@ -1595,18 +1598,18 @@ pub fn process_event_swamp_creature_1(s: *State, released_keys: u8) void {
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         const enemy_max_hp = 15;
-        s.enemy_hp = enemy_max_hp;
-        s.enemy_max_hp = enemy_max_hp;
-        s.enemy_intent[0] = EnemyIntent{
+        s.enemy.hp = enemy_max_hp;
+        s.enemy.max_hp = enemy_max_hp;
+        s.enemy.intent[0] = EnemyIntent{
             .trigger_time = 5 * 60,
             .effect = Effect{ .damage_to_player = 9 },
         };
-        s.enemy_intent[1] = EnemyIntent{
+        s.enemy.intent[1] = EnemyIntent{
             .trigger_time = 3 * 60,
             .effect = Effect{ .enemy_shield = 11 },
         };
-        s.enemy_guaranteed_reward = Reward{ .gold_reward = 20 };
-        s.enemy_sprite = &sprites.enemy_swamp_creature;
+        s.enemy.guaranteed_reward = Reward{ .gold_reward = 20 };
+        s.enemy.sprite = &sprites.enemy_swamp_creature;
         s.state = GlobalState.fight;
     }
     w4.DRAW_COLORS.* = 0x02;
