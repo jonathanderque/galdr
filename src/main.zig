@@ -216,6 +216,8 @@ const GlobalState = enum {
     event_snake_pit_1,
     event_swamp_people,
     event_swamp_people_1,
+    event_swamp_creature,
+    event_swamp_creature_1,
     event_sun_fountain,
     event_sun_fountain_1,
     event_sun_fountain_skip,
@@ -245,6 +247,7 @@ const event_pool = [_]GlobalState{
     GlobalState.event_forest_wolf,
     GlobalState.event_militia_ambush,
     GlobalState.event_snake_pit,
+    GlobalState.event_swamp_creature,
     GlobalState.event_swamp_people,
     GlobalState.event_sun_fountain,
 };
@@ -1455,9 +1458,43 @@ pub fn process_event_swamp_people_1(s: *State, released_keys: u8) void {
     w4.DRAW_COLORS.* = 0x02;
     draw_player_hud(s);
     s.pager.set_cursor(10, 30);
-    pager.f47_text(&s.pager, "Swamp people do not have a reputation of being friendly to strangers.");
+    pager.f47_text(&s.pager, "Swamp people do not have a reputation of being friendly");
     pager.f47_newline(&s.pager);
     pager.f47_text(&s.pager, "You are about to confirm this as you ran into one of them unexpectedly.");
+
+    draw_spell_list(&s.choices, &s.pager, 10, 140);
+}
+
+pub fn process_event_swamp_creature_1(s: *State, released_keys: u8) void {
+    process_choices_input(s, released_keys);
+    if (s.choices[0].is_completed()) {
+        s.reset_player_shield();
+        s.reset_enemy_intent();
+        const enemy_max_hp = 15;
+        s.enemy_hp = enemy_max_hp;
+        s.enemy_max_hp = enemy_max_hp;
+        s.enemy_intent_current_time = 0;
+        s.enemy_intent_index = 0;
+        s.enemy_intent[0] = EnemyIntent{
+            .trigger_time = 5 * 60,
+            .effect = Effect{ .damage_to_player = 9 },
+        };
+        s.enemy_intent[1] = EnemyIntent{
+            .trigger_time = 3 * 60,
+            .effect = Effect{ .enemy_shield = 11 },
+        };
+        s.enemy_guaranteed_reward = Reward{ .gold_reward = 20 };
+        s.enemy_sprite = &sprites.enemy_swamp_creature;
+        s.state = GlobalState.fight;
+    }
+    w4.DRAW_COLORS.* = 0x02;
+    draw_player_hud(s);
+    s.pager.set_cursor(10, 30);
+    pager.f47_text(&s.pager, "You observe a large creature moving in the swamp.");
+    pager.f47_newline(&s.pager);
+    pager.f47_text(&s.pager, "It seems to move towards your direction!");
+    pager.f47_newline(&s.pager);
+    pager.f47_text(&s.pager, "Before you can even flee, the large creature is onto you.");
 
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 }
@@ -1603,6 +1640,8 @@ export fn update() void {
         GlobalState.event_snake_pit_1 => process_event_snake_pit_1(&state, released_keys),
         GlobalState.event_swamp_people => setup_fight(&state, GlobalState.event_swamp_people_1),
         GlobalState.event_swamp_people_1 => process_event_swamp_people_1(&state, released_keys),
+        GlobalState.event_swamp_creature => setup_fight(&state, GlobalState.event_swamp_creature_1),
+        GlobalState.event_swamp_creature_1 => process_event_swamp_creature_1(&state, released_keys),
         GlobalState.event_sun_fountain => process_event_sun_fountain(&state, released_keys),
         GlobalState.event_sun_fountain_1 => process_event_sun_fountain_1(&state, released_keys),
         GlobalState.event_sun_fountain_skip => process_event_sun_fountain_skip(&state, released_keys),
