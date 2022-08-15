@@ -325,6 +325,126 @@ const Enemy = struct {
     pub fn zero() Enemy {
         return Enemy{};
     }
+
+    pub fn enemy_boss() Enemy {
+        var enemy = zero();
+        const enemy_max_hp = 100;
+        enemy.hp = enemy_max_hp;
+        enemy.max_hp = enemy_max_hp;
+        enemy.intent[0] = EnemyIntent{
+            .trigger_time = 3 * 60,
+            .effect = Effect{ .damage_to_player = 14 },
+        };
+        enemy.intent[1] = EnemyIntent{
+            .trigger_time = 7 * 60,
+            .effect = Effect{ .enemy_shield = 10 },
+        };
+        enemy.sprite = &sprites.enemy_boss;
+        return enemy;
+    }
+
+    pub fn enemy_coin_muncher() Enemy {
+        var enemy = zero();
+        const enemy_max_hp = 10;
+        enemy.hp = enemy_max_hp;
+        enemy.max_hp = enemy_max_hp;
+        enemy.intent[0] = EnemyIntent{
+            .trigger_time = 1 * 60,
+            .effect = Effect{ .gold_payment = 1 },
+        };
+        enemy.sprite = &sprites.enemy_coin_muncher;
+        return enemy;
+    }
+
+    pub fn enemy_forest_wolf() Enemy {
+        var enemy = zero();
+        const enemy_max_hp = 20;
+        enemy.hp = enemy_max_hp;
+        enemy.max_hp = enemy_max_hp;
+        enemy.intent[0] = EnemyIntent{
+            .trigger_time = 4 * 60,
+            .effect = Effect{ .damage_to_player = 3 },
+        };
+        enemy.intent[1] = EnemyIntent{
+            .trigger_time = 7 * 60,
+            .effect = Effect{ .damage_to_player = 7 },
+        };
+        enemy.guaranteed_reward = Reward{ .gold_reward = 10 };
+        enemy.random_reward = RandomReward{
+            .probability = 33,
+            .reward = Reward{ .spell_reward = Spell.spell_wolf_bite() },
+        };
+        enemy.sprite = &sprites.enemy_wolf;
+        return enemy;
+    }
+
+    pub fn enemy_militia_ambush() Enemy {
+        var enemy = zero();
+        const enemy_max_hp = 30;
+        enemy.hp = enemy_max_hp;
+        enemy.max_hp = enemy_max_hp;
+        enemy.intent[0] = EnemyIntent{
+            .trigger_time = 4 * 60,
+            .effect = Effect{ .damage_to_player = 5 },
+        };
+        enemy.intent[1] = EnemyIntent{
+            .trigger_time = 5 * 60,
+            .effect = Effect{ .enemy_shield = 3 },
+        };
+        enemy.guaranteed_reward = Reward{ .gold_reward = 50 };
+        enemy.sprite = &sprites.enemy_militia;
+        return enemy;
+    }
+
+    pub fn enemy_snake_pit() Enemy {
+        var enemy = zero();
+        const enemy_max_hp = 15;
+        enemy.hp = enemy_max_hp;
+        enemy.max_hp = enemy_max_hp;
+        enemy.intent[0] = EnemyIntent{
+            .trigger_time = 4 * 60,
+            .effect = Effect{ .damage_to_player = 3 },
+        };
+        enemy.guaranteed_reward = Reward{ .gold_reward = 2 };
+        enemy.sprite = &sprites.enemy_snake;
+        return enemy;
+    }
+
+    pub fn enemy_swamp_people() Enemy {
+        var enemy = zero();
+        const enemy_max_hp = 15;
+        enemy.hp = enemy_max_hp;
+        enemy.max_hp = enemy_max_hp;
+        enemy.intent[0] = EnemyIntent{
+            .trigger_time = 4 * 60,
+            .effect = Effect{ .damage_to_player = 5 },
+        };
+        enemy.intent[1] = EnemyIntent{
+            .trigger_time = 1 * 60,
+            .effect = Effect{ .enemy_shield = 1 },
+        };
+        enemy.guaranteed_reward = Reward{ .gold_reward = 2 };
+        enemy.sprite = &sprites.enemy_swamp_people;
+        return enemy;
+    }
+
+    pub fn enemy_swamp_creature() Enemy {
+        var enemy = zero();
+        const enemy_max_hp = 15;
+        enemy.hp = enemy_max_hp;
+        enemy.max_hp = enemy_max_hp;
+        enemy.intent[0] = EnemyIntent{
+            .trigger_time = 5 * 60,
+            .effect = Effect{ .damage_to_player = 9 },
+        };
+        enemy.intent[1] = EnemyIntent{
+            .trigger_time = 3 * 60,
+            .effect = Effect{ .enemy_shield = 11 },
+        };
+        enemy.guaranteed_reward = Reward{ .gold_reward = 20 };
+        enemy.sprite = &sprites.enemy_swamp_creature;
+        return enemy;
+    }
 };
 
 pub fn add_spell_to_list(spell: Spell, spell_list: []Spell) void {
@@ -1218,18 +1338,7 @@ pub fn process_crossroad_1(s: *State, released_keys: u8) void {
 pub fn process_event_boss_1(s: *State, released_keys: u8) void {
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
-        const enemy_max_hp = 100;
-        s.enemy.hp = enemy_max_hp;
-        s.enemy.max_hp = enemy_max_hp;
-        s.enemy.intent[0] = EnemyIntent{
-            .trigger_time = 3 * 60,
-            .effect = Effect{ .damage_to_player = 14 },
-        };
-        s.enemy.intent[1] = EnemyIntent{
-            .trigger_time = 7 * 60,
-            .effect = Effect{ .enemy_shield = 10 },
-        };
-        s.enemy.sprite = &sprites.enemy_boss;
+        s.enemy = Enemy.enemy_boss();
         s.state = GlobalState.fight;
     }
     w4.DRAW_COLORS.* = 0x02;
@@ -1269,14 +1378,7 @@ pub fn process_event_cavern_man_1(s: *State, released_keys: u8) void {
 pub fn process_event_coin_muncher_1(s: *State, released_keys: u8) void {
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
-        const enemy_max_hp = 10;
-        s.enemy.hp = enemy_max_hp;
-        s.enemy.max_hp = enemy_max_hp;
-        s.enemy.intent[0] = EnemyIntent{
-            .trigger_time = 1 * 60,
-            .effect = Effect{ .gold_payment = 1 },
-        };
-        s.enemy.sprite = &sprites.enemy_coin_muncher;
+        s.enemy = Enemy.enemy_coin_muncher();
         s.state = GlobalState.fight;
     }
     w4.DRAW_COLORS.* = 0x02;
@@ -1485,23 +1587,7 @@ pub fn process_shop(s: *State, released_keys: u8) void {
 pub fn process_event_forest_wolf_1(s: *State, released_keys: u8) void {
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
-        const enemy_max_hp = 20;
-        s.enemy.hp = enemy_max_hp;
-        s.enemy.max_hp = enemy_max_hp;
-        s.enemy.intent[0] = EnemyIntent{
-            .trigger_time = 4 * 60,
-            .effect = Effect{ .damage_to_player = 3 },
-        };
-        s.enemy.intent[1] = EnemyIntent{
-            .trigger_time = 7 * 60,
-            .effect = Effect{ .damage_to_player = 7 },
-        };
-        s.enemy.guaranteed_reward = Reward{ .gold_reward = 10 };
-        s.enemy.random_reward = RandomReward{
-            .probability = 33,
-            .reward = Reward{ .spell_reward = Spell.spell_wolf_bite() },
-        };
-        s.enemy.sprite = &sprites.enemy_wolf;
+        s.enemy = Enemy.enemy_forest_wolf();
         s.state = GlobalState.fight;
     }
     w4.DRAW_COLORS.* = 0x02;
@@ -1517,19 +1603,7 @@ pub fn process_event_forest_wolf_1(s: *State, released_keys: u8) void {
 pub fn process_event_militia_ambush_1(s: *State, released_keys: u8) void {
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
-        const enemy_max_hp = 30;
-        s.enemy.hp = enemy_max_hp;
-        s.enemy.max_hp = enemy_max_hp;
-        s.enemy.intent[0] = EnemyIntent{
-            .trigger_time = 4 * 60,
-            .effect = Effect{ .damage_to_player = 5 },
-        };
-        s.enemy.intent[1] = EnemyIntent{
-            .trigger_time = 5 * 60,
-            .effect = Effect{ .enemy_shield = 3 },
-        };
-        s.enemy.guaranteed_reward = Reward{ .gold_reward = 50 };
-        s.enemy.sprite = &sprites.enemy_militia;
+        s.enemy = Enemy.enemy_militia_ambush();
         s.state = GlobalState.fight;
     }
     w4.DRAW_COLORS.* = 0x02;
@@ -1545,15 +1619,7 @@ pub fn process_event_militia_ambush_1(s: *State, released_keys: u8) void {
 pub fn process_event_snake_pit_1(s: *State, released_keys: u8) void {
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
-        const enemy_max_hp = 15;
-        s.enemy.hp = enemy_max_hp;
-        s.enemy.max_hp = enemy_max_hp;
-        s.enemy.intent[0] = EnemyIntent{
-            .trigger_time = 4 * 60,
-            .effect = Effect{ .damage_to_player = 3 },
-        };
-        s.enemy.guaranteed_reward = Reward{ .gold_reward = 2 };
-        s.enemy.sprite = &sprites.enemy_snake;
+        s.enemy = Enemy.enemy_snake_pit();
         s.state = GlobalState.fight;
     }
     w4.DRAW_COLORS.* = 0x02;
@@ -1569,19 +1635,7 @@ pub fn process_event_snake_pit_1(s: *State, released_keys: u8) void {
 pub fn process_event_swamp_people_1(s: *State, released_keys: u8) void {
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
-        const enemy_max_hp = 15;
-        s.enemy.hp = enemy_max_hp;
-        s.enemy.max_hp = enemy_max_hp;
-        s.enemy.intent[0] = EnemyIntent{
-            .trigger_time = 4 * 60,
-            .effect = Effect{ .damage_to_player = 5 },
-        };
-        s.enemy.intent[1] = EnemyIntent{
-            .trigger_time = 1 * 60,
-            .effect = Effect{ .enemy_shield = 1 },
-        };
-        s.enemy.guaranteed_reward = Reward{ .gold_reward = 2 };
-        s.enemy.sprite = &sprites.enemy_swamp_people;
+        s.enemy = Enemy.enemy_swamp_people();
         s.state = GlobalState.fight;
     }
     w4.DRAW_COLORS.* = 0x02;
@@ -1597,19 +1651,7 @@ pub fn process_event_swamp_people_1(s: *State, released_keys: u8) void {
 pub fn process_event_swamp_creature_1(s: *State, released_keys: u8) void {
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
-        const enemy_max_hp = 15;
-        s.enemy.hp = enemy_max_hp;
-        s.enemy.max_hp = enemy_max_hp;
-        s.enemy.intent[0] = EnemyIntent{
-            .trigger_time = 5 * 60,
-            .effect = Effect{ .damage_to_player = 9 },
-        };
-        s.enemy.intent[1] = EnemyIntent{
-            .trigger_time = 3 * 60,
-            .effect = Effect{ .enemy_shield = 11 },
-        };
-        s.enemy.guaranteed_reward = Reward{ .gold_reward = 20 };
-        s.enemy.sprite = &sprites.enemy_swamp_creature;
+        s.enemy = Enemy.enemy_swamp_creature();
         s.state = GlobalState.fight;
     }
     w4.DRAW_COLORS.* = 0x02;
