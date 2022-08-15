@@ -106,6 +106,17 @@ const Spell = struct {
         return s;
     }
 
+    pub fn spell_sword() Spell {
+        var s = Spell{
+            .name = "SWORD",
+            .price = 9,
+            .alignment = -2,
+            .effect = Effect{ .damage_to_enemy = 3 },
+        };
+        s.set_spell(&[_]u8{ w4.BUTTON_RIGHT, w4.BUTTON_RIGHT, w4.BUTTON_1 });
+        return s;
+    }
+
     pub fn spell_fireball() Spell {
         var s = Spell{
             .name = "FIREBALL",
@@ -187,6 +198,8 @@ const Spell = struct {
 
 const GlobalState = enum {
     end,
+    event_cavern_man,
+    event_cavern_man_1,
     event_coin_muncher,
     event_coin_muncher_1,
     event_healer,
@@ -221,6 +234,7 @@ const GlobalState = enum {
 };
 
 const event_pool = [_]GlobalState{
+    GlobalState.event_cavern_man,
     GlobalState.event_coin_muncher,
     GlobalState.event_healer,
     GlobalState.event_healing_shop,
@@ -1048,6 +1062,32 @@ pub fn process_new_game_init(s: *State, released_keys: u8) void {
     s.state = GlobalState.pick_random_event;
 }
 
+pub fn process_event_cavern_man(s: *State, released_keys: u8) void {
+    _ = released_keys;
+    s.set_choices_confirm();
+    s.state = GlobalState.event_cavern_man_1;
+}
+
+pub fn process_event_cavern_man_1(s: *State, released_keys: u8) void {
+    process_choices_input(s, released_keys);
+    if (s.choices[0].is_completed()) {
+        s.set_choices_confirm(); // reset choices
+        s.enemy_guaranteed_reward = Reward{ .spell_reward = Spell.spell_sword() };
+        s.state = GlobalState.fight_reward;
+        return;
+    }
+
+    w4.DRAW_COLORS.* = 0x02;
+    draw_player_hud(s);
+    s.pager.set_cursor(10, 30);
+    pager.f47_text(&s.pager, "You meet an old man living in a cavern. He says:");
+    pager.f47_newline(&s.pager);
+    pager.f47_newline(&s.pager);
+    pager.f47_text(&s.pager, "\"It's dangerous to go alone! Take this.\"");
+
+    draw_spell_list(&s.choices, &s.pager, 10, 140);
+}
+
 pub fn process_event_coin_muncher(s: *State, released_keys: u8) void {
     _ = released_keys;
     s.set_choices_fight();
@@ -1480,6 +1520,8 @@ export fn update() void {
 
     switch (state.state) {
         GlobalState.end => process_end(&state, released_keys),
+        GlobalState.event_cavern_man => process_event_cavern_man(&state, released_keys),
+        GlobalState.event_cavern_man_1 => process_event_cavern_man_1(&state, released_keys),
         GlobalState.event_coin_muncher => process_event_coin_muncher(&state, released_keys),
         GlobalState.event_coin_muncher_1 => process_event_coin_muncher_1(&state, released_keys),
         GlobalState.event_healer => process_event_healer(&state, released_keys),
