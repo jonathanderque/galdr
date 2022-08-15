@@ -212,6 +212,8 @@ const GlobalState = enum {
     event_forest_wolf_1,
     event_militia_ambush,
     event_militia_ambush_1,
+    event_snake_pit,
+    event_snake_pit_1,
     event_sun_fountain,
     event_sun_fountain_1,
     event_sun_fountain_skip,
@@ -240,6 +242,7 @@ const event_pool = [_]GlobalState{
     GlobalState.event_healing_shop,
     GlobalState.event_forest_wolf,
     GlobalState.event_militia_ambush,
+    GlobalState.event_snake_pit,
     GlobalState.event_sun_fountain,
 };
 
@@ -1388,6 +1391,34 @@ pub fn process_event_militia_ambush_1(s: *State, released_keys: u8) void {
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 }
 
+pub fn process_event_snake_pit_1(s: *State, released_keys: u8) void {
+    process_choices_input(s, released_keys);
+    if (s.choices[0].is_completed()) {
+        s.reset_player_shield();
+        s.reset_enemy_intent();
+        const enemy_max_hp = 15;
+        s.enemy_hp = enemy_max_hp;
+        s.enemy_max_hp = enemy_max_hp;
+        s.enemy_intent_current_time = 0;
+        s.enemy_intent_index = 0;
+        s.enemy_intent[0] = EnemyIntent{
+            .trigger_time = 4 * 60,
+            .effect = Effect{ .damage_to_player = 3 },
+        };
+        s.enemy_guaranteed_reward = Reward{ .gold_reward = 2 };
+        s.enemy_sprite = &sprites.enemy_snake;
+        s.state = GlobalState.fight;
+    }
+    w4.DRAW_COLORS.* = 0x02;
+    draw_player_hud(s);
+    s.pager.set_cursor(10, 30);
+    pager.f47_text(&s.pager, "You fall into a large man-made pit that someone filled with snakes!");
+    pager.f47_newline(&s.pager);
+    pager.f47_text(&s.pager, "You can't get out safely without dealing with your slithery foes first.");
+
+    draw_spell_list(&s.choices, &s.pager, 10, 140);
+}
+
 pub fn process_event_sun_fountain(s: *State, released_keys: u8) void {
     _ = released_keys;
     s.set_choices_with_labels_2("Skip", "Drink");
@@ -1525,6 +1556,8 @@ export fn update() void {
         GlobalState.event_forest_wolf_1 => process_event_forest_wolf_1(&state, released_keys),
         GlobalState.event_militia_ambush => setup_fight(&state, GlobalState.event_militia_ambush_1),
         GlobalState.event_militia_ambush_1 => process_event_militia_ambush_1(&state, released_keys),
+        GlobalState.event_snake_pit => setup_fight(&state, GlobalState.event_snake_pit_1),
+        GlobalState.event_snake_pit_1 => process_event_snake_pit_1(&state, released_keys),
         GlobalState.event_sun_fountain => process_event_sun_fountain(&state, released_keys),
         GlobalState.event_sun_fountain_1 => process_event_sun_fountain_1(&state, released_keys),
         GlobalState.event_sun_fountain_skip => process_event_sun_fountain_skip(&state, released_keys),
