@@ -44,6 +44,7 @@ const Spell = struct {
         end_of_spell,
     },
     price: u16 = 0,
+    alignment: i8 = 0,
     current_progress: usize = 0,
     effect: Effect = Effect.no_effect,
 
@@ -109,6 +110,7 @@ const Spell = struct {
         var s = Spell{
             .name = "FIREBALL",
             .price = 5,
+            .alignment = -2,
             .effect = Effect{ .damage_to_enemy = 4 },
         };
         s.set_spell(&[_]u8{ w4.BUTTON_LEFT, w4.BUTTON_1 });
@@ -118,6 +120,7 @@ const Spell = struct {
     pub fn spell_lightning() Spell {
         var s = Spell{
             .name = "LIGHTNING",
+            .alignment = 10,
             .price = 9,
             .effect = Effect{ .damage_to_enemy = 7 },
         };
@@ -136,6 +139,7 @@ const Spell = struct {
         var s = Spell{
             .name = "SHIELD",
             .price = 12,
+            .alignment = 2,
             .effect = Effect{ .player_shield = 2 },
         };
         s.set_spell(&[_]u8{
@@ -151,6 +155,7 @@ const Spell = struct {
         var wolf_bite = Spell{
             .name = "WOLF BITE",
             .price = 9,
+            .alignment = -7,
             .effect = Effect{ .damage_to_enemy = 5 },
         };
         wolf_bite.set_spell(&[_]u8{ w4.BUTTON_LEFT, w4.BUTTON_UP, w4.BUTTON_DOWN, w4.BUTTON_1 });
@@ -161,6 +166,7 @@ const Spell = struct {
         var s = Spell{
             .name = "HEAL",
             .price = 5,
+            .alignment = 2,
             .effect = Effect{ .player_heal = 2 },
         };
         s.set_spell(&[_]u8{ w4.BUTTON_LEFT, w4.BUTTON_UP, w4.BUTTON_DOWN, w4.BUTTON_1 });
@@ -171,6 +177,7 @@ const Spell = struct {
         var s = Spell{
             .name = "HEAL+",
             .price = 12,
+            .alignment = 5,
             .effect = Effect{ .player_heal = 5 },
         };
         s.set_spell(&[_]u8{ w4.BUTTON_LEFT, w4.BUTTON_UP, w4.BUTTON_DOWN, w4.BUTTON_1 });
@@ -278,6 +285,7 @@ const State = struct {
     player_hp: i16 = 0,
     player_max_hp: i16 = 0,
     player_shield: i16 = 0,
+    player_alignment: i16 = 0, // -100, +100
     player_gold: i16 = 0,
     spellbook: [spell_book_max_size]Spell = undefined,
     reward_probability: u8 = 0,
@@ -358,6 +366,16 @@ const State = struct {
             Effect.enemy_shield => |amount| {
                 self.enemy_shield += @intCast(i16, amount);
             },
+        }
+    }
+
+    pub fn change_alignment(self: *State, increment: i16) void {
+        self.player_alignment += increment;
+        if (self.player_alignment < -100) {
+            self.player_alignment = -100;
+        }
+        if (self.player_alignment > 100) {
+            self.player_alignment = 100;
         }
     }
 
@@ -568,6 +586,14 @@ pub fn draw_heart(x: i32, y: i32) void {
     w4.blitSub(&sprites.effects, x, y, 9, 9, 36, 0, sprites.effects_width, w4.BLIT_1BPP);
 }
 
+pub fn draw_moon(x: i32, y: i32) void {
+    w4.blitSub(&sprites.alignment, x, y, 9, 9, 0, 0, sprites.alignment_width, w4.BLIT_1BPP);
+}
+
+pub fn draw_sun(x: i32, y: i32) void {
+    w4.blitSub(&sprites.alignment, x, y, 9, 9, 9, 0, sprites.alignment_width, w4.BLIT_1BPP);
+}
+
 pub fn draw_effect(x: i32, y: i32, s: *State, effect: Effect) void {
     switch (effect) {
         Effect.damage_to_player, Effect.damage_to_enemy => |dmg| {
@@ -611,6 +637,12 @@ pub fn draw_shop_party(x: i32, y: i23, s: *State, name: []const u8, gold_amount:
 pub fn draw_spell_details(x: i32, y: i32, s: *State, spell: Spell) void {
     s.pager.set_cursor(x, y);
     pager.f47_text(&s.pager, spell.name);
+    if (spell.alignment > 0) {
+        draw_sun(s.pager.cursor_x, y - 1);
+    } else {
+        draw_moon(s.pager.cursor_x, y - 1);
+    }
+    s.pager.set_cursor(s.pager.cursor_x + 11, y);
     pager.f47_text(&s.pager, " * ");
     draw_effect(s.pager.cursor_x, y - 1, s, spell.effect);
     pager.f47_text(&s.pager, " * ");
@@ -637,7 +669,6 @@ pub fn draw_spell_inventory_list(x: i32, y: i32, s: *State, list: []Spell, show_
 pub fn draw_player_hud(s: *State) void {
     const x: i32 = 10;
     const y: i32 = 0;
-    //w4.blitSub(&sprites.effects, x, y, 9, 9, 36, 0, sprites.effects_width, w4.BLIT_1BPP);
     draw_heart(x, y);
 
     var i: i32 = 0;
@@ -654,6 +685,17 @@ pub fn draw_player_hud(s: *State) void {
     draw_coin(hp_x, y + 11);
     s.pager.set_cursor(hp_x + 11, y + 12);
     pager.f47_number(&s.pager, s.player_gold);
+
+    draw_moon(x, y + 11);
+    draw_sun(x + 72, y + 11);
+    w4.DRAW_COLORS.* = 0x20;
+    // aligment bar is 60 wide
+    w4.rect(x + 10, y + 12, 60, 7);
+    //w4.rect(x + 10 + 30, y + 12, 2, 7);
+    w4.DRAW_COLORS.* = 0x22;
+    // oval x should be between 10 and 55
+    w4.oval(x + 10 + @divTrunc((100 + s.player_alignment) * 55, 200), y + 14, 4, 3);
+    w4.DRAW_COLORS.* = 0x02;
 }
 
 pub fn draw_enemy_hud(s: *State) void {
@@ -725,8 +767,8 @@ pub fn process_fight(s: *State, released_keys: u8) void {
     draw_player_hud(s);
 
     // hero
-    draw_shield(10, 20);
-    s.pager.set_cursor(20, 20);
+    draw_shield(10, 22);
+    s.pager.set_cursor(20, 22);
     pager.f47_number(&s.pager, s.player_shield);
     w4.blit(&sprites.hero, 20, 32, sprites.hero_width, sprites.hero_height, w4.BLIT_1BPP);
 
@@ -743,6 +785,7 @@ pub fn process_fight(s: *State, released_keys: u8) void {
     for (s.spellbook) |*spell| {
         if (spell.is_completed()) {
             s.apply_effect(spell.effect);
+            s.change_alignment(spell.alignment);
             spell.reset();
         }
     }
