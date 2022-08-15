@@ -658,6 +658,24 @@ pub fn draw_shop_party(x: i32, y: i23, s: *State, name: []const u8, gold_amount:
     pager.f47_number(&s.pager, gold_amount);
 }
 
+pub fn draw_reward(s: *State, reward: Reward) void {
+    switch (reward) {
+        Reward.gold_reward => |amount| {
+            pager.f47_text(&s.pager, "You gained ");
+            pager.f47_number(&s.pager, amount);
+            pager.f47_text(&s.pager, " gold!");
+            pager.f47_newline(&s.pager);
+        },
+        Reward.spell_reward => |spell| {
+            pager.f47_text(&s.pager, "You leared the ");
+            pager.f47_text(&s.pager, spell.name);
+            pager.f47_text(&s.pager, " spell!");
+            pager.f47_newline(&s.pager);
+        },
+        else => {},
+    }
+}
+
 pub fn draw_spell_details(x: i32, y: i32, s: *State, spell: Spell) void {
     s.pager.set_cursor(x, y);
     pager.f47_text(&s.pager, spell.name);
@@ -812,24 +830,6 @@ pub fn process_fight(s: *State, released_keys: u8) void {
             s.change_alignment(spell.alignment);
             spell.reset();
         }
-    }
-}
-
-pub fn draw_reward(s: *State, reward: Reward) void {
-    switch (reward) {
-        Reward.gold_reward => |amount| {
-            pager.f47_text(&s.pager, "You gained ");
-            pager.f47_number(&s.pager, amount);
-            pager.f47_text(&s.pager, " gold!");
-            pager.f47_newline(&s.pager);
-        },
-        Reward.spell_reward => |spell| {
-            pager.f47_text(&s.pager, "You leared the ");
-            pager.f47_text(&s.pager, spell.name);
-            pager.f47_text(&s.pager, " spell!");
-            pager.f47_newline(&s.pager);
-        },
-        else => {},
     }
 }
 
