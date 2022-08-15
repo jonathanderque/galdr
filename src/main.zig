@@ -197,7 +197,6 @@ const Spell = struct {
 };
 
 const GlobalState = enum {
-    end,
     crossroad,
     crossroad_1,
     event_cavern_man,
@@ -1645,18 +1644,6 @@ pub fn process_event_sun_fountain_refresh(s: *State, released_keys: u8) void {
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 }
 
-// TODO techical screen/state to debug things, should not be left in the game by the end of the jam
-pub fn process_end(s: *State, released_keys: u8) void {
-    _ = released_keys;
-    draw_player_hud(s);
-    s.pager.set_cursor(10, 30);
-    pager.f47_text(&s.pager, "(You will have to reset the cart now)");
-    pager.f47_newline(&s.pager);
-    pager.f47_newline(&s.pager);
-    pager.f47_text(&s.pager, "Gold: ");
-    pager.f47_number(&s.pager, s.player_gold);
-}
-
 var state: State = undefined;
 
 export fn start() void {
@@ -1677,7 +1664,6 @@ export fn update() void {
     state.previous_input = gamepad;
 
     switch (state.state) {
-        GlobalState.end => process_end(&state, released_keys),
         GlobalState.crossroad => process_crossroad(&state, released_keys),
         GlobalState.crossroad_1 => process_crossroad_1(&state, released_keys),
         GlobalState.event_cavern_man => process_event_cavern_man(&state, released_keys),
