@@ -406,6 +406,13 @@ const State = struct {
         }
     }
 
+    pub fn reset_spellbook(self: *State) void {
+        var i: usize = 0;
+        while (i < self.spellbook.len) : (i += 1) {
+            self.spellbook[i].reset();
+        }
+    }
+
     pub fn reset_shop_items(self: *State) void {
         var i: usize = 0;
         while (i < self.shop_items.len) : (i += 1) {
@@ -768,6 +775,7 @@ pub fn draw_enemy_hud(s: *State) void {
 
 pub fn setup_fight(s: *State, fight_state: GlobalState) void {
     s.set_choices_fight();
+    s.reset_spellbook();
     s.state = fight_state;
 }
 
