@@ -1345,7 +1345,7 @@ pub fn process_event_forest_wolf_1(s: *State, released_keys: u8) void {
             .probability = 33,
             .reward = Reward{ .spell_reward = Spell.spell_wolf_bite() },
         };
-        s.enemy_sprite = &sprites.enemy_00;
+        s.enemy_sprite = &sprites.enemy_wolf;
         s.state = GlobalState.fight;
     }
     w4.DRAW_COLORS.* = 0x02;
