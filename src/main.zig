@@ -1825,6 +1825,7 @@ pub fn process_event_cavern_man(s: *State, released_keys: u8) void {
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         s.set_choices_confirm(); // reset choices
+        s.enemy.random_reward = RandomReward.zero();
         s.enemy.guaranteed_reward = Reward{ .spell_reward = Spell.spell_sword() };
         s.state = GlobalState.fight_reward;
         return;
