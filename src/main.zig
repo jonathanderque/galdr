@@ -323,7 +323,6 @@ const Spell = struct {
 
 const GlobalState = enum {
     crossroad,
-    crossroad_1,
     event_boss,
     event_castle_bat,
     event_castle_candle,
@@ -350,17 +349,13 @@ const GlobalState = enum {
     fight_reward,
     game_over,
     inventory,
-    inventory_1,
     inventory_full,
-    inventory_full_1,
     inventory_full_2,
     map,
-    map_1,
     new_game_init,
     pick_random_event,
     shop,
     title,
-    title_1,
     tutorial_basics,
     tutorial_synergies,
     tutorial_pause_menu,
@@ -675,7 +670,7 @@ const State = struct {
     state_register: GlobalState = GlobalState.title, // generic state holder used for temporary screens (inventory, map, etc...) to hold the next true state
     // global state
     state: GlobalState = GlobalState.title,
-    state_has_changed: bool = false,
+    state_has_changed: bool = true,
     area: Area = undefined,
     area_counter: usize = 0,
     area_event_counter: usize = 0,
@@ -1375,12 +1370,9 @@ pub fn process_game_over(s: *State, released_keys: u8) void {
 }
 
 pub fn process_inventory(s: *State, released_keys: u8) void {
-    _ = released_keys;
-    s.set_choices_back();
-    s.state = GlobalState.inventory_1;
-}
-
-pub fn process_inventory_1(s: *State, released_keys: u8) void {
+    if (s.state_has_changed) {
+        s.set_choices_back();
+    }
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         s.inventory_menu_flag = false;
@@ -1400,18 +1392,13 @@ pub fn process_inventory_1(s: *State, released_keys: u8) void {
 }
 
 pub fn process_inventory_full(s: *State, released_keys: u8) void {
-    _ = released_keys;
-
-    s.state = GlobalState.inventory_full_1;
-    s.set_choices_confirm();
-
-    s.spell_index = 0;
-    s.shop_list_index = 0;
-    s.shop_gold = 0;
-    s.reset_shop_items();
-}
-
-pub fn process_inventory_full_1(s: *State, released_keys: u8) void {
+    if (s.state_has_changed) {
+        s.set_choices_confirm();
+        s.spell_index = 0;
+        s.shop_list_index = 0;
+        s.shop_gold = 0;
+        s.reset_shop_items();
+    }
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         s.state = GlobalState.inventory_full_2;
@@ -1482,12 +1469,9 @@ pub fn process_inventory_full_2(s: *State, released_keys: u8) void {
 }
 
 pub fn process_map(s: *State, released_keys: u8) void {
-    _ = released_keys;
-    s.set_choices_with_labels_1("PROCEED");
-    s.state = GlobalState.map_1;
-}
-
-pub fn process_map_1(s: *State, released_keys: u8) void {
+    if (s.state_has_changed) {
+        s.set_choices_with_labels_1("PROCEED");
+    }
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         s.state = s.state_register;
@@ -1565,14 +1549,11 @@ pub fn process_pick_random_event(s: *State, released_keys: u8) void {
 }
 
 pub fn process_title(s: *State, released_keys: u8) void {
-    _ = released_keys;
-    s.reset_choices();
-    s.choices[0] = Spell.spell_title_tutorial();
-    s.choices[1] = Spell.spell_title_start_game();
-    s.state = GlobalState.title_1;
-}
-
-pub fn process_title_1(s: *State, released_keys: u8) void {
+    if (s.state_has_changed) {
+        s.reset_choices();
+        s.choices[0] = Spell.spell_title_tutorial();
+        s.choices[1] = Spell.spell_title_start_game();
+    }
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         s.reset_choices();
@@ -1713,30 +1694,26 @@ pub fn current_area_pool(s: *State) []const Area {
 }
 
 pub fn process_crossroad(s: *State, released_keys: u8) void {
-    _ = released_keys;
-
-    if (s.area_counter == 3) {
-        s.state = GlobalState.title;
-        return;
-    }
-
-    // pick two areas / setup choices
-    const area_pool = current_area_pool(s);
-    s.crossroad_index_1 = @intCast(usize, @mod(rand(), area_pool.len));
-    if (area_pool.len > 1) {
-        s.crossroad_index_2 = @intCast(usize, @mod(rand(), area_pool.len));
-        while (s.crossroad_index_2 == s.crossroad_index_1) {
-            s.crossroad_index_2 = @intCast(usize, @mod(rand(), area_pool.len));
+    if (s.state_has_changed) {
+        if (s.area_counter == 3) {
+            s.state = GlobalState.title;
+            return;
         }
-    } else {
-        s.crossroad_index_2 = s.crossroad_index_1;
-    }
-    s.set_choices_with_labels_2(area_pool[s.crossroad_index_1].name, area_pool[s.crossroad_index_2].name);
-    s.enemy.sprite = &sprites.crossroad;
-    s.state = GlobalState.crossroad_1;
-}
 
-pub fn process_crossroad_1(s: *State, released_keys: u8) void {
+        // pick two areas / setup choices
+        const area_pool = current_area_pool(s);
+        s.crossroad_index_1 = @intCast(usize, @mod(rand(), area_pool.len));
+        if (area_pool.len > 1) {
+            s.crossroad_index_2 = @intCast(usize, @mod(rand(), area_pool.len));
+            while (s.crossroad_index_2 == s.crossroad_index_1) {
+                s.crossroad_index_2 = @intCast(usize, @mod(rand(), area_pool.len));
+            }
+        } else {
+            s.crossroad_index_2 = s.crossroad_index_1;
+        }
+        s.set_choices_with_labels_2(area_pool[s.crossroad_index_1].name, area_pool[s.crossroad_index_2].name);
+        s.enemy.sprite = &sprites.crossroad;
+    }
     process_choices_input(s, released_keys);
     // display choices / manage user input
     w4.DRAW_COLORS.* = 2;
@@ -2118,7 +2095,6 @@ export fn update() void {
 
     switch (state.state) {
         GlobalState.crossroad => process_crossroad(&state, released_keys),
-        GlobalState.crossroad_1 => process_crossroad_1(&state, released_keys),
         GlobalState.event_boss => fight_intro(&state, released_keys, Enemy.enemy_boss(), &boss_dialog),
         GlobalState.event_castle_bat => fight_intro(&state, released_keys, Enemy.enemy_castle_bat(), &castle_bat_dialog),
         GlobalState.event_castle_candle => fight_intro(&state, released_keys, Enemy.enemy_castle_candle(), &castle_candle_dialog),
@@ -2145,17 +2121,13 @@ export fn update() void {
         GlobalState.fight_reward => process_fight_reward(&state, released_keys),
         GlobalState.game_over => process_game_over(&state, released_keys),
         GlobalState.inventory => process_inventory(&state, released_keys),
-        GlobalState.inventory_1 => process_inventory_1(&state, released_keys),
         GlobalState.inventory_full => process_inventory_full(&state, released_keys),
-        GlobalState.inventory_full_1 => process_inventory_full_1(&state, released_keys),
         GlobalState.inventory_full_2 => process_inventory_full_2(&state, released_keys),
         GlobalState.map => process_map(&state, released_keys),
-        GlobalState.map_1 => process_map_1(&state, released_keys),
         GlobalState.new_game_init => process_new_game_init(),
         GlobalState.pick_random_event => process_pick_random_event(&state, released_keys),
         GlobalState.shop => process_shop(&state, released_keys),
         GlobalState.title => process_title(&state, released_keys),
-        GlobalState.title_1 => process_title_1(&state, released_keys),
         GlobalState.tutorial_basics => process_tutorial_basics(&state, released_keys),
         GlobalState.tutorial_synergies => process_tutorial_synergies(&state, released_keys),
         GlobalState.tutorial_pause_menu => process_tutorial_pause_menu(&state, released_keys),
