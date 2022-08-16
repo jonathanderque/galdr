@@ -1854,35 +1854,17 @@ pub fn process_event_healer_accept(s: *State, released_keys: u8) void {
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 }
 
-pub fn process_event_healing_shop(s: *State, released_keys: u8) void {
-    _ = released_keys;
-
-    s.state = GlobalState.event_healing_shop_1;
-    s.set_choices_confirm();
-
-    s.spell_index = 0;
-    s.shop_list_index = 0;
-    s.shop_gold = 50;
-    s.reset_shop_items();
-    s.shop_items[0] = Spell.spell_heal();
-    s.shop_items[1] = Spell.spell_heal_plus();
-}
-
-pub fn process_event_healing_shop_1(s: *State, released_keys: u8) void {
-    process_choices_input(s, released_keys);
-    if (s.choices[0].is_completed()) {
-        s.state = GlobalState.shop;
-        s.set_choices_shop();
-    }
-    w4.DRAW_COLORS.* = 0x02;
-    draw_player_hud(s);
-    s.pager.set_cursor(10, 30);
-    pager.f47_text(&s.pager, "The merchant greets you:");
-    pager.f47_newline(&s.pager);
-    pager.f47_newline(&s.pager);
-    pager.f47_text(&s.pager, "\"Welcome to Hildan's Heap of Heals!\"");
-    draw_spell_list(&s.choices, &s.pager, 10, 140);
-}
+const healing_shop_gold = 50;
+const healing_shop_items = [_]Spell{
+    Spell.spell_heal(),
+    Spell.spell_heal_plus(),
+};
+const healing_shop_dialog = [_]Dialog{
+    Dialog{ .text = "The merchant greets you:" },
+    Dialog.newline,
+    Dialog.newline,
+    Dialog{ .text = "\"Welcome to Hildan's Heap of Heals!\"" },
+};
 
 pub fn process_keys_spell_list(s: *State, released_keys: u8, spell_list: []Spell) void {
     if (released_keys == w4.BUTTON_DOWN) {
@@ -2145,8 +2127,8 @@ export fn update() void {
         GlobalState.event_healer_1 => process_event_healer_1(&state, released_keys),
         GlobalState.event_healer_decline => process_event_healer_decline(&state, released_keys),
         GlobalState.event_healer_accept => process_event_healer_accept(&state, released_keys),
-        GlobalState.event_healing_shop => process_event_healing_shop(&state, released_keys),
-        GlobalState.event_healing_shop_1 => process_event_healing_shop_1(&state, released_keys),
+        GlobalState.event_healing_shop => setup_shop(&state, GlobalState.event_healing_shop_1, healing_shop_gold, &healing_shop_items),
+        GlobalState.event_healing_shop_1 => shop_intro(&state, released_keys, &healing_shop_dialog),
         GlobalState.event_forest_wolf => setup_fight(&state, GlobalState.event_forest_wolf_1),
         GlobalState.event_forest_wolf_1 => fight_intro(&state, released_keys, Enemy.enemy_forest_wolf(), &forest_wolf_dialog),
         GlobalState.event_militia_ambush => setup_fight(&state, GlobalState.event_militia_ambush_1),
