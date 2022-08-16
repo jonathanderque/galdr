@@ -331,10 +331,8 @@ const GlobalState = enum {
     event_castle_sun_shop,
     event_castle_vampire_shop,
     event_cavern_man,
-    event_cavern_man_1,
     event_coin_muncher,
     event_healer,
-    event_healer_1,
     event_healer_decline,
     event_healer_accept,
     event_healing_shop,
@@ -344,7 +342,6 @@ const GlobalState = enum {
     event_swamp_people,
     event_swamp_creature,
     event_sun_fountain,
-    event_sun_fountain_1,
     event_sun_fountain_skip,
     event_sun_fountain_damage,
     event_sun_fountain_heal,
@@ -1822,12 +1819,9 @@ const castle_vampire_shop_items = [_]Spell{
 };
 
 pub fn process_event_cavern_man(s: *State, released_keys: u8) void {
-    _ = released_keys;
-    s.set_choices_confirm();
-    s.state = GlobalState.event_cavern_man_1;
-}
-
-pub fn process_event_cavern_man_1(s: *State, released_keys: u8) void {
+    if (s.state_has_changed) {
+        s.set_choices_confirm();
+    }
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         s.set_choices_confirm(); // reset choices
@@ -1854,24 +1848,19 @@ const coin_muncher_dialog = [_]Dialog{
 };
 
 pub fn process_event_healer(s: *State, released_keys: u8) void {
-    _ = released_keys;
-    if (s.player_gold >= 10) {
-        s.set_choices_accept_decline();
-    } else {
-        s.set_choices_with_labels_1("You're broke");
+    if (s.state_has_changed) {
+        if (s.player_gold >= 10) {
+            s.set_choices_accept_decline();
+        } else {
+            s.set_choices_with_labels_1("You're broke");
+        }
     }
-    s.state = GlobalState.event_healer_1;
-}
-
-pub fn process_event_healer_1(s: *State, released_keys: u8) void {
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
-        s.set_choices_confirm();
         s.state = GlobalState.event_healer_decline;
     } else if (s.player_gold >= 10 and s.choices[1].is_completed()) {
         s.apply_effect(Effect{ .gold_payment = 10 });
         s.apply_effect(Effect.player_healing_max);
-        s.set_choices_confirm();
         s.state = GlobalState.event_healer_accept;
     }
     w4.DRAW_COLORS.* = 0x02;
@@ -1885,6 +1874,9 @@ pub fn process_event_healer_1(s: *State, released_keys: u8) void {
 }
 
 pub fn process_event_healer_decline(s: *State, released_keys: u8) void {
+    if (s.state_has_changed) {
+        s.set_choices_confirm();
+    }
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         s.set_choices_confirm();
@@ -1902,6 +1894,9 @@ pub fn process_event_healer_decline(s: *State, released_keys: u8) void {
 }
 
 pub fn process_event_healer_accept(s: *State, released_keys: u8) void {
+    if (s.state_has_changed) {
+        s.set_choices_confirm();
+    }
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         s.set_choices_confirm();
@@ -2061,20 +2056,15 @@ const swamp_creature_dialog = [_]Dialog{
 };
 
 pub fn process_event_sun_fountain(s: *State, released_keys: u8) void {
-    _ = released_keys;
-    s.set_choices_with_labels_2("Skip", "Drink");
-    s.state = GlobalState.event_sun_fountain_1;
-}
-
-pub fn process_event_sun_fountain_1(s: *State, released_keys: u8) void {
+    if (s.state_has_changed) {
+        s.set_choices_with_labels_2("Skip", "Drink");
+    }
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
-        s.set_choices_confirm();
         s.state = GlobalState.event_sun_fountain_skip;
         return;
     }
     if (s.choices[1].is_completed()) {
-        s.set_choices_confirm();
         if (s.player_alignment < -20) {
             s.state = GlobalState.event_sun_fountain_damage;
             s.apply_effect(Effect{ .damage_to_player = 5 });
@@ -2097,6 +2087,9 @@ pub fn process_event_sun_fountain_1(s: *State, released_keys: u8) void {
 }
 
 pub fn process_event_sun_fountain_skip(s: *State, released_keys: u8) void {
+    if (s.state_has_changed) {
+        s.set_choices_confirm();
+    }
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         s.state = GlobalState.pick_random_event;
@@ -2109,6 +2102,9 @@ pub fn process_event_sun_fountain_skip(s: *State, released_keys: u8) void {
 }
 
 pub fn process_event_sun_fountain_damage(s: *State, released_keys: u8) void {
+    if (s.state_has_changed) {
+        s.set_choices_confirm();
+    }
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         s.state = GlobalState.pick_random_event;
@@ -2123,6 +2119,9 @@ pub fn process_event_sun_fountain_damage(s: *State, released_keys: u8) void {
 }
 
 pub fn process_event_sun_fountain_heal(s: *State, released_keys: u8) void {
+    if (s.state_has_changed) {
+        s.set_choices_confirm();
+    }
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         s.state = GlobalState.pick_random_event;
@@ -2137,6 +2136,9 @@ pub fn process_event_sun_fountain_heal(s: *State, released_keys: u8) void {
 }
 
 pub fn process_event_sun_fountain_refresh(s: *State, released_keys: u8) void {
+    if (s.state_has_changed) {
+        s.set_choices_confirm();
+    }
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         s.state = GlobalState.pick_random_event;
@@ -2181,10 +2183,8 @@ export fn update() void {
         GlobalState.event_castle_sun_shop => shop_intro(&state, released_keys, &castle_sun_shop_dialog, castle_sun_shop_gold, &castle_sun_shop_items),
         GlobalState.event_castle_vampire_shop => shop_intro(&state, released_keys, &castle_vampire_shop_dialog, castle_vampire_shop_gold, &castle_vampire_shop_items),
         GlobalState.event_cavern_man => process_event_cavern_man(&state, released_keys),
-        GlobalState.event_cavern_man_1 => process_event_cavern_man_1(&state, released_keys),
         GlobalState.event_coin_muncher => fight_intro(&state, released_keys, Enemy.enemy_coin_muncher(), &coin_muncher_dialog),
         GlobalState.event_healer => process_event_healer(&state, released_keys),
-        GlobalState.event_healer_1 => process_event_healer_1(&state, released_keys),
         GlobalState.event_healer_decline => process_event_healer_decline(&state, released_keys),
         GlobalState.event_healer_accept => process_event_healer_accept(&state, released_keys),
         GlobalState.event_healing_shop => shop_intro(&state, released_keys, &healing_shop_dialog, healing_shop_gold, &healing_shop_items),
@@ -2194,7 +2194,6 @@ export fn update() void {
         GlobalState.event_swamp_people => fight_intro(&state, released_keys, Enemy.enemy_swamp_people(), &swamp_people_dialog),
         GlobalState.event_swamp_creature => fight_intro(&state, released_keys, Enemy.enemy_swamp_creature(), &swamp_creature_dialog),
         GlobalState.event_sun_fountain => process_event_sun_fountain(&state, released_keys),
-        GlobalState.event_sun_fountain_1 => process_event_sun_fountain_1(&state, released_keys),
         GlobalState.event_sun_fountain_skip => process_event_sun_fountain_skip(&state, released_keys),
         GlobalState.event_sun_fountain_damage => process_event_sun_fountain_damage(&state, released_keys),
         GlobalState.event_sun_fountain_heal => process_event_sun_fountain_heal(&state, released_keys),
