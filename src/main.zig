@@ -325,13 +325,9 @@ const GlobalState = enum {
     crossroad,
     crossroad_1,
     event_boss,
-    event_boss_1,
     event_castle_bat,
-    event_castle_bat_1,
     event_castle_candle,
-    event_castle_candle_1,
     event_castle_schmoo,
-    event_castle_schmoo_1,
     event_castle_sun_shop,
     event_castle_sun_shop_1,
     event_castle_vampire_shop,
@@ -339,7 +335,6 @@ const GlobalState = enum {
     event_cavern_man,
     event_cavern_man_1,
     event_coin_muncher,
-    event_coin_muncher_1,
     event_healer,
     event_healer_1,
     event_healer_decline,
@@ -347,15 +342,10 @@ const GlobalState = enum {
     event_healing_shop,
     event_healing_shop_1,
     event_forest_wolf,
-    event_forest_wolf_1,
     event_militia_ambush,
-    event_militia_ambush_1,
     event_snake_pit,
-    event_snake_pit_1,
     event_swamp_people,
-    event_swamp_people_1,
     event_swamp_creature,
-    event_swamp_creature_1,
     event_sun_fountain,
     event_sun_fountain_1,
     event_sun_fountain_skip,
@@ -691,6 +681,7 @@ const State = struct {
     state_register: GlobalState = GlobalState.title, // generic state holder used for temporary screens (inventory, map, etc...) to hold the next true state
     // global state
     state: GlobalState = GlobalState.title,
+    state_has_changed: bool = false,
     area: Area = undefined,
     area_counter: usize = 0,
     area_event_counter: usize = 0,
@@ -1221,24 +1212,21 @@ pub fn draw_dialog_list(dialog: []const Dialog, s: *State) void {
     }
 }
 
-pub fn setup_fight(s: *State, fight_state: GlobalState) void {
-    s.set_choices_fight();
-
-    // player reset
-    s.reset_player_shield();
-    s.reset_spellbook();
-
-    // enemy reset
-    s.reset_enemy_intent();
-    s.enemy.intent_current_time = 0;
-    s.enemy.intent_index = 0;
-    s.enemy.guaranteed_reward = Reward.no_reward;
-    s.enemy.random_reward = RandomReward.zero();
-
-    s.state = fight_state;
-}
-
 pub fn fight_intro(s: *State, released_keys: u8, enemy: Enemy, dialog: []const Dialog) void {
+    if (s.state_has_changed) {
+        s.set_choices_fight();
+
+        // player reset
+        s.reset_player_shield();
+        s.reset_spellbook();
+
+        // enemy reset
+        s.reset_enemy_intent();
+        s.enemy.intent_current_time = 0;
+        s.enemy.intent_index = 0;
+        s.enemy.guaranteed_reward = Reward.no_reward;
+        s.enemy.random_reward = RandomReward.zero();
+    }
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         s.enemy = enemy;
@@ -2187,41 +2175,33 @@ export fn update() void {
     const released_keys = state.previous_input & ~gamepad;
     state.previous_input = gamepad;
 
+    const previous_state = state.state;
+
     switch (state.state) {
         GlobalState.crossroad => process_crossroad(&state, released_keys),
         GlobalState.crossroad_1 => process_crossroad_1(&state, released_keys),
-        GlobalState.event_boss => setup_fight(&state, GlobalState.event_boss_1),
-        GlobalState.event_boss_1 => fight_intro(&state, released_keys, Enemy.enemy_boss(), &boss_dialog),
-        GlobalState.event_castle_bat => setup_fight(&state, GlobalState.event_castle_bat_1),
-        GlobalState.event_castle_bat_1 => fight_intro(&state, released_keys, Enemy.enemy_castle_bat(), &castle_bat_dialog),
-        GlobalState.event_castle_candle => setup_fight(&state, GlobalState.event_castle_candle_1),
-        GlobalState.event_castle_candle_1 => fight_intro(&state, released_keys, Enemy.enemy_castle_candle(), &castle_candle_dialog),
-        GlobalState.event_castle_schmoo => setup_fight(&state, GlobalState.event_castle_schmoo_1),
-        GlobalState.event_castle_schmoo_1 => fight_intro(&state, released_keys, Enemy.enemy_castle_schmoo(), &castle_schmoo_dialog),
+        GlobalState.event_boss => fight_intro(&state, released_keys, Enemy.enemy_boss(), &boss_dialog),
+        GlobalState.event_castle_bat => fight_intro(&state, released_keys, Enemy.enemy_castle_bat(), &castle_bat_dialog),
+        GlobalState.event_castle_candle => fight_intro(&state, released_keys, Enemy.enemy_castle_candle(), &castle_candle_dialog),
+        GlobalState.event_castle_schmoo => fight_intro(&state, released_keys, Enemy.enemy_castle_schmoo(), &castle_schmoo_dialog),
         GlobalState.event_castle_sun_shop => setup_shop(&state, GlobalState.event_castle_sun_shop_1, castle_sun_shop_gold, &castle_sun_shop_items),
         GlobalState.event_castle_sun_shop_1 => shop_intro(&state, released_keys, &castle_sun_shop_dialog),
         GlobalState.event_castle_vampire_shop => setup_shop(&state, GlobalState.event_castle_vampire_shop_1, castle_vampire_shop_gold, &castle_vampire_shop_items),
         GlobalState.event_castle_vampire_shop_1 => shop_intro(&state, released_keys, &castle_vampire_shop_dialog),
         GlobalState.event_cavern_man => process_event_cavern_man(&state, released_keys),
         GlobalState.event_cavern_man_1 => process_event_cavern_man_1(&state, released_keys),
-        GlobalState.event_coin_muncher => setup_fight(&state, GlobalState.event_coin_muncher_1),
-        GlobalState.event_coin_muncher_1 => fight_intro(&state, released_keys, Enemy.enemy_coin_muncher(), &coin_muncher_dialog),
+        GlobalState.event_coin_muncher => fight_intro(&state, released_keys, Enemy.enemy_coin_muncher(), &coin_muncher_dialog),
         GlobalState.event_healer => process_event_healer(&state, released_keys),
         GlobalState.event_healer_1 => process_event_healer_1(&state, released_keys),
         GlobalState.event_healer_decline => process_event_healer_decline(&state, released_keys),
         GlobalState.event_healer_accept => process_event_healer_accept(&state, released_keys),
         GlobalState.event_healing_shop => setup_shop(&state, GlobalState.event_healing_shop_1, healing_shop_gold, &healing_shop_items),
         GlobalState.event_healing_shop_1 => shop_intro(&state, released_keys, &healing_shop_dialog),
-        GlobalState.event_forest_wolf => setup_fight(&state, GlobalState.event_forest_wolf_1),
-        GlobalState.event_forest_wolf_1 => fight_intro(&state, released_keys, Enemy.enemy_forest_wolf(), &forest_wolf_dialog),
-        GlobalState.event_militia_ambush => setup_fight(&state, GlobalState.event_militia_ambush_1),
-        GlobalState.event_militia_ambush_1 => fight_intro(&state, released_keys, Enemy.enemy_militia_ambush(), &militia_ambush_dialog),
-        GlobalState.event_snake_pit => setup_fight(&state, GlobalState.event_snake_pit_1),
-        GlobalState.event_snake_pit_1 => fight_intro(&state, released_keys, Enemy.enemy_snake_pit(), &snake_pit_dialog),
-        GlobalState.event_swamp_people => setup_fight(&state, GlobalState.event_swamp_people_1),
-        GlobalState.event_swamp_people_1 => fight_intro(&state, released_keys, Enemy.enemy_swamp_people(), &swamp_people_dialog),
-        GlobalState.event_swamp_creature => setup_fight(&state, GlobalState.event_swamp_creature_1),
-        GlobalState.event_swamp_creature_1 => fight_intro(&state, released_keys, Enemy.enemy_swamp_creature(), &swamp_creature_dialog),
+        GlobalState.event_forest_wolf => fight_intro(&state, released_keys, Enemy.enemy_forest_wolf(), &forest_wolf_dialog),
+        GlobalState.event_militia_ambush => fight_intro(&state, released_keys, Enemy.enemy_militia_ambush(), &militia_ambush_dialog),
+        GlobalState.event_snake_pit => fight_intro(&state, released_keys, Enemy.enemy_snake_pit(), &snake_pit_dialog),
+        GlobalState.event_swamp_people => fight_intro(&state, released_keys, Enemy.enemy_swamp_people(), &swamp_people_dialog),
+        GlobalState.event_swamp_creature => fight_intro(&state, released_keys, Enemy.enemy_swamp_creature(), &swamp_creature_dialog),
         GlobalState.event_sun_fountain => process_event_sun_fountain(&state, released_keys),
         GlobalState.event_sun_fountain_1 => process_event_sun_fountain_1(&state, released_keys),
         GlobalState.event_sun_fountain_skip => process_event_sun_fountain_skip(&state, released_keys),
@@ -2247,4 +2227,6 @@ export fn update() void {
         GlobalState.tutorial_synergies => process_tutorial_synergies(&state, released_keys),
         GlobalState.tutorial_pause_menu => process_tutorial_pause_menu(&state, released_keys),
     }
+
+    state.state_has_changed = (previous_state != state.state);
 }
