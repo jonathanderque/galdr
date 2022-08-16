@@ -359,6 +359,7 @@ const GlobalState = enum {
     tutorial_basics,
     tutorial_synergies,
     tutorial_pause_menu,
+    tutorial_alignment,
 };
 
 const Area = struct {
@@ -1132,6 +1133,22 @@ pub fn draw_spell_inventory_list(x: i32, y: i32, s: *State, list: []Spell, show_
     }
 }
 
+pub fn draw_alignment_hud(s: *State) void {
+    const x: i32 = 10;
+    const y: i32 = 0;
+
+    draw_moon(x, y + 11);
+    draw_sun(x + 72, y + 11);
+    w4.DRAW_COLORS.* = 0x20;
+    // aligment bar is 60 wide
+    w4.rect(x + 10, y + 12, 60, 7);
+    //w4.rect(x + 10 + 30, y + 12, 2, 7);
+    w4.DRAW_COLORS.* = 0x22;
+    // oval x should be between 10 and 55
+    w4.oval(x + 10 + @divTrunc((100 + s.player_alignment) * 55, 200), y + 14, 4, 3);
+    w4.DRAW_COLORS.* = 0x02;
+}
+
 pub fn draw_player_hud(s: *State) void {
     const x: i32 = 10;
     const y: i32 = 0;
@@ -1152,16 +1169,7 @@ pub fn draw_player_hud(s: *State) void {
     s.pager.set_cursor(hp_x + 11, y + 12);
     pager.f47_number(&s.pager, s.player_gold);
 
-    draw_moon(x, y + 11);
-    draw_sun(x + 72, y + 11);
-    w4.DRAW_COLORS.* = 0x20;
-    // aligment bar is 60 wide
-    w4.rect(x + 10, y + 12, 60, 7);
-    //w4.rect(x + 10 + 30, y + 12, 2, 7);
-    w4.DRAW_COLORS.* = 0x22;
-    // oval x should be between 10 and 55
-    w4.oval(x + 10 + @divTrunc((100 + s.player_alignment) * 55, 200), y + 14, 4, 3);
-    w4.DRAW_COLORS.* = 0x02;
+    draw_alignment_hud(s);
 }
 
 pub fn draw_enemy_hud(s: *State) void {
@@ -1635,7 +1643,8 @@ pub fn process_tutorial_pause_menu(s: *State, released_keys: u8) void {
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         s.reset_choices();
-        s.state = GlobalState.title;
+        s.choices[0] = Spell.spell_tutorial_basics_next();
+        s.state = GlobalState.tutorial_alignment;
     }
     s.pager.set_cursor(10, 10);
     pager.f47_text(&s.pager, "When fighting in battles, it can be difficult to remember the effect of each spells.");
@@ -1653,6 +1662,32 @@ pub fn process_tutorial_pause_menu(s: *State, released_keys: u8) void {
     pager.f47_newline(&s.pager);
     pager.f47_newline(&s.pager);
     pager.f47_text(&s.pager, "The Pause Menu stops time and lets you inspect your spellbook.");
+
+    draw_spell_list(&s.choices, &s.pager, 10, 140);
+}
+
+pub fn process_tutorial_alignment(s: *State, released_keys: u8) void {
+    process_choices_input(s, released_keys);
+    if (s.choices[0].is_completed()) {
+        s.reset_choices();
+        s.state = GlobalState.title;
+    }
+    draw_alignment_hud(s);
+    s.pager.set_cursor(10, 30);
+    pager.f47_text(&s.pager, "Casting spells will modify your alignment.");
+    pager.f47_newline(&s.pager);
+    pager.f47_newline(&s.pager);
+    pager.f47_text(&s.pager, "Alignment is shown at the top of the screen in the bar between ");
+    draw_moon(s.pager.cursor_x, s.pager.cursor_y);
+    s.pager.set_cursor(s.pager.cursor_x + 11, s.pager.cursor_y);
+    pager.f47_text(&s.pager, " and ");
+    draw_sun(s.pager.cursor_x, s.pager.cursor_y);
+    s.pager.set_cursor(s.pager.cursor_x + 11, s.pager.cursor_y);
+    pager.f47_text(&s.pager, ".");
+    pager.f47_newline(&s.pager);
+    pager.f47_newline(&s.pager);
+    pager.f47_text(&s.pager, "Alignment will affect the outcome of events, or even prevent you from picking certain options, so be mindful of your alignment.");
+
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 }
 
@@ -2135,6 +2170,7 @@ export fn update() void {
         GlobalState.tutorial_basics => process_tutorial_basics(&state, released_keys),
         GlobalState.tutorial_synergies => process_tutorial_synergies(&state, released_keys),
         GlobalState.tutorial_pause_menu => process_tutorial_pause_menu(&state, released_keys),
+        GlobalState.tutorial_alignment => process_tutorial_alignment(&state, released_keys),
     }
 
     state.state_has_changed = (previous_state != state.state);
