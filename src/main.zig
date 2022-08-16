@@ -22,6 +22,8 @@ const Effect = union(enum(u8)) {
     toggle_inventory_menu: void,
     damage_to_player: i16,
     damage_to_enemy: i16,
+    vampirism_to_player: i16,
+    vampirism_to_enemy: i16,
     player_heal: u16,
     player_healing_max: void,
     player_shield: i16,
@@ -475,7 +477,7 @@ const Enemy = struct {
         enemy.max_hp = enemy_max_hp;
         enemy.intent[0] = EnemyIntent{
             .trigger_time = 2 * 60,
-            .effect = Effect{ .damage_to_player = 3 },
+            .effect = Effect{ .vampirism_to_player = 2 },
         };
         enemy.sprite = &sprites.enemy_castle_bat;
         return enemy;
@@ -731,6 +733,38 @@ const State = struct {
                     self.enemy.shield = 0;
                     if (self.enemy.hp < 0) {
                         self.enemy.hp = 0;
+                    }
+                } else {
+                    self.enemy.shield -= dmg;
+                }
+            },
+            Effect.vampirism_to_player => |dmg| {
+                if (dmg > self.player_shield) {
+                    const actual_dmg = (dmg - self.player_shield);
+                    self.player_hp -= actual_dmg;
+                    self.enemy.hp += actual_dmg;
+                    self.player_shield = 0;
+                    if (self.player_hp < 0) {
+                        self.player_hp = 0;
+                    }
+                    if (self.enemy.hp > self.enemy.max_hp) {
+                        self.enemy.hp = self.enemy.max_hp;
+                    }
+                } else {
+                    self.player_shield -= dmg;
+                }
+            },
+            Effect.vampirism_to_enemy => |dmg| {
+                if (dmg > self.enemy.shield) {
+                    const actual_dmg = (dmg - self.enemy.shield);
+                    self.enemy.hp -= actual_dmg;
+                    self.player_hp += actual_dmg;
+                    self.enemy.shield = 0;
+                    if (self.enemy.hp < 0) {
+                        self.enemy.hp = 0;
+                    }
+                    if (self.player_hp >= self.player_max_hp) {
+                        self.player_hp = self.player_max_hp;
                     }
                 } else {
                     self.enemy.shield -= dmg;
