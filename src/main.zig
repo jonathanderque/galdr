@@ -246,6 +246,8 @@ const GlobalState = enum {
     crossroad_1,
     event_boss,
     event_boss_1,
+    event_castle_bat,
+    event_castle_bat_1,
     event_cavern_man,
     event_cavern_man_1,
     event_coin_muncher,
@@ -322,6 +324,14 @@ const forest_area = Area{
     },
 };
 
+const castle_area = Area{
+    .name = "CASTLE",
+    .event_count = 1,
+    .event_pool = &[_]GlobalState{
+        GlobalState.event_castle_bat,
+    },
+};
+
 const boss_area = Area{
     .name = "ECLIPSE",
     .event_count = 1,
@@ -332,7 +342,7 @@ const boss_area = Area{
 
 const easy_area_pool = [_]Area{
     forest_area,
-    swamp_area,
+    castle_area,
 };
 
 const medium_area_pool = [_]Area{
@@ -390,6 +400,19 @@ const Enemy = struct {
             .effect = Effect{ .enemy_shield = 10 },
         };
         enemy.sprite = &sprites.enemy_boss;
+        return enemy;
+    }
+
+    pub fn enemy_castle_bat() Enemy {
+        var enemy = zero();
+        const enemy_max_hp = 20;
+        enemy.hp = enemy_max_hp;
+        enemy.max_hp = enemy_max_hp;
+        enemy.intent[0] = EnemyIntent{
+            .trigger_time = 2 * 60,
+            .effect = Effect{ .damage_to_player = 3 },
+        };
+        enemy.sprite = &sprites.enemy_castle_bat;
         return enemy;
     }
 
@@ -1565,6 +1588,13 @@ const boss_dialog = [_]Dialog{
     Dialog{ .text = "Be prepared, this is it!" },
 };
 
+const castle_bat_dialog = [_]Dialog{
+    Dialog{ .text = "This neglected castle is full of annoying bats!!" },
+    Dialog.newline,
+    Dialog.newline,
+    Dialog{ .text = "In fact one of them really wants to take a bite out of you..." },
+};
+
 pub fn process_event_cavern_man(s: *State, released_keys: u8) void {
     _ = released_keys;
     s.set_choices_confirm();
@@ -1936,6 +1966,8 @@ export fn update() void {
         GlobalState.crossroad_1 => process_crossroad_1(&state, released_keys),
         GlobalState.event_boss => setup_fight(&state, GlobalState.event_boss_1),
         GlobalState.event_boss_1 => fight_intro(&state, released_keys, Enemy.enemy_boss(), &boss_dialog),
+        GlobalState.event_castle_bat => setup_fight(&state, GlobalState.event_castle_bat_1),
+        GlobalState.event_castle_bat_1 => fight_intro(&state, released_keys, Enemy.enemy_castle_bat(), &castle_bat_dialog),
         GlobalState.event_cavern_man => process_event_cavern_man(&state, released_keys),
         GlobalState.event_cavern_man_1 => process_event_cavern_man_1(&state, released_keys),
         GlobalState.event_coin_muncher => setup_fight(&state, GlobalState.event_coin_muncher_1),
