@@ -1873,44 +1873,15 @@ pub fn process_event_healer(s: *State, released_keys: u8) void {
     draw_spell_list(&s.choices, &s.pager, 10, 130);
 }
 
-pub fn process_event_healer_decline(s: *State, released_keys: u8) void {
-    if (s.state_has_changed) {
-        s.set_choices_confirm();
-    }
-    process_choices_input(s, released_keys);
-    if (s.choices[0].is_completed()) {
-        s.set_choices_confirm();
-        s.state = GlobalState.pick_random_event;
-    }
+const event_healer_decline_dialog = [_]Dialog{
+    Dialog{ .text = "The druid says:" },
+    Dialog.newline,
+    Dialog{ .text = "\"As you wish. May you be successful in your endeavours.\"" },
+};
 
-    w4.DRAW_COLORS.* = 0x02;
-    draw_player_hud(s);
-    s.pager.set_cursor(10, 30);
-    pager.f47_text(&s.pager, "The druid says:");
-    pager.f47_newline(&s.pager);
-    pager.f47_text(&s.pager, "\"As you wish. May you be successful in your endeavours.\"");
-
-    draw_spell_list(&s.choices, &s.pager, 10, 140);
-}
-
-pub fn process_event_healer_accept(s: *State, released_keys: u8) void {
-    if (s.state_has_changed) {
-        s.set_choices_confirm();
-    }
-    process_choices_input(s, released_keys);
-    if (s.choices[0].is_completed()) {
-        s.set_choices_confirm();
-        s.state = GlobalState.pick_random_event;
-    }
-
-    w4.DRAW_COLORS.* = 0x02;
-    draw_player_hud(s);
-    s.pager.set_cursor(10, 30);
-    pager.f47_text(&s.pager, "The druid utters weird sounds that only him can understand, but you already feels better.");
-    pager.f47_newline(&s.pager);
-
-    draw_spell_list(&s.choices, &s.pager, 10, 140);
-}
+const event_healer_accept_dialog = [_]Dialog{
+    Dialog{ .text = "The druid utters weird sounds that only him can understand, but you already feels better." },
+};
 
 const healing_shop_gold = 50;
 const healing_shop_items = [_]Spell{
@@ -2086,7 +2057,7 @@ pub fn process_event_sun_fountain(s: *State, released_keys: u8) void {
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 }
 
-pub fn process_event_sun_fountain_skip(s: *State, released_keys: u8) void {
+pub fn simple_text_event(s: *State, released_keys: u8, dialog: []const Dialog) void {
     if (s.state_has_changed) {
         s.set_choices_confirm();
     }
@@ -2097,60 +2068,31 @@ pub fn process_event_sun_fountain_skip(s: *State, released_keys: u8) void {
     w4.DRAW_COLORS.* = 0x02;
     draw_player_hud(s);
     s.pager.set_cursor(10, 30);
-    pager.f47_text(&s.pager, "Such a fountain in the middle of nowhere seems strange. You continue your journey without drinking from it.");
+    draw_dialog_list(dialog, s);
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 }
 
-pub fn process_event_sun_fountain_damage(s: *State, released_keys: u8) void {
-    if (s.state_has_changed) {
-        s.set_choices_confirm();
-    }
-    process_choices_input(s, released_keys);
-    if (s.choices[0].is_completed()) {
-        s.state = GlobalState.pick_random_event;
-    }
-    w4.DRAW_COLORS.* = 0x02;
-    draw_player_hud(s);
-    s.pager.set_cursor(10, 30);
-    pager.f47_text(&s.pager, "The water has a foul taste and your belly immediately hurts.");
-    pager.f47_newline(&s.pager);
-    pager.f47_text(&s.pager, "You cast a spell to improve your condition but do not fully recover.");
-    draw_spell_list(&s.choices, &s.pager, 10, 140);
-}
+const event_sun_fountain_skip_dialog = [_]Dialog{
+    Dialog{ .text = "Such a fountain in the middle of nowhere seems strange. You continue your journey without drinking from it." },
+};
 
-pub fn process_event_sun_fountain_heal(s: *State, released_keys: u8) void {
-    if (s.state_has_changed) {
-        s.set_choices_confirm();
-    }
-    process_choices_input(s, released_keys);
-    if (s.choices[0].is_completed()) {
-        s.state = GlobalState.pick_random_event;
-    }
-    w4.DRAW_COLORS.* = 0x02;
-    draw_player_hud(s);
-    s.pager.set_cursor(10, 30);
-    pager.f47_text(&s.pager, "The water is cool and you feel calm and relaxed.");
-    pager.f47_newline(&s.pager);
-    pager.f47_text(&s.pager, "After resting for a bit, you move on to your next adventure.");
-    draw_spell_list(&s.choices, &s.pager, 10, 140);
-}
+const event_sun_fountain_damage_dialog = [_]Dialog{
+    Dialog{ .text = "The water has a foul taste and your belly immediately hurts." },
+    Dialog.newline,
+    Dialog{ .text = "You cast a spell to improve your condition but do not fully recover." },
+};
 
-pub fn process_event_sun_fountain_refresh(s: *State, released_keys: u8) void {
-    if (s.state_has_changed) {
-        s.set_choices_confirm();
-    }
-    process_choices_input(s, released_keys);
-    if (s.choices[0].is_completed()) {
-        s.state = GlobalState.pick_random_event;
-    }
-    w4.DRAW_COLORS.* = 0x02;
-    draw_player_hud(s);
-    s.pager.set_cursor(10, 30);
-    pager.f47_text(&s.pager, "The water is tepid and tasteless.");
-    pager.f47_newline(&s.pager);
-    pager.f47_text(&s.pager, "After resting for a bit, you move on to your next adventure.");
-    draw_spell_list(&s.choices, &s.pager, 10, 140);
-}
+const event_sun_fountain_heal_dialog = [_]Dialog{
+    Dialog{ .text = "The water is cool and you feel calm and relaxed." },
+    Dialog.newline,
+    Dialog{ .text = "After resting for a bit, you move on to your next adventure." },
+};
+
+const event_sun_fountain_refresh_dialog = [_]Dialog{
+    Dialog{ .text = "The water is tepid and tasteless." },
+    Dialog.newline,
+    Dialog{ .text = "After resting for a bit, you move on to your next adventure." },
+};
 
 var state: State = undefined;
 
@@ -2185,8 +2127,8 @@ export fn update() void {
         GlobalState.event_cavern_man => process_event_cavern_man(&state, released_keys),
         GlobalState.event_coin_muncher => fight_intro(&state, released_keys, Enemy.enemy_coin_muncher(), &coin_muncher_dialog),
         GlobalState.event_healer => process_event_healer(&state, released_keys),
-        GlobalState.event_healer_decline => process_event_healer_decline(&state, released_keys),
-        GlobalState.event_healer_accept => process_event_healer_accept(&state, released_keys),
+        GlobalState.event_healer_decline => simple_text_event(&state, released_keys, &event_healer_decline_dialog),
+        GlobalState.event_healer_accept => simple_text_event(&state, released_keys, &event_healer_accept_dialog),
         GlobalState.event_healing_shop => shop_intro(&state, released_keys, &healing_shop_dialog, healing_shop_gold, &healing_shop_items),
         GlobalState.event_forest_wolf => fight_intro(&state, released_keys, Enemy.enemy_forest_wolf(), &forest_wolf_dialog),
         GlobalState.event_militia_ambush => fight_intro(&state, released_keys, Enemy.enemy_militia_ambush(), &militia_ambush_dialog),
@@ -2194,10 +2136,10 @@ export fn update() void {
         GlobalState.event_swamp_people => fight_intro(&state, released_keys, Enemy.enemy_swamp_people(), &swamp_people_dialog),
         GlobalState.event_swamp_creature => fight_intro(&state, released_keys, Enemy.enemy_swamp_creature(), &swamp_creature_dialog),
         GlobalState.event_sun_fountain => process_event_sun_fountain(&state, released_keys),
-        GlobalState.event_sun_fountain_skip => process_event_sun_fountain_skip(&state, released_keys),
-        GlobalState.event_sun_fountain_damage => process_event_sun_fountain_damage(&state, released_keys),
-        GlobalState.event_sun_fountain_heal => process_event_sun_fountain_heal(&state, released_keys),
-        GlobalState.event_sun_fountain_refresh => process_event_sun_fountain_refresh(&state, released_keys),
+        GlobalState.event_sun_fountain_skip => simple_text_event(&state, released_keys, &event_sun_fountain_skip_dialog),
+        GlobalState.event_sun_fountain_damage => simple_text_event(&state, released_keys, &event_sun_fountain_damage_dialog),
+        GlobalState.event_sun_fountain_heal => simple_text_event(&state, released_keys, &event_sun_fountain_heal_dialog),
+        GlobalState.event_sun_fountain_refresh => simple_text_event(&state, released_keys, &event_sun_fountain_refresh_dialog),
         GlobalState.fight => process_fight(&state, released_keys),
         GlobalState.fight_reward => process_fight_reward(&state, released_keys),
         GlobalState.game_over => process_game_over(&state, released_keys),
