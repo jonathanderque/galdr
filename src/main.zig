@@ -329,9 +329,7 @@ const GlobalState = enum {
     event_castle_candle,
     event_castle_schmoo,
     event_castle_sun_shop,
-    event_castle_sun_shop_1,
     event_castle_vampire_shop,
-    event_castle_vampire_shop_1,
     event_cavern_man,
     event_cavern_man_1,
     event_coin_muncher,
@@ -340,7 +338,6 @@ const GlobalState = enum {
     event_healer_decline,
     event_healer_accept,
     event_healing_shop,
-    event_healing_shop_1,
     event_forest_wolf,
     event_militia_ambush,
     event_snake_pit,
@@ -1240,23 +1237,20 @@ pub fn fight_intro(s: *State, released_keys: u8, enemy: Enemy, dialog: []const D
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 }
 
-pub fn setup_shop(s: *State, shop_state: GlobalState, shop_gold: i16, shop_items: []const Spell) void {
-    s.set_choices_fight();
+pub fn shop_intro(s: *State, released_keys: u8, dialog: []const Dialog, shop_gold: i16, shop_items: []const Spell) void {
+    if (s.state_has_changed) {
+        s.set_choices_fight();
 
-    s.spell_index = 0;
-    s.shop_list_index = 0;
-    s.reset_shop_items();
-    s.shop_gold = shop_gold;
-    var i: usize = 0;
-    for (shop_items) |item| {
-        s.shop_items[i] = item;
-        i += 1;
+        s.spell_index = 0;
+        s.shop_list_index = 0;
+        s.reset_shop_items();
+        s.shop_gold = shop_gold;
+        var i: usize = 0;
+        for (shop_items) |item| {
+            s.shop_items[i] = item;
+            i += 1;
+        }
     }
-
-    s.state = shop_state;
-}
-
-pub fn shop_intro(s: *State, released_keys: u8, dialog: []const Dialog) void {
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         s.set_choices_shop();
@@ -2184,10 +2178,8 @@ export fn update() void {
         GlobalState.event_castle_bat => fight_intro(&state, released_keys, Enemy.enemy_castle_bat(), &castle_bat_dialog),
         GlobalState.event_castle_candle => fight_intro(&state, released_keys, Enemy.enemy_castle_candle(), &castle_candle_dialog),
         GlobalState.event_castle_schmoo => fight_intro(&state, released_keys, Enemy.enemy_castle_schmoo(), &castle_schmoo_dialog),
-        GlobalState.event_castle_sun_shop => setup_shop(&state, GlobalState.event_castle_sun_shop_1, castle_sun_shop_gold, &castle_sun_shop_items),
-        GlobalState.event_castle_sun_shop_1 => shop_intro(&state, released_keys, &castle_sun_shop_dialog),
-        GlobalState.event_castle_vampire_shop => setup_shop(&state, GlobalState.event_castle_vampire_shop_1, castle_vampire_shop_gold, &castle_vampire_shop_items),
-        GlobalState.event_castle_vampire_shop_1 => shop_intro(&state, released_keys, &castle_vampire_shop_dialog),
+        GlobalState.event_castle_sun_shop => shop_intro(&state, released_keys, &castle_sun_shop_dialog, castle_sun_shop_gold, &castle_sun_shop_items),
+        GlobalState.event_castle_vampire_shop => shop_intro(&state, released_keys, &castle_vampire_shop_dialog, castle_vampire_shop_gold, &castle_vampire_shop_items),
         GlobalState.event_cavern_man => process_event_cavern_man(&state, released_keys),
         GlobalState.event_cavern_man_1 => process_event_cavern_man_1(&state, released_keys),
         GlobalState.event_coin_muncher => fight_intro(&state, released_keys, Enemy.enemy_coin_muncher(), &coin_muncher_dialog),
@@ -2195,8 +2187,7 @@ export fn update() void {
         GlobalState.event_healer_1 => process_event_healer_1(&state, released_keys),
         GlobalState.event_healer_decline => process_event_healer_decline(&state, released_keys),
         GlobalState.event_healer_accept => process_event_healer_accept(&state, released_keys),
-        GlobalState.event_healing_shop => setup_shop(&state, GlobalState.event_healing_shop_1, healing_shop_gold, &healing_shop_items),
-        GlobalState.event_healing_shop_1 => shop_intro(&state, released_keys, &healing_shop_dialog),
+        GlobalState.event_healing_shop => shop_intro(&state, released_keys, &healing_shop_dialog, healing_shop_gold, &healing_shop_items),
         GlobalState.event_forest_wolf => fight_intro(&state, released_keys, Enemy.enemy_forest_wolf(), &forest_wolf_dialog),
         GlobalState.event_militia_ambush => fight_intro(&state, released_keys, Enemy.enemy_militia_ambush(), &militia_ambush_dialog),
         GlobalState.event_snake_pit => fight_intro(&state, released_keys, Enemy.enemy_snake_pit(), &snake_pit_dialog),
