@@ -239,6 +239,17 @@ const Spell = struct {
         s.set_spell(&[_]u8{ w4.BUTTON_LEFT, w4.BUTTON_UP, w4.BUTTON_DOWN, w4.BUTTON_1 });
         return s;
     }
+
+    pub fn spell_holy_water() Spell {
+        var spell = Spell{
+            .name = "HOLY WATER",
+            .price = 9,
+            .alignment = 9,
+            .effect = Effect{ .damage_to_enemy = 8 },
+        };
+        spell.set_spell(&[_]u8{ w4.BUTTON_LEFT, w4.BUTTON_LEFT, w4.BUTTON_UP, w4.BUTTON_1 });
+        return spell;
+    }
 };
 
 const GlobalState = enum {
@@ -248,6 +259,8 @@ const GlobalState = enum {
     event_boss_1,
     event_castle_bat,
     event_castle_bat_1,
+    event_castle_candle,
+    event_castle_candle_1,
     event_cavern_man,
     event_cavern_man_1,
     event_coin_muncher,
@@ -326,9 +339,10 @@ const forest_area = Area{
 
 const castle_area = Area{
     .name = "CASTLE",
-    .event_count = 1,
+    .event_count = 2,
     .event_pool = &[_]GlobalState{
         GlobalState.event_castle_bat,
+        GlobalState.event_castle_candle,
     },
 };
 
@@ -413,6 +427,24 @@ const Enemy = struct {
             .effect = Effect{ .damage_to_player = 3 },
         };
         enemy.sprite = &sprites.enemy_castle_bat;
+        return enemy;
+    }
+
+    pub fn enemy_castle_candle() Enemy {
+        var enemy = zero();
+        const enemy_max_hp = 2;
+        enemy.hp = enemy_max_hp;
+        enemy.max_hp = enemy_max_hp;
+        enemy.intent[0] = EnemyIntent{
+            .trigger_time = 5 * 60,
+            .effect = Effect{ .enemy_shield = 1 },
+        };
+        enemy.sprite = &sprites.enemy_castle_candle;
+        enemy.guaranteed_reward = Reward{ .gold_reward = 10 };
+        enemy.random_reward = RandomReward{
+            .probability = 80,
+            .reward = Reward{ .spell_reward = Spell.spell_holy_water() },
+        };
         return enemy;
     }
 
@@ -1595,6 +1627,13 @@ const castle_bat_dialog = [_]Dialog{
     Dialog{ .text = "In fact one of them really wants to take a bite out of you..." },
 };
 
+const castle_candle_dialog = [_]Dialog{
+    Dialog{ .text = "Candles here seem to be items cache..." },
+    Dialog.newline,
+    Dialog.newline,
+    Dialog{ .text = "Maybe you should try to break one of them?" },
+};
+
 pub fn process_event_cavern_man(s: *State, released_keys: u8) void {
     _ = released_keys;
     s.set_choices_confirm();
@@ -1968,6 +2007,8 @@ export fn update() void {
         GlobalState.event_boss_1 => fight_intro(&state, released_keys, Enemy.enemy_boss(), &boss_dialog),
         GlobalState.event_castle_bat => setup_fight(&state, GlobalState.event_castle_bat_1),
         GlobalState.event_castle_bat_1 => fight_intro(&state, released_keys, Enemy.enemy_castle_bat(), &castle_bat_dialog),
+        GlobalState.event_castle_candle => setup_fight(&state, GlobalState.event_castle_candle_1),
+        GlobalState.event_castle_candle_1 => fight_intro(&state, released_keys, Enemy.enemy_castle_candle(), &castle_candle_dialog),
         GlobalState.event_cavern_man => process_event_cavern_man(&state, released_keys),
         GlobalState.event_cavern_man_1 => process_event_cavern_man_1(&state, released_keys),
         GlobalState.event_coin_muncher => setup_fight(&state, GlobalState.event_coin_muncher_1),
