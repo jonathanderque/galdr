@@ -1811,7 +1811,7 @@ const castle_sun_shop_dialog = [_]Dialog{
     Dialog{ .text = "The merchant seems surprised:" },
     Dialog.newline,
     Dialog.newline,
-    Dialog{ .text = "\"A customer?? It's long since I've seen anyone around here...\"" },
+    Dialog{ .text = "\"A customer?? It's been long since I've seen anyone around here...\"" },
 };
 
 const castle_sun_shop_gold = 50;
