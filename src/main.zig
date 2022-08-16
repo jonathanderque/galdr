@@ -280,6 +280,8 @@ const GlobalState = enum {
     inventory_full,
     inventory_full_1,
     inventory_full_2,
+    map,
+    map_1,
     new_game_init,
     pick_random_event,
     shop,
@@ -535,7 +537,7 @@ const State = struct {
     pager: pager.Pager = undefined,
     spell_index: isize = 0, // index keeping track of which spell is hilighted when displaying inventory
     inventory_menu_flag: bool = false,
-    inventory_exit_state: GlobalState = GlobalState.title,
+    state_register: GlobalState = GlobalState.title, // generic state holder used for temporary screens (inventory, map, etc...) to hold the next true state
     // global state
     state: GlobalState = GlobalState.title,
     area: Area = undefined,
@@ -857,6 +859,13 @@ pub fn draw_sun(x: i32, y: i32) void {
     w4.blitSub(&sprites.alignment, x, y, 9, 9, 9, 0, sprites.alignment_width, w4.BLIT_1BPP);
 }
 
+pub fn draw_map_location(x: i32, y: i32) void {
+    w4.blit(&sprites.map_location, x, y, sprites.map_location_width, sprites.map_location_height, w4.BLIT_1BPP);
+}
+pub fn draw_map_character(x: i32, y: i32) void {
+    w4.blit(&sprites.map_character, x, y, sprites.enemy_width, sprites.enemy_height, w4.BLIT_1BPP);
+}
+
 pub fn draw_effect(x: i32, y: i32, s: *State, effect: Effect) void {
     switch (effect) {
         Effect.damage_to_player, Effect.damage_to_enemy => |dmg| {
@@ -1060,7 +1069,7 @@ pub fn process_fight(s: *State, released_keys: u8) void {
         s.inventory_menu_spell.reset();
     }
     if (s.inventory_menu_flag) {
-        s.inventory_exit_state = GlobalState.fight;
+        s.state_register = GlobalState.fight;
         s.state = GlobalState.inventory;
         return;
     }
@@ -1170,7 +1179,7 @@ pub fn process_inventory_1(s: *State, released_keys: u8) void {
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         s.inventory_menu_flag = false;
-        s.state = s.inventory_exit_state;
+        s.state = s.state_register;
     }
 
     process_keys_spell_list(s, released_keys, &s.spellbook);
@@ -1267,6 +1276,60 @@ pub fn process_inventory_full_2(s: *State, released_keys: u8) void {
     }
 }
 
+pub fn process_map(s: *State, released_keys: u8) void {
+    _ = released_keys;
+    s.set_choices_with_labels_1("PROCEED");
+    s.state = GlobalState.map_1;
+}
+
+pub fn process_map_1(s: *State, released_keys: u8) void {
+    process_choices_input(s, released_keys);
+    if (s.choices[0].is_completed()) {
+        s.state = s.state_register;
+        return;
+    }
+
+    const name_x = 80 - pager.f47_letter_width * @intCast(i32, @divTrunc(s.area.name.len, 2));
+    s.pager.set_cursor(name_x, 40);
+    pager.f47_text(&s.pager, s.area.name);
+    const counter_x = 80 - pager.f47_letter_width * (5 / 2);
+    s.pager.set_cursor(counter_x, 60);
+    pager.f47_number(&s.pager, @intCast(i32, s.area_counter));
+    pager.f47_text(&s.pager, " - ");
+    pager.f47_number(&s.pager, @intCast(i32, s.area_event_counter));
+
+    const map_y = 100;
+    var map_x: i32 = 30;
+    if (s.area.event_count > 1) {
+        draw_map_location(map_x, map_y);
+
+        if (1 == s.area_event_counter) {
+            draw_map_character(map_x - 6, map_y - 20);
+        }
+        const map_x_increment: i32 = @divTrunc(100, @intCast(i32, s.area.event_count) - 1);
+        map_x += map_x_increment;
+        var i: usize = 1;
+        while (i < s.area.event_count) : (i += 1) {
+            w4.hline(map_x - map_x_increment + 8, map_y + 2, @intCast(u32, map_x_increment - 10));
+            if (i + 1 == s.area_event_counter) {
+                draw_map_character(map_x - 6, map_y - 20);
+            }
+            draw_map_location(map_x, map_y);
+            map_x += map_x_increment;
+        }
+    } else {
+        map_x = 80;
+        draw_map_location(map_x, map_y);
+
+        if (1 == s.area_event_counter) {
+            draw_map_character(map_x - 6, map_y - 20);
+        }
+    }
+
+    draw_player_hud(s);
+    draw_spell_list(&s.choices, &s.pager, 10, 140);
+}
+
 pub fn process_pick_random_event(s: *State, released_keys: u8) void {
     _ = released_keys;
 
@@ -1291,7 +1354,8 @@ pub fn process_pick_random_event(s: *State, released_keys: u8) void {
         s.state = GlobalState.crossroad;
     } else {
         s.visited_events[idx] = true;
-        s.state = s.area.event_pool[idx];
+        s.state_register = s.area.event_pool[idx];
+        s.state = GlobalState.map;
     }
 }
 
@@ -1384,7 +1448,7 @@ pub fn process_tutorial_pause_menu(s: *State, released_keys: u8) void {
         s.state = GlobalState.title;
     }
     s.pager.set_cursor(10, 10);
-    pager.f47_text(&s.pager, "When fighting in battles, it can be difficult to remember the effect of all spells.");
+    pager.f47_text(&s.pager, "When fighting in battles, it can be difficult to remember the effect of each spells.");
     pager.f47_newline(&s.pager);
     pager.f47_newline(&s.pager);
     pager.f47_text(&s.pager, "Dont worry!");
@@ -1906,6 +1970,8 @@ export fn update() void {
         GlobalState.inventory_full => process_inventory_full(&state, released_keys),
         GlobalState.inventory_full_1 => process_inventory_full_1(&state, released_keys),
         GlobalState.inventory_full_2 => process_inventory_full_2(&state, released_keys),
+        GlobalState.map => process_map(&state, released_keys),
+        GlobalState.map_1 => process_map_1(&state, released_keys),
         GlobalState.new_game_init => process_new_game_init(),
         GlobalState.pick_random_event => process_pick_random_event(&state, released_keys),
         GlobalState.shop => process_shop(&state, released_keys),
