@@ -250,6 +250,18 @@ const Spell = struct {
         spell.set_spell(&[_]u8{ w4.BUTTON_LEFT, w4.BUTTON_LEFT, w4.BUTTON_UP, w4.BUTTON_1 });
         return spell;
     }
+
+    pub fn spell_crissaegrim() Spell {
+        var spell = Spell{
+            .name = "CRISSAEGRIM",
+            .price = 25,
+            .alignment = 9,
+            .effect = Effect{ .damage_to_enemy = 14 },
+        };
+        // crissaegrim is a fast but powerful sword, spell input should be short and easy
+        spell.set_spell(&[_]u8{ w4.BUTTON_LEFT, w4.BUTTON_2 });
+        return spell;
+    }
 };
 
 const GlobalState = enum {
@@ -261,6 +273,8 @@ const GlobalState = enum {
     event_castle_bat_1,
     event_castle_candle,
     event_castle_candle_1,
+    event_castle_schmoo,
+    event_castle_schmoo_1,
     event_cavern_man,
     event_cavern_man_1,
     event_coin_muncher,
@@ -339,10 +353,11 @@ const forest_area = Area{
 
 const castle_area = Area{
     .name = "CASTLE",
-    .event_count = 2,
+    .event_count = 3,
     .event_pool = &[_]GlobalState{
         GlobalState.event_castle_bat,
         GlobalState.event_castle_candle,
+        GlobalState.event_castle_schmoo,
     },
 };
 
@@ -444,6 +459,24 @@ const Enemy = struct {
         enemy.random_reward = RandomReward{
             .probability = 80,
             .reward = Reward{ .spell_reward = Spell.spell_holy_water() },
+        };
+        return enemy;
+    }
+
+    pub fn enemy_castle_schmoo() Enemy {
+        var enemy = zero();
+        const enemy_max_hp = 14;
+        enemy.hp = enemy_max_hp;
+        enemy.max_hp = enemy_max_hp;
+        enemy.intent[0] = EnemyIntent{
+            .trigger_time = 3 * 60,
+            .effect = Effect{ .damage_to_player = 5 },
+        };
+        enemy.sprite = &sprites.enemy_castle_schmoo;
+        enemy.guaranteed_reward = Reward{ .gold_reward = 5 };
+        enemy.random_reward = RandomReward{
+            .probability = 10,
+            .reward = Reward{ .spell_reward = Spell.spell_crissaegrim() },
         };
         return enemy;
     }
@@ -1634,6 +1667,13 @@ const castle_candle_dialog = [_]Dialog{
     Dialog{ .text = "Maybe you should try to break one of them?" },
 };
 
+const castle_schmoo_dialog = [_]Dialog{
+    Dialog{ .text = "The air around you becomes colder..." },
+    Dialog.newline,
+    Dialog.newline,
+    Dialog{ .text = "A severed head suddenly appears out of nowhere and is flying in your direction." },
+};
+
 pub fn process_event_cavern_man(s: *State, released_keys: u8) void {
     _ = released_keys;
     s.set_choices_confirm();
@@ -2009,6 +2049,8 @@ export fn update() void {
         GlobalState.event_castle_bat_1 => fight_intro(&state, released_keys, Enemy.enemy_castle_bat(), &castle_bat_dialog),
         GlobalState.event_castle_candle => setup_fight(&state, GlobalState.event_castle_candle_1),
         GlobalState.event_castle_candle_1 => fight_intro(&state, released_keys, Enemy.enemy_castle_candle(), &castle_candle_dialog),
+        GlobalState.event_castle_schmoo => setup_fight(&state, GlobalState.event_castle_schmoo_1),
+        GlobalState.event_castle_schmoo_1 => fight_intro(&state, released_keys, Enemy.enemy_castle_schmoo(), &castle_schmoo_dialog),
         GlobalState.event_cavern_man => process_event_cavern_man(&state, released_keys),
         GlobalState.event_cavern_man_1 => process_event_cavern_man_1(&state, released_keys),
         GlobalState.event_coin_muncher => setup_fight(&state, GlobalState.event_coin_muncher_1),
