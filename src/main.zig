@@ -297,6 +297,28 @@ const Spell = struct {
         spell.set_spell(&[_]u8{ w4.BUTTON_LEFT, w4.BUTTON_RIGHT, w4.BUTTON_LEFT, w4.BUTTON_1 });
         return spell;
     }
+
+    pub fn spell_fangs() Spell {
+        var spell = Spell{
+            .name = "FANGS",
+            .price = 13,
+            .alignment = -9,
+            .effect = Effect{ .vampirism_to_enemy = 3 },
+        };
+        spell.set_spell(&[_]u8{ w4.BUTTON_UP, w4.BUTTON_DOWN, w4.BUTTON_LEFT, w4.BUTTON_1 });
+        return spell;
+    }
+
+    pub fn spell_cloak() Spell {
+        var spell = Spell{
+            .name = "CLOAK",
+            .price = 9,
+            .alignment = -9,
+            .effect = Effect{ .player_shield = 10 },
+        };
+        spell.set_spell(&[_]u8{ w4.BUTTON_DOWN, w4.BUTTON_UP, w4.BUTTON_RIGHT, w4.BUTTON_1 });
+        return spell;
+    }
 };
 
 const GlobalState = enum {
@@ -312,6 +334,8 @@ const GlobalState = enum {
     event_castle_schmoo_1,
     event_castle_sun_shop,
     event_castle_sun_shop_1,
+    event_castle_vampire_shop,
+    event_castle_vampire_shop_1,
     event_cavern_man,
     event_cavern_man_1,
     event_coin_muncher,
@@ -390,12 +414,13 @@ const forest_area = Area{
 
 const castle_area = Area{
     .name = "CASTLE",
-    .event_count = 4,
+    .event_count = 5,
     .event_pool = &[_]GlobalState{
         GlobalState.event_castle_bat,
         GlobalState.event_castle_candle,
         GlobalState.event_castle_schmoo,
         GlobalState.event_castle_sun_shop,
+        GlobalState.event_castle_vampire_shop,
     },
 };
 
@@ -1009,6 +1034,10 @@ pub fn draw_heart(x: i32, y: i32) void {
     w4.blitSub(&sprites.effects, x, y, 9, 9, 36, 0, sprites.effects_width, w4.BLIT_1BPP);
 }
 
+pub fn draw_fang(x: i32, y: i32) void {
+    w4.blitSub(&sprites.effects, x, y, 9, 9, 45, 0, sprites.effects_width, w4.BLIT_1BPP);
+}
+
 pub fn draw_moon(x: i32, y: i32) void {
     w4.blitSub(&sprites.alignment, x, y, 9, 9, 0, 0, sprites.alignment_width, w4.BLIT_1BPP);
 }
@@ -1050,6 +1079,11 @@ pub fn draw_effect(x: i32, y: i32, s: *State, effect: Effect) void {
             draw_coin(x, y);
             s.pager.set_cursor(x + 12, y + 1);
             pager.f47_number(&s.pager, -@intCast(i32, amount));
+        },
+        Effect.vampirism_to_player, Effect.vampirism_to_enemy => |dmg| {
+            draw_fang(x, y);
+            s.pager.set_cursor(x + 12, y + 1);
+            pager.f47_number(&s.pager, @intCast(i32, dmg));
         },
         else => {},
     }
@@ -1792,6 +1826,19 @@ const castle_sun_shop_items = [_]Spell{
     Spell.spell_whip(),
 };
 
+const castle_vampire_shop_dialog = [_]Dialog{
+    Dialog{ .text = "A vampire seems to have set up shop here." },
+    Dialog.newline,
+    Dialog.newline,
+    Dialog{ .text = "\"You're not a vampire, but a customer is a customer...\"" },
+};
+
+const castle_vampire_shop_gold = 50;
+const castle_vampire_shop_items = [_]Spell{
+    Spell.spell_fangs(),
+    Spell.spell_cloak(),
+};
+
 pub fn process_event_cavern_man(s: *State, released_keys: u8) void {
     _ = released_keys;
     s.set_choices_confirm();
@@ -2153,6 +2200,8 @@ export fn update() void {
         GlobalState.event_castle_schmoo_1 => fight_intro(&state, released_keys, Enemy.enemy_castle_schmoo(), &castle_schmoo_dialog),
         GlobalState.event_castle_sun_shop => setup_shop(&state, GlobalState.event_castle_sun_shop_1, castle_sun_shop_gold, &castle_sun_shop_items),
         GlobalState.event_castle_sun_shop_1 => shop_intro(&state, released_keys, &castle_sun_shop_dialog),
+        GlobalState.event_castle_vampire_shop => setup_shop(&state, GlobalState.event_castle_vampire_shop_1, castle_vampire_shop_gold, &castle_vampire_shop_items),
+        GlobalState.event_castle_vampire_shop_1 => shop_intro(&state, released_keys, &castle_vampire_shop_dialog),
         GlobalState.event_cavern_man => process_event_cavern_man(&state, released_keys),
         GlobalState.event_cavern_man_1 => process_event_cavern_man_1(&state, released_keys),
         GlobalState.event_coin_muncher => setup_fight(&state, GlobalState.event_coin_muncher_1),
