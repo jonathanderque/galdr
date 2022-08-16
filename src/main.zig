@@ -262,6 +262,39 @@ const Spell = struct {
         spell.set_spell(&[_]u8{ w4.BUTTON_LEFT, w4.BUTTON_2 });
         return spell;
     }
+
+    pub fn spell_knife() Spell {
+        var spell = Spell{
+            .name = "KNIFE",
+            .price = 2,
+            .alignment = -5,
+            .effect = Effect{ .damage_to_enemy = 2 },
+        };
+        spell.set_spell(&[_]u8{ w4.BUTTON_RIGHT, w4.BUTTON_2 });
+        return spell;
+    }
+
+    pub fn spell_cross() Spell {
+        var spell = Spell{
+            .name = "CROSS",
+            .price = 10,
+            .alignment = 5,
+            .effect = Effect{ .damage_to_enemy = 6 },
+        };
+        spell.set_spell(&[_]u8{ w4.BUTTON_LEFT, w4.BUTTON_LEFT, w4.BUTTON_DOWN, w4.BUTTON_1 });
+        return spell;
+    }
+
+    pub fn spell_whip() Spell {
+        var spell = Spell{
+            .name = "WHIP",
+            .price = 13,
+            .alignment = 7,
+            .effect = Effect{ .damage_to_enemy = 10 },
+        };
+        spell.set_spell(&[_]u8{ w4.BUTTON_LEFT, w4.BUTTON_RIGHT, w4.BUTTON_LEFT, w4.BUTTON_1 });
+        return spell;
+    }
 };
 
 const GlobalState = enum {
@@ -275,6 +308,8 @@ const GlobalState = enum {
     event_castle_candle_1,
     event_castle_schmoo,
     event_castle_schmoo_1,
+    event_castle_sun_shop,
+    event_castle_sun_shop_1,
     event_cavern_man,
     event_cavern_man_1,
     event_coin_muncher,
@@ -353,11 +388,12 @@ const forest_area = Area{
 
 const castle_area = Area{
     .name = "CASTLE",
-    .event_count = 3,
+    .event_count = 4,
     .event_pool = &[_]GlobalState{
         GlobalState.event_castle_bat,
         GlobalState.event_castle_candle,
         GlobalState.event_castle_schmoo,
+        GlobalState.event_castle_sun_shop,
     },
 };
 
@@ -1104,6 +1140,19 @@ const Dialog = union(enum) {
     text: []const u8,
 };
 
+pub fn draw_dialog_list(dialog: []const Dialog, s: *State) void {
+    for (dialog) |elem| {
+        switch (elem) {
+            Dialog.newline => {
+                pager.f47_newline(&s.pager);
+            },
+            Dialog.text => |t| {
+                pager.f47_text(&s.pager, t);
+            },
+        }
+    }
+}
+
 pub fn setup_fight(s: *State, fight_state: GlobalState) void {
     s.set_choices_fight();
 
@@ -1130,16 +1179,37 @@ pub fn fight_intro(s: *State, released_keys: u8, enemy: Enemy, dialog: []const D
     w4.DRAW_COLORS.* = 0x02;
     draw_player_hud(s);
     s.pager.set_cursor(10, 30);
-    for (dialog) |elem| {
-        switch (elem) {
-            Dialog.newline => {
-                pager.f47_newline(&s.pager);
-            },
-            Dialog.text => |t| {
-                pager.f47_text(&s.pager, t);
-            },
-        }
+    draw_dialog_list(dialog, s);
+
+    draw_spell_list(&s.choices, &s.pager, 10, 140);
+}
+
+pub fn setup_shop(s: *State, shop_state: GlobalState, shop_gold: i16, shop_items: []const Spell) void {
+    s.set_choices_fight();
+
+    s.spell_index = 0;
+    s.shop_list_index = 0;
+    s.reset_shop_items();
+    s.shop_gold = shop_gold;
+    var i: usize = 0;
+    for (shop_items) |item| {
+        s.shop_items[i] = item;
+        i += 1;
     }
+
+    s.state = shop_state;
+}
+
+pub fn shop_intro(s: *State, released_keys: u8, dialog: []const Dialog) void {
+    process_choices_input(s, released_keys);
+    if (s.choices[0].is_completed()) {
+        s.set_choices_shop();
+        s.state = GlobalState.shop;
+    }
+    w4.DRAW_COLORS.* = 0x02;
+    draw_player_hud(s);
+    s.pager.set_cursor(10, 30);
+    draw_dialog_list(dialog, s);
 
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 }
@@ -1674,6 +1744,20 @@ const castle_schmoo_dialog = [_]Dialog{
     Dialog{ .text = "A severed head suddenly appears out of nowhere and is flying in your direction." },
 };
 
+const castle_sun_shop_dialog = [_]Dialog{
+    Dialog{ .text = "The merchant seems surprised:" },
+    Dialog.newline,
+    Dialog.newline,
+    Dialog{ .text = "\"A customer?? It's long since I've seen anyone around here...\"" },
+};
+
+const castle_sun_shop_gold = 50;
+const castle_sun_shop_items = [_]Spell{
+    Spell.spell_knife(),
+    Spell.spell_cross(),
+    Spell.spell_whip(),
+};
+
 pub fn process_event_cavern_man(s: *State, released_keys: u8) void {
     _ = released_keys;
     s.set_choices_confirm();
@@ -2051,6 +2135,8 @@ export fn update() void {
         GlobalState.event_castle_candle_1 => fight_intro(&state, released_keys, Enemy.enemy_castle_candle(), &castle_candle_dialog),
         GlobalState.event_castle_schmoo => setup_fight(&state, GlobalState.event_castle_schmoo_1),
         GlobalState.event_castle_schmoo_1 => fight_intro(&state, released_keys, Enemy.enemy_castle_schmoo(), &castle_schmoo_dialog),
+        GlobalState.event_castle_sun_shop => setup_shop(&state, GlobalState.event_castle_sun_shop_1, castle_sun_shop_gold, &castle_sun_shop_items),
+        GlobalState.event_castle_sun_shop_1 => shop_intro(&state, released_keys, &castle_sun_shop_dialog),
         GlobalState.event_cavern_man => process_event_cavern_man(&state, released_keys),
         GlobalState.event_cavern_man_1 => process_event_cavern_man_1(&state, released_keys),
         GlobalState.event_coin_muncher => setup_fight(&state, GlobalState.event_coin_muncher_1),
