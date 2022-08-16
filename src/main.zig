@@ -1002,6 +1002,10 @@ pub fn draw_progress_bubble(x: i32, y: i32, v: u32, max: u32) void {
     w4.DRAW_COLORS.* = 0x02;
 }
 
+pub fn draw_hero(x: i32, y: i32) void {
+    w4.blit(&sprites.hero, x, y, sprites.hero_width, sprites.hero_height, w4.BLIT_1BPP);
+}
+
 pub fn draw_shield(x: i32, y: i32) void {
     w4.blitSub(&sprites.effects, x, y, 9, 9, 9, 0, sprites.effects_width, w4.BLIT_1BPP);
 }
@@ -1309,7 +1313,7 @@ pub fn process_fight(s: *State, released_keys: u8) void {
     draw_shield(10, 22);
     s.pager.set_cursor(20, 22);
     pager.f47_number(&s.pager, s.player_shield);
-    w4.blit(&sprites.hero, 20, 32, sprites.hero_width, sprites.hero_height, w4.BLIT_1BPP);
+    draw_hero(20, 34);
 
     // enemy
     draw_enemy_hud(s);
@@ -1718,7 +1722,7 @@ pub fn process_crossroad(s: *State, released_keys: u8) void {
     // display choices / manage user input
     w4.DRAW_COLORS.* = 2;
     draw_player_hud(s);
-    w4.blit(&sprites.hero, 20, 32, sprites.hero_width, sprites.hero_height, w4.BLIT_1BPP);
+    draw_hero(20, 34);
     w4.blit(state.enemy.sprite, 105, 42, sprites.enemy_width, sprites.enemy_height, w4.BLIT_1BPP);
     w4.hline(0, 80, 160);
     s.pager.set_cursor(10, 90);
