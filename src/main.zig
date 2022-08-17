@@ -330,6 +330,9 @@ const GlobalState = enum {
     event_castle_sun_shop,
     event_castle_vampire_shop,
     event_cavern_man,
+    event_chest_regular,
+    event_chest_mimic, // same as other chest events, different outcome
+    event_chest_mimic_fight_intro,
     event_coin_muncher,
     event_healer,
     event_healer_decline,
@@ -384,6 +387,8 @@ const forest_area = Area{
     .name = "FOREST",
     .event_count = 4,
     .event_pool = &[_]GlobalState{
+        GlobalState.event_chest_regular,
+        GlobalState.event_chest_mimic,
         GlobalState.event_coin_muncher,
         GlobalState.event_sun_fountain,
         GlobalState.event_forest_wolf,
@@ -473,6 +478,20 @@ const Enemy = struct {
             .effect = Effect{ .enemy_shield = 10 },
         };
         enemy.sprite = &sprites.enemy_boss;
+        return enemy;
+    }
+
+    pub fn enemy_mimic() Enemy {
+        var enemy = zero();
+        const enemy_max_hp = 50;
+        enemy.hp = enemy_max_hp;
+        enemy.max_hp = enemy_max_hp;
+        enemy.intent[0] = EnemyIntent{
+            .trigger_time = 4 * 60,
+            .effect = Effect{ .damage_to_player = 6 },
+        };
+        enemy.sprite = &sprites.enemy_mimic;
+        enemy.guaranteed_reward = Reward{ .gold_reward = 1 };
         return enemy;
     }
 
@@ -1927,6 +1946,30 @@ const event_cavern_man_dialog = [_]Dialog{
     Dialog{ .text = "\"It's dangerous to go alone! Take this.\"" },
 };
 
+const event_chest_dialog = [_]Dialog{
+    Dialog{ .text = "There is a chest here. It probably contains some valuables." },
+    Dialog.newline,
+    Dialog.newline,
+    Dialog{ .text = "Open the chest?" },
+};
+
+const event_mimic_dialog = [_]Dialog{
+    Dialog{ .text = "This chest appears to be a mimic!... and it does not like you fiddling with it." },
+};
+
+const event_chest_skip_outcome = [_]Outcome{
+    Outcome{ .state = GlobalState.pick_random_event },
+};
+
+const event_chest_regular_gold_outcome = [_]Outcome{
+    Outcome{ .guaranteed_reward = Reward{ .gold_reward = 10 } },
+    Outcome{ .state = GlobalState.fight_reward },
+};
+
+const event_chest_mimic_outcome = [_]Outcome{
+    Outcome{ .state = GlobalState.event_chest_mimic_fight_intro },
+};
+
 const coin_muncher_dialog = [_]Dialog{
     Dialog{ .text = "You suddenly wake up with something brushing against your leg!" },
     Dialog.newline,
@@ -2190,6 +2233,9 @@ export fn update() void {
         GlobalState.event_castle_sun_shop => shop_intro(&state, released_keys, &castle_sun_shop_dialog, castle_sun_shop_gold, &castle_sun_shop_items),
         GlobalState.event_castle_vampire_shop => shop_intro(&state, released_keys, &castle_vampire_shop_dialog, castle_vampire_shop_gold, &castle_vampire_shop_items),
         GlobalState.event_cavern_man => text_event_choice_1(&state, released_keys, &event_cavern_man_dialog, "Confirm", &event_cavern_man_outcome),
+        GlobalState.event_chest_regular => text_event_choice_2(&state, released_keys, &event_chest_dialog, "Skip", &event_chest_skip_outcome, "Open it", &event_chest_regular_gold_outcome),
+        GlobalState.event_chest_mimic => text_event_choice_2(&state, released_keys, &event_chest_dialog, "Skip", &event_chest_skip_outcome, "Open it", &event_chest_mimic_outcome),
+        GlobalState.event_chest_mimic_fight_intro => fight_intro(&state, released_keys, Enemy.enemy_mimic(), &event_mimic_dialog),
         GlobalState.event_coin_muncher => fight_intro(&state, released_keys, Enemy.enemy_coin_muncher(), &coin_muncher_dialog),
         GlobalState.event_healer => process_event_healer(&state, released_keys),
         GlobalState.event_healer_decline => text_event_confirm(&state, released_keys, &event_healer_decline_dialog),
