@@ -1243,7 +1243,7 @@ pub fn fight_intro(s: *State, released_keys: u8, enemy: Enemy, dialog: []const D
 
 pub fn shop_intro(s: *State, released_keys: u8, dialog: []const Dialog, shop_gold: i16, shop_items: []const Spell) void {
     if (s.state_has_changed) {
-        s.set_choices_fight();
+        s.set_choices_with_labels_1("TO THE SHOP");
 
         s.spell_index = 0;
         s.shop_list_index = 0;
