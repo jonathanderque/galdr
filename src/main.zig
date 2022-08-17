@@ -345,6 +345,8 @@ const GlobalState = enum {
     event_chest_mimic, // same as other chest events, different outcome
     event_chest_mimic_fight_intro,
     event_coast_barbarian_invasion,
+    event_coast_kidnapped_daughter,
+    event_coast_kidnapped_daughter_decline,
     event_coast_merfolk,
     event_coast_seagull,
     event_coast_sea_monster,
@@ -394,8 +396,17 @@ const coast_area = Area{
     .event_pool = &[_]GlobalState{
         GlobalState.event_coast_seagull,
         GlobalState.event_coast_barbarian_invasion,
+        GlobalState.event_coast_kidnapped_daughter,
         GlobalState.event_coast_merfolk,
         GlobalState.event_coast_sea_monster,
+    },
+};
+
+const pirate_area = Area{
+    .name = "PIRATE SHIP",
+    .event_count = 1,
+    .event_pool = &[_]GlobalState{
+        GlobalState.event_coast_seagull,
     },
 };
 
@@ -1315,6 +1326,7 @@ const Dialog = union(enum) {
 };
 
 const Outcome = union(enum) {
+    area: Area,
     state: GlobalState,
     apply_effect: Effect,
     guaranteed_reward: Reward,
@@ -2066,6 +2078,12 @@ const castle_vampire_shop_items = [_]Spell{
 pub fn apply_outcome_list(s: *State, outcome: []const Outcome) void {
     for (outcome) |o| {
         switch (o) {
+            Outcome.area => |area| {
+                s.area = area;
+                s.area_event_counter = 0;
+                s.reset_visited_events();
+                s.state = GlobalState.pick_random_event;
+            },
             Outcome.state => |st| {
                 s.state = st;
             },
@@ -2126,6 +2144,30 @@ const event_barbarian_invasion_dialog = [_]Dialog{
     Dialog.newline,
     Dialog.newline,
     Dialog{ .text = "\"Barbarians are about to land on our shores, please help us fight them!\"" },
+};
+
+const event_kidnapped_daughter_dialog = [_]Dialog{
+    Dialog{ .text = "\"Pirates have kidnapped our beloved daughter!\"" },
+    Dialog.newline,
+    Dialog.newline,
+    Dialog{ .text = "\"Can you please try to save her from the pirates?\"" },
+};
+
+const event_kidnapped_daughter_decline_dialog = [_]Dialog{
+    Dialog{ .text = "Despite their distress, you answer that you have a more important quest to fulfill.." },
+};
+
+const event_kidnapped_daughter_skip_outcome = [_]Outcome{
+    Outcome{
+        .state = GlobalState.event_coast_kidnapped_daughter_decline,
+    },
+};
+
+// TODO
+const event_kidnapped_daughter_accept_outcome = [_]Outcome{
+    Outcome{
+        .area = pirate_area,
+    },
 };
 
 const event_merfolk_dialog = [_]Dialog{
@@ -2451,6 +2493,8 @@ export fn update() void {
         GlobalState.event_chest_mimic => text_event_choice_2(&state, released_keys, &event_chest_dialog, "Skip", &event_chest_skip_outcome, "Open it", &event_chest_mimic_outcome),
         GlobalState.event_chest_mimic_fight_intro => fight_intro(&state, released_keys, Enemy.enemy_mimic(), &event_mimic_dialog),
         GlobalState.event_coast_barbarian_invasion => conditional_fight_intro(&state, released_keys, Enemy.enemy_barbarian(), &event_barbarian_invasion_dialog),
+        GlobalState.event_coast_kidnapped_daughter => text_event_choice_2(&state, released_keys, &event_kidnapped_daughter_dialog, "Skip", &event_kidnapped_daughter_skip_outcome, "Save her", &event_kidnapped_daughter_accept_outcome),
+        GlobalState.event_coast_kidnapped_daughter_decline => text_event_confirm(&state, released_keys, &event_kidnapped_daughter_decline_dialog),
         GlobalState.event_coast_merfolk => fight_intro(&state, released_keys, Enemy.enemy_merfolk(), &event_merfolk_dialog),
         GlobalState.event_coast_seagull => fight_intro(&state, released_keys, Enemy.enemy_seagull(), &event_seagull_dialog),
         GlobalState.event_coast_sea_monster => conditional_fight_intro(&state, released_keys, Enemy.enemy_sea_monster(), &event_sea_monster_dialog),
