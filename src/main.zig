@@ -333,6 +333,7 @@ const GlobalState = enum {
     event_chest_regular,
     event_chest_mimic, // same as other chest events, different outcome
     event_chest_mimic_fight_intro,
+    event_coast_barbarian_invasion,
     event_coast_sea_monster,
     event_coin_muncher,
     event_healer,
@@ -378,6 +379,7 @@ const coast_area = Area{
     .name = "COAST",
     .event_count = 3,
     .event_pool = &[_]GlobalState{
+        GlobalState.event_coast_barbarian_invasion,
         GlobalState.event_coast_sea_monster,
     },
 };
@@ -472,6 +474,20 @@ const Enemy = struct {
 
     pub fn zero() Enemy {
         return Enemy{};
+    }
+
+    pub fn enemy_barbarian() Enemy {
+        var enemy = zero();
+        const enemy_max_hp = 15;
+        enemy.hp = enemy_max_hp;
+        enemy.max_hp = enemy_max_hp;
+        enemy.intent[0] = EnemyIntent{
+            .trigger_time = 6 * 60,
+            .effect = Effect{ .damage_to_player = 5 },
+        };
+        enemy.guaranteed_reward = Reward{ .gold_reward = 5 };
+        enemy.sprite = &sprites.enemy_barbarian;
+        return enemy;
     }
 
     pub fn enemy_boss() Enemy {
@@ -2059,6 +2075,13 @@ pub fn text_event_confirm(s: *State, released_keys: u8, dialog: []const Dialog) 
     text_event_choice_1(s, released_keys, dialog, "Confirm", &outcome);
 }
 
+const event_barbarian_invasion_dialog = [_]Dialog{
+    Dialog{ .text = "A villager pleas for help:" },
+    Dialog.newline,
+    Dialog.newline,
+    Dialog{ .text = "\"Barbarians are about to land on our shores, please help us fight them!\"" },
+};
+
 const event_cavern_man_outcome = [_]Outcome{
     Outcome{ .guaranteed_reward = Reward{ .spell_reward = Spell.spell_sword() } },
     Outcome{ .state = GlobalState.fight_reward },
@@ -2098,7 +2121,7 @@ const event_sea_monster_dialog = [_]Dialog{
     Dialog{ .text = "Fishermen are approaching you, they say:" },
     Dialog.newline,
     Dialog.newline,
-    Dialog{ .text = "\"With the eclipse approaching, attacks from the sea monster are more frequent..\"" },
+    Dialog{ .text = "\"With the upcoming eclipse, attacks from the sea monster are more frequent..\"" },
     Dialog.newline,
     Dialog.newline,
     Dialog{ .text = "\"Can you help us get rid of it?\"" },
@@ -2370,6 +2393,7 @@ export fn update() void {
         GlobalState.event_chest_regular => text_event_choice_2(&state, released_keys, &event_chest_dialog, "Skip", &event_chest_skip_outcome, "Open it", &event_chest_regular_gold_outcome),
         GlobalState.event_chest_mimic => text_event_choice_2(&state, released_keys, &event_chest_dialog, "Skip", &event_chest_skip_outcome, "Open it", &event_chest_mimic_outcome),
         GlobalState.event_chest_mimic_fight_intro => fight_intro(&state, released_keys, Enemy.enemy_mimic(), &event_mimic_dialog),
+        GlobalState.event_coast_barbarian_invasion => conditional_fight_intro(&state, released_keys, Enemy.enemy_barbarian(), &event_barbarian_invasion_dialog),
         GlobalState.event_coast_sea_monster => conditional_fight_intro(&state, released_keys, Enemy.enemy_sea_monster(), &event_sea_monster_dialog),
         GlobalState.event_coin_muncher => fight_intro(&state, released_keys, Enemy.enemy_coin_muncher(), &coin_muncher_dialog),
         GlobalState.event_healer => process_event_healer(&state, released_keys),
