@@ -164,6 +164,17 @@ const Spell = struct {
         return s;
     }
 
+    pub fn spell_squawk() Spell {
+        var s = Spell{
+            .name = "SQUAWK",
+            .price = 11,
+            .alignment = 0,
+            .effect = Effect{ .damage_to_enemy = 1 },
+        };
+        s.set_spell(&[_]u8{ w4.BUTTON_UP, w4.BUTTON_UP, w4.BUTTON_1 });
+        return s;
+    }
+
     pub fn spell_fireball() Spell {
         var s = Spell{
             .name = "FIREBALL",
@@ -334,6 +345,7 @@ const GlobalState = enum {
     event_chest_mimic, // same as other chest events, different outcome
     event_chest_mimic_fight_intro,
     event_coast_barbarian_invasion,
+    event_coast_seagull,
     event_coast_sea_monster,
     event_coin_muncher,
     event_healer,
@@ -379,6 +391,7 @@ const coast_area = Area{
     .name = "COAST",
     .event_count = 3,
     .event_pool = &[_]GlobalState{
+        GlobalState.event_coast_seagull,
         GlobalState.event_coast_barbarian_invasion,
         GlobalState.event_coast_sea_monster,
     },
@@ -620,6 +633,20 @@ const Enemy = struct {
         };
         enemy.guaranteed_reward = Reward{ .gold_reward = 50 };
         enemy.sprite = &sprites.enemy_militia;
+        return enemy;
+    }
+
+    pub fn enemy_seagull() Enemy {
+        var enemy = zero();
+        const enemy_max_hp = 10;
+        enemy.hp = enemy_max_hp;
+        enemy.max_hp = enemy_max_hp;
+        enemy.intent[0] = EnemyIntent{
+            .trigger_time = 1 * 60,
+            .effect = Effect{ .damage_to_player = 1 },
+        };
+        enemy.guaranteed_reward = Reward{ .spell_reward = Spell.spell_squawk() };
+        enemy.sprite = &sprites.enemy_seagull;
         return enemy;
     }
 
@@ -2117,6 +2144,10 @@ const event_chest_mimic_outcome = [_]Outcome{
     Outcome{ .state = GlobalState.event_chest_mimic_fight_intro },
 };
 
+const event_seagull_dialog = [_]Dialog{
+    Dialog{ .text = "As you were quietly enjoying your meal on the beach, a seagull is trying to steal your food!!!" },
+};
+
 const event_sea_monster_dialog = [_]Dialog{
     Dialog{ .text = "Fishermen are approaching you, they say:" },
     Dialog.newline,
@@ -2394,6 +2425,7 @@ export fn update() void {
         GlobalState.event_chest_mimic => text_event_choice_2(&state, released_keys, &event_chest_dialog, "Skip", &event_chest_skip_outcome, "Open it", &event_chest_mimic_outcome),
         GlobalState.event_chest_mimic_fight_intro => fight_intro(&state, released_keys, Enemy.enemy_mimic(), &event_mimic_dialog),
         GlobalState.event_coast_barbarian_invasion => conditional_fight_intro(&state, released_keys, Enemy.enemy_barbarian(), &event_barbarian_invasion_dialog),
+        GlobalState.event_coast_seagull => fight_intro(&state, released_keys, Enemy.enemy_seagull(), &event_seagull_dialog),
         GlobalState.event_coast_sea_monster => conditional_fight_intro(&state, released_keys, Enemy.enemy_sea_monster(), &event_sea_monster_dialog),
         GlobalState.event_coin_muncher => fight_intro(&state, released_keys, Enemy.enemy_coin_muncher(), &coin_muncher_dialog),
         GlobalState.event_healer => process_event_healer(&state, released_keys),
