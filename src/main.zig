@@ -395,7 +395,7 @@ const forest_area = Area{
 
 const castle_area = Area{
     .name = "CASTLE",
-    .event_count = 5,
+    .event_count = 4,
     .event_pool = &[_]GlobalState{
         GlobalState.event_castle_bat,
         GlobalState.event_castle_candle,
@@ -974,8 +974,8 @@ pub fn draw_spell_input(input: []const u8, current_progress: usize, x: i32, y: i
 
 pub fn draw_spell(spell: *Spell, p: *pager.Pager, x: i32, y: i32) void {
     p.set_cursor(x, y + 1);
-    pager.f47_text(&state.pager, spell.name);
-    draw_spell_input(&spell.input, spell.current_progress, 10 + (12 * (1 + pager.f47_letter_width)), y);
+    pager.fmg_text(&state.pager, spell.name);
+    draw_spell_input(&spell.input, spell.current_progress, 10 + (12 * (1 + pager.fmg_letter_width)), y);
 }
 
 pub fn draw_spell_list(spells: []Spell, p: *pager.Pager, x: i32, y: i32) void {
@@ -1044,32 +1044,32 @@ pub fn draw_effect(x: i32, y: i32, s: *State, effect: Effect) void {
         Effect.damage_to_player, Effect.damage_to_enemy => |dmg| {
             w4.blitSub(&sprites.effects, x, y, 9, 9, 0, 0, sprites.effects_width, w4.BLIT_1BPP);
             s.pager.set_cursor(x + 12, y + 1);
-            pager.f47_number(&s.pager, @intCast(i32, dmg));
+            pager.fmg_number(&s.pager, @intCast(i32, dmg));
         },
         Effect.player_shield, Effect.enemy_shield => |amount| {
             w4.blitSub(&sprites.effects, x, y, 9, 9, 9, 0, sprites.effects_width, w4.BLIT_1BPP);
             s.pager.set_cursor(x + 12, y + 1);
-            pager.f47_number(&s.pager, @intCast(i32, amount));
+            pager.fmg_number(&s.pager, @intCast(i32, amount));
         },
         Effect.player_heal => |amount| {
             w4.blitSub(&sprites.effects, x, y, 9, 9, 18, 0, sprites.effects_width, w4.BLIT_1BPP);
             s.pager.set_cursor(x + 12, y + 1);
-            pager.f47_number(&s.pager, amount);
+            pager.fmg_number(&s.pager, amount);
         },
         Effect.player_healing_max => {
             w4.blitSub(&sprites.effects, x, y, 9, 9, 18, 0, sprites.effects_width, w4.BLIT_1BPP);
             s.pager.set_cursor(x + 12, y + 1);
-            pager.f47_text(&s.pager, "max");
+            pager.fmg_text(&s.pager, "max");
         },
         Effect.gold_payment => |amount| {
             draw_coin(x, y);
             s.pager.set_cursor(x + 12, y + 1);
-            pager.f47_number(&s.pager, -@intCast(i32, amount));
+            pager.fmg_number(&s.pager, -@intCast(i32, amount));
         },
         Effect.vampirism_to_player, Effect.vampirism_to_enemy => |dmg| {
             draw_fang(x, y);
             s.pager.set_cursor(x + 12, y + 1);
-            pager.f47_number(&s.pager, @intCast(i32, dmg));
+            pager.fmg_number(&s.pager, @intCast(i32, dmg));
         },
         else => {},
     }
@@ -1077,26 +1077,26 @@ pub fn draw_effect(x: i32, y: i32, s: *State, effect: Effect) void {
 
 pub fn draw_shop_party(x: i32, y: i23, s: *State, name: []const u8, gold_amount: i16) void {
     s.pager.set_cursor(x, y);
-    pager.f47_text(&s.pager, name);
-    pager.f47_text(&s.pager, " * ");
+    pager.fmg_text(&s.pager, name);
+    pager.fmg_text(&s.pager, " * ");
     draw_coin(s.pager.cursor_x, y - 1);
     s.pager.set_cursor(s.pager.cursor_x + 11, y);
-    pager.f47_number(&s.pager, gold_amount);
+    pager.fmg_number(&s.pager, gold_amount);
 }
 
 pub fn draw_reward(s: *State, reward: Reward) void {
     switch (reward) {
         Reward.gold_reward => |amount| {
-            pager.f47_text(&s.pager, "You gained ");
-            pager.f47_number(&s.pager, amount);
-            pager.f47_text(&s.pager, " gold!");
-            pager.f47_newline(&s.pager);
+            pager.fmg_text(&s.pager, "You gained ");
+            pager.fmg_number(&s.pager, amount);
+            pager.fmg_text(&s.pager, " gold!");
+            pager.fmg_newline(&s.pager);
         },
         Reward.spell_reward => |spell| {
-            pager.f47_text(&s.pager, "You leared the ");
-            pager.f47_text(&s.pager, spell.name);
-            pager.f47_text(&s.pager, " spell!");
-            pager.f47_newline(&s.pager);
+            pager.fmg_text(&s.pager, "You leared the ");
+            pager.fmg_text(&s.pager, spell.name);
+            pager.fmg_text(&s.pager, " spell!");
+            pager.fmg_newline(&s.pager);
         },
         else => {},
     }
@@ -1104,49 +1104,46 @@ pub fn draw_reward(s: *State, reward: Reward) void {
 
 pub fn draw_spell_details(x: i32, y: i32, s: *State, spell: Spell) void {
     s.pager.set_cursor(x, y);
-    pager.f47_text(&s.pager, spell.name);
+    pager.fmg_text(&s.pager, spell.name);
     if (spell.alignment > 0) {
         draw_sun(s.pager.cursor_x, y - 1);
     } else {
         draw_moon(s.pager.cursor_x, y - 1);
     }
     s.pager.set_cursor(s.pager.cursor_x + 11, y);
-    pager.f47_text(&s.pager, " * ");
+    pager.fmg_text(&s.pager, " * ");
     draw_effect(s.pager.cursor_x, y - 1, s, spell.effect);
-    pager.f47_text(&s.pager, " * ");
+    pager.fmg_text(&s.pager, " * ");
     draw_coin(s.pager.cursor_x, y - 1);
     s.pager.set_cursor(s.pager.cursor_x + 11, y);
-    pager.f47_number(&s.pager, spell.price);
-    draw_spell_input(&spell.input, 0, x, y + 2 * (pager.f47_height + 1));
+    pager.fmg_number(&s.pager, spell.price);
+    draw_spell_input(&spell.input, 0, x, y + 2 * (pager.fmg_letter_height + 1));
 }
 
 // draws a list of spell names + cursor
 pub fn draw_spell_inventory_list(x: i32, y: i32, s: *State, list: []Spell, show_cursor: bool) void {
     var i: usize = 0;
     while (i < list.len) : (i += 1) {
-        const y_list = y + @intCast(i32, i * (pager.f47_height + 2));
+        const y_list = y + @intCast(i32, i * (pager.fmg_letter_height + 2));
         s.pager.set_cursor(x, y_list);
         if (show_cursor and i == s.spell_index) {
             w4.blitSub(&sprites.arrows, x + 2, y_list - 1, 5, 9, 0, 9, sprites.arrows_width, w4.BLIT_1BPP | w4.BLIT_FLIP_X);
         }
         s.pager.set_cursor(x + 10, y_list);
-        pager.f47_text(&s.pager, list[i].name);
+        pager.fmg_text(&s.pager, list[i].name);
     }
 }
 
-pub fn draw_alignment_hud(s: *State) void {
-    const x: i32 = 10;
-    const y: i32 = 0;
-
-    draw_moon(x, y + 11);
-    draw_sun(x + 72, y + 11);
+pub fn draw_alignment_hud(s: *State, x: i32, y: i32) void {
+    draw_moon(x, y + 1);
+    draw_sun(x + 72, y + 1);
     w4.DRAW_COLORS.* = 0x20;
     // aligment bar is 60 wide
-    w4.rect(x + 10, y + 12, 60, 7);
+    w4.rect(x + 10, y + 2, 60, 7);
     //w4.rect(x + 10 + 30, y + 12, 2, 7);
     w4.DRAW_COLORS.* = 0x22;
     // oval x should be between 10 and 55
-    w4.oval(x + 10 + @divTrunc((100 + s.player_alignment) * 55, 200), y + 14, 4, 3);
+    w4.oval(x + 10 + @divTrunc((100 + s.player_alignment) * 55, 200), y + 4, 4, 3);
     w4.DRAW_COLORS.* = 0x02;
 }
 
@@ -1163,14 +1160,14 @@ pub fn draw_player_hud(s: *State) void {
 
     const hp_x = x + 15 + 5 * sprites.progress_bar_width;
     s.pager.set_cursor(hp_x, y + 1);
-    pager.f47_number(&s.pager, s.player_hp);
-    pager.f47_text(&s.pager, "/");
-    pager.f47_number(&s.pager, s.player_max_hp);
+    pager.fmg_number(&s.pager, s.player_hp);
+    pager.fmg_text(&s.pager, "/");
+    pager.fmg_number(&s.pager, s.player_max_hp);
     draw_coin(hp_x, y + 11);
     s.pager.set_cursor(hp_x + 11, y + 12);
-    pager.f47_number(&s.pager, s.player_gold);
+    pager.fmg_number(&s.pager, s.player_gold);
 
-    draw_alignment_hud(s);
+    draw_alignment_hud(s, 10, 10);
 }
 
 pub fn draw_enemy_hud(s: *State) void {
@@ -1185,11 +1182,11 @@ pub fn draw_enemy_hud(s: *State) void {
     w4.rect(x + 10, y + 11, @intCast(u32, @divTrunc(2 * sprites.progress_bar_width * s.enemy.hp, s.enemy.max_hp)), sprites.progress_bar_height);
     const hp_x = x + 15 + 2 * sprites.progress_bar_width;
     s.pager.set_cursor(hp_x, y + 11);
-    pager.f47_number(&s.pager, s.enemy.hp);
+    pager.fmg_number(&s.pager, s.enemy.hp);
 
     draw_shield(x, y);
     s.pager.set_cursor(x + 10, y + 1);
-    pager.f47_number(&s.pager, s.enemy.shield);
+    pager.fmg_number(&s.pager, s.enemy.shield);
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -1211,10 +1208,10 @@ pub fn draw_dialog_list(dialog: []const Dialog, s: *State) void {
     for (dialog) |elem| {
         switch (elem) {
             Dialog.newline => {
-                pager.f47_newline(&s.pager);
+                pager.fmg_newline(&s.pager);
             },
             Dialog.text => |t| {
-                pager.f47_text(&s.pager, t);
+                pager.fmg_text(&s.pager, t);
             },
         }
     }
@@ -1327,7 +1324,7 @@ pub fn process_fight(s: *State, released_keys: u8) void {
     // hero
     draw_shield(10, 22);
     s.pager.set_cursor(20, 22);
-    pager.f47_number(&s.pager, s.player_shield);
+    pager.fmg_number(&s.pager, s.player_shield);
     draw_hero(20, 34);
 
     // enemy
@@ -1364,9 +1361,9 @@ pub fn process_fight_reward(s: *State, released_keys: u8) void {
     w4.DRAW_COLORS.* = 0x02;
     draw_player_hud(s);
     s.pager.set_cursor(10, 30);
-    pager.f47_text(&s.pager, "Victory!!");
-    pager.f47_newline(&s.pager);
-    pager.f47_newline(&s.pager);
+    pager.fmg_text(&s.pager, "Victory!!");
+    pager.fmg_newline(&s.pager);
+    pager.fmg_newline(&s.pager);
     draw_reward(s, s.enemy.guaranteed_reward);
 
     if (s.reward_probability < s.enemy.random_reward.probability) {
@@ -1387,7 +1384,7 @@ pub fn process_game_over(s: *State, released_keys: u8) void {
     w4.blit(&sprites.skull, 40, 48, sprites.skull_width, sprites.skull_height, w4.BLIT_1BPP);
     w4.blit(&sprites.skull, 102, 48, sprites.skull_width, sprites.skull_height, w4.BLIT_1BPP | w4.BLIT_FLIP_X);
     s.pager.set_cursor(58, 50);
-    pager.f47_text(&s.pager, "GAME OVER");
+    pager.fmg_text(&s.pager, "GAME OVER");
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 }
 
@@ -1428,10 +1425,10 @@ pub fn process_inventory_full(s: *State, released_keys: u8) void {
     }
     w4.DRAW_COLORS.* = 0x02;
     s.pager.set_cursor(10, 10);
-    pager.f47_text(&s.pager, "Your spellbook is full!!");
-    pager.f47_newline(&s.pager);
-    pager.f47_newline(&s.pager);
-    pager.f47_text(&s.pager, "You should discard some spells before continuing your adventure.");
+    pager.fmg_text(&s.pager, "Your spellbook is full!!");
+    pager.fmg_newline(&s.pager);
+    pager.fmg_newline(&s.pager);
+    pager.fmg_text(&s.pager, "You should discard some spells before continuing your adventure.");
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 }
 
@@ -1477,16 +1474,16 @@ pub fn process_inventory_full_2(s: *State, released_keys: u8) void {
     draw_shop_party(10, 50, s, "YOU", s.player_gold);
     draw_spell_inventory_list(10, 70, s, &s.spellbook, s.shop_list_index == 0);
 
-    draw_shop_party(90, 50, s, "GROUND", s.shop_gold);
+    draw_shop_party(80, 50, s, "GROUND", s.shop_gold);
     draw_spell_inventory_list(90, 70, s, &s.shop_items, s.shop_list_index == 1);
 
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 
     if (get_spell_list_size(&s.spellbook) >= spell_book_full_size) {
         s.pager.set_cursor(85, 140);
-        pager.f47_text(&s.pager, "Can't leave. ");
+        pager.fmg_text(&s.pager, "Can't leave. ");
         s.pager.set_cursor(85, 150);
-        pager.f47_text(&s.pager, "Spellbook full");
+        pager.fmg_text(&s.pager, "Spellbook full");
     }
 }
 
@@ -1500,14 +1497,14 @@ pub fn process_map(s: *State, released_keys: u8) void {
         return;
     }
 
-    const name_x = 80 - pager.f47_letter_width * @intCast(i32, @divTrunc(s.area.name.len, 2));
+    const name_x = 80 - pager.fmg_letter_width * @intCast(i32, @divTrunc(s.area.name.len, 2));
     s.pager.set_cursor(name_x, 40);
-    pager.f47_text(&s.pager, s.area.name);
-    const counter_x = 80 - pager.f47_letter_width * (5 / 2);
+    pager.fmg_text(&s.pager, s.area.name);
+    const counter_x = 80 - pager.fmg_letter_width * (5 / 2);
     s.pager.set_cursor(counter_x, 60);
-    pager.f47_number(&s.pager, @intCast(i32, s.area_counter));
-    pager.f47_text(&s.pager, " - ");
-    pager.f47_number(&s.pager, @intCast(i32, s.area_event_counter));
+    pager.fmg_number(&s.pager, @intCast(i32, s.area_counter));
+    pager.fmg_text(&s.pager, " - ");
+    pager.fmg_number(&s.pager, @intCast(i32, s.area_event_counter));
 
     const map_y = 100;
     var map_x: i32 = 30;
@@ -1589,8 +1586,8 @@ pub fn process_title(s: *State, released_keys: u8) void {
     _ = rand();
 
     w4.DRAW_COLORS.* = 0x02;
-    s.pager.set_cursor(58, 50);
-    pager.f47_text(&s.pager, "G A L D R");
+    s.pager.set_cursor(52, 50);
+    pager.fmg_text(&s.pager, "G A L D R");
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 }
 
@@ -1602,22 +1599,21 @@ pub fn process_tutorial_basics(s: *State, released_keys: u8) void {
         s.state = GlobalState.tutorial_synergies;
     }
     s.pager.set_cursor(10, 10);
-    pager.f47_text(&s.pager, "Welcome to GALDR!");
-    pager.f47_newline(&s.pager);
-    pager.f47_newline(&s.pager);
-    pager.f47_text(&s.pager, "We will explain you first how to cast spells.");
-    pager.f47_newline(&s.pager);
-    pager.f47_newline(&s.pager);
-    pager.f47_text(&s.pager, "Look at the bottom of the screen, ");
-    pager.f47_text(&s.pager, "to cast the NEXT spell:");
-    pager.f47_newline(&s.pager);
-    pager.f47_newline(&s.pager);
-    pager.f47_text(&s.pager, " 1. press and release ");
+    pager.fmg_text(&s.pager, "Welcome to GALDR!");
+    pager.fmg_newline(&s.pager);
+    pager.fmg_newline(&s.pager);
+    pager.fmg_text(&s.pager, "We will explain you first how to cast spells");
+    pager.fmg_newline(&s.pager);
+    pager.fmg_newline(&s.pager);
+    pager.fmg_text(&s.pager, "Look at the bottom of the screen, ");
+    pager.fmg_text(&s.pager, "to cast the NEXT spell:");
+    pager.fmg_newline(&s.pager);
+    pager.fmg_newline(&s.pager);
+    pager.fmg_text(&s.pager, " 1. press and release ");
     draw_right_arrow(s.pager.cursor_x, s.pager.cursor_y, false);
     s.pager.set_cursor(s.pager.cursor_x + 11, s.pager.cursor_y);
-    pager.f47_newline(&s.pager);
-    pager.f47_newline(&s.pager);
-    pager.f47_text(&s.pager, " 2. press and release ");
+    pager.fmg_newline(&s.pager);
+    pager.fmg_text(&s.pager, " 2. then press and release ");
     draw_button_1(s.pager.cursor_x, s.pager.cursor_y, false);
 
     draw_spell_list(&s.choices, &s.pager, 10, 140);
@@ -1631,20 +1627,18 @@ pub fn process_tutorial_synergies(s: *State, released_keys: u8) void {
         s.state = GlobalState.tutorial_pause_menu;
     }
     s.pager.set_cursor(10, 10);
-    pager.f47_text(&s.pager, "You now have a second spell in your spellbook, you can now HEAL as well!");
-    pager.f47_newline(&s.pager);
-    pager.f47_newline(&s.pager);
-    pager.f47_text(&s.pager, "Look carefully; you'll notice similarities between the input needed for these two spells.");
-    pager.f47_newline(&s.pager);
-    pager.f47_text(&s.pager, "Because your input applies for all spells, casting NEXT will also cast HEAL!");
-    pager.f47_newline(&s.pager);
-    pager.f47_newline(&s.pager);
-    pager.f47_text(&s.pager, "Building a spellbook with such synergies is key to becoming a great wizard!");
+    pager.fmg_text(&s.pager, "Look carefully at the spells below; you'll notice similarities between the input needed for these two spells.");
+    pager.fmg_newline(&s.pager);
+    pager.fmg_newline(&s.pager);
+    pager.fmg_text(&s.pager, "Because your input applies for all spells, casting NEXT will also cast HEAL!");
+    pager.fmg_newline(&s.pager);
+    pager.fmg_newline(&s.pager);
+    pager.fmg_text(&s.pager, "Building a spellbook with such synergies is key to become a great wizard!");
 
     if (s.choices[0].is_completed()) {
-        draw_heart(100, 140);
-        s.pager.set_cursor(110, 140);
-        pager.f47_text(&s.pager, "+ 1");
+        draw_heart(110, 140);
+        s.pager.set_cursor(120, 140);
+        pager.fmg_text(&s.pager, "+1");
     }
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 }
@@ -1657,21 +1651,21 @@ pub fn process_tutorial_pause_menu(s: *State, released_keys: u8) void {
         s.state = GlobalState.tutorial_alignment;
     }
     s.pager.set_cursor(10, 10);
-    pager.f47_text(&s.pager, "When fighting in battles, it can be difficult to remember the effect of each spells.");
-    pager.f47_newline(&s.pager);
-    pager.f47_newline(&s.pager);
-    pager.f47_text(&s.pager, "Dont worry!");
-    pager.f47_newline(&s.pager);
-    pager.f47_text(&s.pager, "Casting ");
+    pager.fmg_text(&s.pager, "When fighting in battles, it can be difficult to remember the details of each spell.");
+    pager.fmg_newline(&s.pager);
+    pager.fmg_newline(&s.pager);
+    pager.fmg_text(&s.pager, "Dont worry!");
+    pager.fmg_newline(&s.pager);
+    pager.fmg_text(&s.pager, "Casting ");
     draw_button_2(s.pager.cursor_x, s.pager.cursor_y - 1, false);
     draw_button_2(s.pager.cursor_x + 11, s.pager.cursor_y - 1, false);
     draw_button_1(s.pager.cursor_x + 22, s.pager.cursor_y - 1, false);
     draw_button_1(s.pager.cursor_x + 33, s.pager.cursor_y - 1, false);
     s.pager.set_cursor(s.pager.cursor_x + 44, s.pager.cursor_y);
-    pager.f47_text(&s.pager, " will get you in the Trance of the Pause Menu.");
-    pager.f47_newline(&s.pager);
-    pager.f47_newline(&s.pager);
-    pager.f47_text(&s.pager, "The Pause Menu stops time and lets you inspect your spellbook.");
+    pager.fmg_text(&s.pager, " will get you in the Trance of the Pause Menu.");
+    pager.fmg_newline(&s.pager);
+    pager.fmg_newline(&s.pager);
+    pager.fmg_text(&s.pager, "The Pause Menu stops time and lets you inspect your spellbook.");
 
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 }
@@ -1682,21 +1676,21 @@ pub fn process_tutorial_alignment(s: *State, released_keys: u8) void {
         s.reset_choices();
         s.state = GlobalState.tutorial_end;
     }
-    draw_alignment_hud(s);
-    s.pager.set_cursor(10, 30);
-    pager.f47_text(&s.pager, "Casting spells will modify your alignment.");
-    pager.f47_newline(&s.pager);
-    pager.f47_newline(&s.pager);
-    pager.f47_text(&s.pager, "Alignment is shown at the top of the screen in the bar between ");
+    draw_alignment_hud(s, 10, 0);
+    s.pager.set_cursor(10, 20);
+    pager.fmg_text(&s.pager, "Casting spells will modify your alignment.");
+    pager.fmg_newline(&s.pager);
+    pager.fmg_newline(&s.pager);
+    pager.fmg_text(&s.pager, "Alignment is shown at the top of the screen in the bar between ");
     draw_moon(s.pager.cursor_x, s.pager.cursor_y);
     s.pager.set_cursor(s.pager.cursor_x + 11, s.pager.cursor_y);
-    pager.f47_text(&s.pager, " and ");
+    pager.fmg_text(&s.pager, " and ");
     draw_sun(s.pager.cursor_x, s.pager.cursor_y);
     s.pager.set_cursor(s.pager.cursor_x + 11, s.pager.cursor_y);
-    pager.f47_text(&s.pager, ".");
-    pager.f47_newline(&s.pager);
-    pager.f47_newline(&s.pager);
-    pager.f47_text(&s.pager, "Alignment will affect the outcome of events, or even prevent you from picking certain options, so be mindful of your alignment.");
+    pager.fmg_text(&s.pager, ".");
+    pager.fmg_newline(&s.pager);
+    pager.fmg_newline(&s.pager);
+    pager.fmg_text(&s.pager, "Alignment will affect the outcome of events, or even prevent you from picking certain options, so be mindful of your alignment.");
 
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 }
@@ -1712,11 +1706,11 @@ pub fn process_tutorial_end(s: *State, released_keys: u8) void {
         s.state = GlobalState.title;
     }
     s.pager.set_cursor(10, 10);
-    pager.f47_text(&s.pager, "Whether you choose to follow the moon or the sun,");
-    pager.f47_text(&s.pager, "your initiation is now finished.");
-    pager.f47_newline(&s.pager);
-    pager.f47_newline(&s.pager);
-    pager.f47_text(&s.pager, "Good luck!");
+    pager.fmg_text(&s.pager, "Whether you choose to follow the moon or the sun,");
+    pager.fmg_text(&s.pager, "your initiation is now finished.");
+    pager.fmg_newline(&s.pager);
+    pager.fmg_newline(&s.pager);
+    pager.fmg_text(&s.pager, "Good luck!");
 
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 }
@@ -1791,10 +1785,10 @@ pub fn process_crossroad(s: *State, released_keys: u8) void {
     w4.blit(state.enemy.sprite, 105, 42, sprites.enemy_width, sprites.enemy_height, w4.BLIT_1BPP);
     w4.hline(0, 80, 160);
     s.pager.set_cursor(10, 90);
-    pager.f47_text(&s.pager, "You arrive at a crossroad.");
-    pager.f47_newline(&s.pager);
-    pager.f47_text(&s.pager, "Please pick your path carefully.");
-    pager.f47_newline(&s.pager);
+    pager.fmg_text(&s.pager, "You arrive at a crossroad.");
+    pager.fmg_newline(&s.pager);
+    pager.fmg_text(&s.pager, "Please pick your path carefully.");
+    pager.fmg_newline(&s.pager);
     draw_spell_list(&s.choices, &s.pager, 10, 140);
     const area_pool = current_area_pool(s);
     if (s.choices[0].is_completed()) {
@@ -2062,22 +2056,22 @@ pub fn process_shop(s: *State, released_keys: u8) void {
     draw_shop_party(10, 50, s, "YOU", s.player_gold);
     draw_spell_inventory_list(10, 70, s, &s.spellbook, s.shop_list_index == 0);
 
-    draw_shop_party(90, 50, s, "SHOP", s.shop_gold);
-    draw_spell_inventory_list(90, 70, s, &s.shop_items, s.shop_list_index == 1);
+    draw_shop_party(80, 50, s, "SHOP", s.shop_gold);
+    draw_spell_inventory_list(80, 70, s, &s.shop_items, s.shop_list_index == 1);
 
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 
     if (get_spell_list_size(&s.spellbook) >= spell_book_full_size) {
         s.pager.set_cursor(85, 140);
-        pager.f47_text(&s.pager, "Can't leave. ");
+        pager.fmg_text(&s.pager, "Can't leave. ");
         s.pager.set_cursor(85, 150);
-        pager.f47_text(&s.pager, "Spellbook full");
+        pager.fmg_text(&s.pager, "Spellbook full");
     }
     if (s.player_gold < 0 or s.shop_gold < 0) {
         s.pager.set_cursor(85, 140);
-        pager.f47_text(&s.pager, "Can't leave. ");
+        pager.fmg_text(&s.pager, "Can't leave. ");
         s.pager.set_cursor(85, 150);
-        pager.f47_text(&s.pager, "Not enough");
+        pager.fmg_text(&s.pager, "Not enough");
         draw_coin(s.pager.cursor_x + 3, 150 - 1);
     }
 }
