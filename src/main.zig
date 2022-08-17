@@ -360,6 +360,7 @@ const GlobalState = enum {
     tutorial_synergies,
     tutorial_pause_menu,
     tutorial_alignment,
+    tutorial_end,
 };
 
 const Area = struct {
@@ -1679,7 +1680,7 @@ pub fn process_tutorial_alignment(s: *State, released_keys: u8) void {
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         s.reset_choices();
-        s.state = GlobalState.title;
+        s.state = GlobalState.tutorial_end;
     }
     draw_alignment_hud(s);
     s.pager.set_cursor(10, 30);
@@ -1696,6 +1697,26 @@ pub fn process_tutorial_alignment(s: *State, released_keys: u8) void {
     pager.f47_newline(&s.pager);
     pager.f47_newline(&s.pager);
     pager.f47_text(&s.pager, "Alignment will affect the outcome of events, or even prevent you from picking certain options, so be mindful of your alignment.");
+
+    draw_spell_list(&s.choices, &s.pager, 10, 140);
+}
+
+pub fn process_tutorial_end(s: *State, released_keys: u8) void {
+    if (s.state_has_changed) {
+        s.reset_choices();
+        s.choices[0] = Spell.spell_tutorial_basics_next();
+    }
+    process_choices_input(s, released_keys);
+    if (s.choices[0].is_completed()) {
+        s.reset_choices();
+        s.state = GlobalState.title;
+    }
+    s.pager.set_cursor(10, 10);
+    pager.f47_text(&s.pager, "Whether you choose to follow the moon or the sun,");
+    pager.f47_text(&s.pager, "your initiation is now finished.");
+    pager.f47_newline(&s.pager);
+    pager.f47_newline(&s.pager);
+    pager.f47_text(&s.pager, "Good luck!");
 
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 }
@@ -1871,6 +1892,11 @@ pub fn text_event_choice_2(s: *State, released_keys: u8, dialog: []const Dialog,
         s.enemy.guaranteed_reward = Reward.no_reward;
     }
     process_choices_input(s, released_keys);
+    _ = s;
+    _ = released_keys;
+    _ = dialog;
+    _ = outcome0;
+    _ = outcome1;
     if (s.choices[0].is_defined() and s.choices[0].is_completed()) {
         apply_outcome_list(s, outcome0);
         return;
@@ -2200,6 +2226,7 @@ export fn update() void {
         GlobalState.tutorial_synergies => process_tutorial_synergies(&state, released_keys),
         GlobalState.tutorial_pause_menu => process_tutorial_pause_menu(&state, released_keys),
         GlobalState.tutorial_alignment => process_tutorial_alignment(&state, released_keys),
+        GlobalState.tutorial_end => process_tutorial_end(&state, released_keys),
     }
 
     state.state_has_changed = (previous_state != state.state);
