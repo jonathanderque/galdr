@@ -2081,35 +2081,34 @@ const swamp_creature_dialog = [_]Dialog{
     Dialog{ .text = "Before you can even flee, the large creature is onto you." },
 };
 
-pub fn process_event_sun_fountain(s: *State, released_keys: u8) void {
-    if (s.state_has_changed) {
-        s.set_choices_with_labels_2("Skip", "Drink");
-    }
-    process_choices_input(s, released_keys);
-    if (s.choices[0].is_completed()) {
-        s.state = GlobalState.event_sun_fountain_skip;
-        return;
-    }
-    if (s.choices[1].is_completed()) {
-        if (s.player_alignment < -20) {
-            s.state = GlobalState.event_sun_fountain_damage;
-            s.apply_effect(Effect{ .damage_to_player = 5 });
-        } else if (s.player_alignment > 20) {
-            s.state = GlobalState.event_sun_fountain_heal;
-            s.apply_effect(Effect{ .player_heal = 10 });
-        } else {
-            s.state = GlobalState.event_sun_fountain_refresh;
-        }
-        return;
-    }
-    w4.DRAW_COLORS.* = 0x02;
-    draw_player_hud(s);
-    s.pager.set_cursor(10, 30);
-    pager.f47_text(&s.pager, "You come across a white fountain basking in a pillar of light.");
-    pager.f47_newline(&s.pager);
-    pager.f47_text(&s.pager, "You feel thirsty. Do you want to drink from the fountain?");
+const event_sun_fountain_dialog = [_]Dialog{
+    Dialog{ .text = "You come across a white fountain basking in a pillar of light." },
+    Dialog.newline,
+    Dialog{ .text = "You feel thirsty. Do you want to drink from the fountain?" },
+};
+const event_sun_fountain_skip_outcome = [_]Outcome{
+    Outcome{ .state = GlobalState.event_sun_fountain_skip },
+};
+const event_sun_fountain_moon_outcome = [_]Outcome{
+    Outcome{ .state = GlobalState.event_sun_fountain_damage },
+    Outcome{ .apply_effect = Effect{ .damage_to_player = 5 } },
+};
+const event_sun_fountain_sun_outcome = [_]Outcome{
+    Outcome{ .state = GlobalState.event_sun_fountain_heal },
+    Outcome{ .apply_effect = Effect{ .player_heal = 10 } },
+};
+const event_sun_fountain_refresh_outcome = [_]Outcome{
+    Outcome{ .state = GlobalState.event_sun_fountain_refresh },
+};
 
-    draw_spell_list(&s.choices, &s.pager, 10, 140);
+pub fn process_event_sun_fountain(s: *State, released_keys: u8) void {
+    if (s.player_alignment < -20) {
+        text_event_choice_2(s, released_keys, &event_sun_fountain_dialog, "Skip", &event_sun_fountain_skip_outcome, "Drink", &event_sun_fountain_moon_outcome);
+    } else if (s.player_alignment > 20) {
+        text_event_choice_2(s, released_keys, &event_sun_fountain_dialog, "Skip", &event_sun_fountain_skip_outcome, "Drink", &event_sun_fountain_sun_outcome);
+    } else {
+        text_event_choice_2(s, released_keys, &event_sun_fountain_dialog, "Skip", &event_sun_fountain_skip_outcome, "Drink", &event_sun_fountain_refresh_outcome);
+    }
 }
 
 pub fn simple_text_event(s: *State, released_keys: u8, dialog: []const Dialog) void {
