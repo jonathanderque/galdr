@@ -699,6 +699,7 @@ const State = struct {
     crossroad_index_2: usize = 0,
     visited_events: [visited_events_max_size]bool = undefined,
     choices: [spell_book_max_size]Spell = undefined,
+    frame_counter: u16 = 0,
     // player
     player_hp: i16 = 0,
     player_max_hp: i16 = 0,
@@ -708,8 +709,10 @@ const State = struct {
     spellbook: [spell_book_max_size]Spell = undefined,
     reward_probability: u8 = 0,
     inventory_menu_spell: Spell = undefined,
+    player_animation: u8 = 0,
     // enemy
     enemy: Enemy = Enemy.zero(),
+    enemy_animation: u8 = 0,
     // shop
     shop_items: [shop_items_max_size]Spell = undefined,
     shop_list_index: usize = 0, // 0= player_inventory 1= shop_inventory
@@ -749,6 +752,7 @@ const State = struct {
                     if (self.player_hp < 0) {
                         self.player_hp = 0;
                     }
+                    self.player_animation = 4;
                 } else {
                     self.player_shield -= dmg;
                 }
@@ -760,6 +764,7 @@ const State = struct {
                     if (self.enemy.hp < 0) {
                         self.enemy.hp = 0;
                     }
+                    self.enemy_animation = 4;
                 } else {
                     self.enemy.shield -= dmg;
                 }
@@ -776,6 +781,7 @@ const State = struct {
                     if (self.enemy.hp > self.enemy.max_hp) {
                         self.enemy.hp = self.enemy.max_hp;
                     }
+                    self.player_animation = 4;
                 } else {
                     self.player_shield -= dmg;
                 }
@@ -792,6 +798,7 @@ const State = struct {
                     if (self.player_hp >= self.player_max_hp) {
                         self.player_hp = self.player_max_hp;
                     }
+                    self.enemy_animation = 4;
                 } else {
                     self.enemy.shield -= dmg;
                 }
@@ -1298,6 +1305,21 @@ pub fn process_choices_input(s: *State, released_keys: u8) void {
 }
 
 pub fn process_fight(s: *State, released_keys: u8) void {
+    if (s.state_has_changed) {
+        s.frame_counter = 0;
+        s.player_animation = 0;
+        s.enemy_animation = 0;
+    } else {
+        s.frame_counter += 1;
+        if (@mod(s.frame_counter, 3) == 0) {
+            if (s.enemy_animation > 0) {
+                s.enemy_animation -= 1;
+            }
+            if (s.player_animation > 0) {
+                s.player_animation -= 1;
+            }
+        }
+    }
     s.inventory_menu_spell.process(released_keys);
     if (s.inventory_menu_spell.is_completed()) {
         s.apply_effect(s.inventory_menu_spell.effect);
@@ -1344,11 +1366,11 @@ pub fn process_fight(s: *State, released_keys: u8) void {
     draw_shield(10, 22);
     s.pager.set_cursor(20, 22);
     pager.fmg_number(&s.pager, s.player_shield);
-    draw_hero(20, 34);
+    draw_hero(20 - s.player_animation, 34);
 
     // enemy
     draw_enemy_hud(s);
-    w4.blit(state.enemy.sprite, 105, 42, sprites.enemy_width, sprites.enemy_height, w4.BLIT_1BPP);
+    w4.blit(state.enemy.sprite, 105 + s.enemy_animation, 42, sprites.enemy_width, sprites.enemy_height, w4.BLIT_1BPP);
     s.pager.set_cursor(100, 15);
     draw_progress_bubble(100, 32, s.enemy.intent_current_time, s.enemy.intent[s.enemy.intent_index].trigger_time);
     draw_effect(111, 32, s, s.enemy.intent[s.enemy.intent_index].effect);
