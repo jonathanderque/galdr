@@ -406,8 +406,9 @@ const coast_area = Area{
 
 const pirate_area = Area{
     .name = "PIRATE SHIP",
-    .event_count = 1,
+    .event_count = 2,
     .event_pool = &[_]GlobalState{
+        GlobalState.event_chest_regular,
         GlobalState.event_pirate_captain,
     },
 };
