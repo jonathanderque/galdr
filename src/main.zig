@@ -1200,6 +1200,11 @@ const Dialog = union(enum) {
     text: []const u8,
 };
 
+const Outcome = union(enum) {
+    state: GlobalState,
+    guaranteed_reward: Reward,
+};
+
 pub fn draw_dialog_list(dialog: []const Dialog, s: *State) void {
     for (dialog) |elem| {
         switch (elem) {
@@ -1343,6 +1348,9 @@ pub fn process_fight(s: *State, released_keys: u8) void {
 }
 
 pub fn process_fight_reward(s: *State, released_keys: u8) void {
+    if (s.state_has_changed) {
+        s.set_choices_confirm();
+    }
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         s.apply_reward(s.enemy.guaranteed_reward);
@@ -1834,29 +1842,59 @@ const castle_vampire_shop_items = [_]Spell{
     Spell.spell_cloak(),
 };
 
-pub fn process_event_cavern_man(s: *State, released_keys: u8) void {
+pub fn apply_outcome_list(s: *State, outcome: []const Outcome) void {
+    for (outcome) |o| {
+        switch (o) {
+            Outcome.state => |st| {
+                s.state = st;
+            },
+            Outcome.guaranteed_reward => |reward| {
+                s.enemy.guaranteed_reward = reward;
+            },
+        }
+    }
+}
+
+pub fn text_event_choice_2(s: *State, released_keys: u8, dialog: []const Dialog, choice0: []const u8, outcome0: []const Outcome, choice1: ?[]const u8, outcome1: []const Outcome) void {
     if (s.state_has_changed) {
-        s.set_choices_confirm();
+        s.reset_choices();
+        if (choice1 != null) {
+            s.set_choices_with_labels_2(choice0, choice1.?);
+        } else {
+            s.set_choices_with_labels_1(choice0);
+        }
+        s.enemy.random_reward = RandomReward.zero();
+        s.enemy.guaranteed_reward = Reward.no_reward;
     }
     process_choices_input(s, released_keys);
-    if (s.choices[0].is_completed()) {
-        s.set_choices_confirm(); // reset choices
-        s.enemy.random_reward = RandomReward.zero();
-        s.enemy.guaranteed_reward = Reward{ .spell_reward = Spell.spell_sword() };
-        s.state = GlobalState.fight_reward;
+    if (s.choices[0].is_defined() and s.choices[0].is_completed()) {
+        apply_outcome_list(s, outcome0);
+        return;
+    } else if (s.choices[1].is_defined() and s.choices[1].is_completed()) {
+        apply_outcome_list(s, outcome1);
         return;
     }
-
     w4.DRAW_COLORS.* = 0x02;
     draw_player_hud(s);
     s.pager.set_cursor(10, 30);
-    pager.f47_text(&s.pager, "You meet an old man living in a cavern. He says:");
-    pager.f47_newline(&s.pager);
-    pager.f47_newline(&s.pager);
-    pager.f47_text(&s.pager, "\"It's dangerous to go alone! Take this.\"");
-
+    draw_dialog_list(dialog, s);
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 }
+
+pub fn text_event_choice_1(s: *State, released_keys: u8, dialog: []const Dialog, choice0: []const u8, outcome0: []const Outcome) void {
+    text_event_choice_2(s, released_keys, dialog, choice0, outcome0, null, undefined);
+}
+
+const event_cavern_man_outcome = [_]Outcome{
+    Outcome{ .guaranteed_reward = Reward{ .spell_reward = Spell.spell_sword() } },
+    Outcome{ .state = GlobalState.fight_reward },
+};
+const event_cavern_man_dialog = [_]Dialog{
+    Dialog{ .text = "You meet an old man living in a cavern. He says:" },
+    Dialog.newline,
+    Dialog.newline,
+    Dialog{ .text = "\"It's dangerous to go alone! Take this.\"" },
+};
 
 const coin_muncher_dialog = [_]Dialog{
     Dialog{ .text = "You suddenly wake up with something brushing against your leg!" },
@@ -2140,7 +2178,7 @@ export fn update() void {
         GlobalState.event_castle_schmoo => fight_intro(&state, released_keys, Enemy.enemy_castle_schmoo(), &castle_schmoo_dialog),
         GlobalState.event_castle_sun_shop => shop_intro(&state, released_keys, &castle_sun_shop_dialog, castle_sun_shop_gold, &castle_sun_shop_items),
         GlobalState.event_castle_vampire_shop => shop_intro(&state, released_keys, &castle_vampire_shop_dialog, castle_vampire_shop_gold, &castle_vampire_shop_items),
-        GlobalState.event_cavern_man => process_event_cavern_man(&state, released_keys),
+        GlobalState.event_cavern_man => text_event_choice_1(&state, released_keys, &event_cavern_man_dialog, "Confirm", &event_cavern_man_outcome),
         GlobalState.event_coin_muncher => fight_intro(&state, released_keys, Enemy.enemy_coin_muncher(), &coin_muncher_dialog),
         GlobalState.event_healer => process_event_healer(&state, released_keys),
         GlobalState.event_healer_decline => simple_text_event(&state, released_keys, &event_healer_decline_dialog),
