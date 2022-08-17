@@ -15,6 +15,7 @@ const Reward = union(enum(u8)) {
     no_reward: void,
     gold_reward: u16,
     spell_reward: Spell,
+    kidnapped_daughter_reward: void,
 };
 
 const Effect = union(enum(u8)) {
@@ -357,6 +358,7 @@ const GlobalState = enum {
     event_healing_shop,
     event_forest_wolf,
     event_militia_ambush,
+    event_pirate_captain,
     event_snake_pit,
     event_swamp_people,
     event_swamp_creature,
@@ -406,7 +408,7 @@ const pirate_area = Area{
     .name = "PIRATE SHIP",
     .event_count = 1,
     .event_pool = &[_]GlobalState{
-        GlobalState.event_coast_seagull,
+        GlobalState.event_pirate_captain,
     },
 };
 
@@ -666,6 +668,20 @@ const Enemy = struct {
         return enemy;
     }
 
+    pub fn enemy_pirate_captain() Enemy {
+        var enemy = zero();
+        const enemy_max_hp = 30;
+        enemy.hp = enemy_max_hp;
+        enemy.max_hp = enemy_max_hp;
+        enemy.intent[0] = EnemyIntent{
+            .trigger_time = 6 * 60,
+            .effect = Effect{ .damage_to_player = 7 },
+        };
+        enemy.guaranteed_reward = Reward.kidnapped_daughter_reward;
+        enemy.sprite = &sprites.enemy_pirate_captain;
+        return enemy;
+    }
+
     pub fn enemy_seagull() Enemy {
         var enemy = zero();
         const enemy_max_hp = 10;
@@ -827,6 +843,13 @@ const State = struct {
             },
             Reward.spell_reward => |spell| {
                 add_spell_to_list(spell, &self.spellbook);
+            },
+            Reward.kidnapped_daughter_reward => {
+                self.player_alignment += 10;
+                if (self.player_alignment >= 100) {
+                    self.player_alignment = 100;
+                }
+                self.player_gold += 50;
             },
         }
     }
@@ -1213,6 +1236,14 @@ pub fn draw_shop_party(x: i32, y: i23, s: *State, name: []const u8, gold_amount:
 
 pub fn draw_reward(s: *State, reward: Reward) void {
     switch (reward) {
+        Reward.kidnapped_daughter_reward => {
+            pager.fmg_text(&s.pager, "You saved the kidnapped daughter, and return her to her family.");
+            pager.fmg_newline(&s.pager);
+            pager.fmg_newline(&s.pager);
+            pager.fmg_text(&s.pager, "The parents say:");
+            pager.fmg_newline(&s.pager);
+            pager.fmg_text(&s.pager, "\"Thank you!! We don't have much, but it is now yours\"");
+        },
         Reward.gold_reward => |amount| {
             pager.fmg_text(&s.pager, "You gained ");
             pager.fmg_number(&s.pager, amount);
@@ -2387,6 +2418,13 @@ const militia_ambush_dialog = [_]Dialog{
     Dialog{ .text = "He does not seem aware that you're here." },
 };
 
+const pirate_captain_dialog = [_]Dialog{
+    Dialog{ .text = "You confront the pirate captain, he laughs:" },
+    Dialog.newline,
+    Dialog.newline,
+    Dialog{ .text = "\"The girl?? She's mine!!!\"" },
+};
+
 const snake_pit_dialog = [_]Dialog{
     Dialog{ .text = "You fall into a large man-made pit that someone filled with snakes!" },
     Dialog.newline,
@@ -2505,6 +2543,7 @@ export fn update() void {
         GlobalState.event_healing_shop => shop_intro(&state, released_keys, &healing_shop_dialog, healing_shop_gold, &healing_shop_items),
         GlobalState.event_forest_wolf => fight_intro(&state, released_keys, Enemy.enemy_forest_wolf(), &forest_wolf_dialog),
         GlobalState.event_militia_ambush => fight_intro(&state, released_keys, Enemy.enemy_militia_ambush(), &militia_ambush_dialog),
+        GlobalState.event_pirate_captain => fight_intro(&state, released_keys, Enemy.enemy_pirate_captain(), &pirate_captain_dialog),
         GlobalState.event_snake_pit => fight_intro(&state, released_keys, Enemy.enemy_snake_pit(), &snake_pit_dialog),
         GlobalState.event_swamp_people => fight_intro(&state, released_keys, Enemy.enemy_swamp_people(), &swamp_people_dialog),
         GlobalState.event_swamp_creature => fight_intro(&state, released_keys, Enemy.enemy_swamp_creature(), &swamp_creature_dialog),
