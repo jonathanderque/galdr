@@ -1889,6 +1889,13 @@ pub fn text_event_choice_1(s: *State, released_keys: u8, dialog: []const Dialog,
     text_event_choice_2(s, released_keys, dialog, choice0, outcome0, null, undefined);
 }
 
+pub fn text_event_confirm(s: *State, released_keys: u8, dialog: []const Dialog) void {
+    const outcome = [_]Outcome{
+        Outcome{ .state = GlobalState.pick_random_event },
+    };
+    text_event_choice_1(s, released_keys, dialog, "Confirm", &outcome);
+}
+
 const event_cavern_man_outcome = [_]Outcome{
     Outcome{ .guaranteed_reward = Reward{ .spell_reward = Spell.spell_sword() } },
     Outcome{ .state = GlobalState.fight_reward },
@@ -2111,21 +2118,6 @@ pub fn process_event_sun_fountain(s: *State, released_keys: u8) void {
     }
 }
 
-pub fn simple_text_event(s: *State, released_keys: u8, dialog: []const Dialog) void {
-    if (s.state_has_changed) {
-        s.set_choices_confirm();
-    }
-    process_choices_input(s, released_keys);
-    if (s.choices[0].is_completed()) {
-        s.state = GlobalState.pick_random_event;
-    }
-    w4.DRAW_COLORS.* = 0x02;
-    draw_player_hud(s);
-    s.pager.set_cursor(10, 30);
-    draw_dialog_list(dialog, s);
-    draw_spell_list(&s.choices, &s.pager, 10, 140);
-}
-
 const event_sun_fountain_skip_dialog = [_]Dialog{
     Dialog{ .text = "Such a fountain in the middle of nowhere seems strange. You continue your journey without drinking from it." },
 };
@@ -2180,8 +2172,8 @@ export fn update() void {
         GlobalState.event_cavern_man => text_event_choice_1(&state, released_keys, &event_cavern_man_dialog, "Confirm", &event_cavern_man_outcome),
         GlobalState.event_coin_muncher => fight_intro(&state, released_keys, Enemy.enemy_coin_muncher(), &coin_muncher_dialog),
         GlobalState.event_healer => process_event_healer(&state, released_keys),
-        GlobalState.event_healer_decline => simple_text_event(&state, released_keys, &event_healer_decline_dialog),
-        GlobalState.event_healer_accept => simple_text_event(&state, released_keys, &event_healer_accept_dialog),
+        GlobalState.event_healer_decline => text_event_confirm(&state, released_keys, &event_healer_decline_dialog),
+        GlobalState.event_healer_accept => text_event_confirm(&state, released_keys, &event_healer_accept_dialog),
         GlobalState.event_healing_shop => shop_intro(&state, released_keys, &healing_shop_dialog, healing_shop_gold, &healing_shop_items),
         GlobalState.event_forest_wolf => fight_intro(&state, released_keys, Enemy.enemy_forest_wolf(), &forest_wolf_dialog),
         GlobalState.event_militia_ambush => fight_intro(&state, released_keys, Enemy.enemy_militia_ambush(), &militia_ambush_dialog),
@@ -2189,10 +2181,10 @@ export fn update() void {
         GlobalState.event_swamp_people => fight_intro(&state, released_keys, Enemy.enemy_swamp_people(), &swamp_people_dialog),
         GlobalState.event_swamp_creature => fight_intro(&state, released_keys, Enemy.enemy_swamp_creature(), &swamp_creature_dialog),
         GlobalState.event_sun_fountain => process_event_sun_fountain(&state, released_keys),
-        GlobalState.event_sun_fountain_skip => simple_text_event(&state, released_keys, &event_sun_fountain_skip_dialog),
-        GlobalState.event_sun_fountain_damage => simple_text_event(&state, released_keys, &event_sun_fountain_damage_dialog),
-        GlobalState.event_sun_fountain_heal => simple_text_event(&state, released_keys, &event_sun_fountain_heal_dialog),
-        GlobalState.event_sun_fountain_refresh => simple_text_event(&state, released_keys, &event_sun_fountain_refresh_dialog),
+        GlobalState.event_sun_fountain_skip => text_event_confirm(&state, released_keys, &event_sun_fountain_skip_dialog),
+        GlobalState.event_sun_fountain_damage => text_event_confirm(&state, released_keys, &event_sun_fountain_damage_dialog),
+        GlobalState.event_sun_fountain_heal => text_event_confirm(&state, released_keys, &event_sun_fountain_heal_dialog),
+        GlobalState.event_sun_fountain_refresh => text_event_confirm(&state, released_keys, &event_sun_fountain_refresh_dialog),
         GlobalState.fight => process_fight(&state, released_keys),
         GlobalState.fight_reward => process_fight_reward(&state, released_keys),
         GlobalState.game_over => process_game_over(&state, released_keys),
