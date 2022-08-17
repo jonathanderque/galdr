@@ -345,6 +345,7 @@ const GlobalState = enum {
     event_chest_mimic, // same as other chest events, different outcome
     event_chest_mimic_fight_intro,
     event_coast_barbarian_invasion,
+    event_coast_merfolk,
     event_coast_seagull,
     event_coast_sea_monster,
     event_coin_muncher,
@@ -389,10 +390,11 @@ const Area = struct {
 
 const coast_area = Area{
     .name = "COAST",
-    .event_count = 3,
+    .event_count = 4,
     .event_pool = &[_]GlobalState{
         GlobalState.event_coast_seagull,
         GlobalState.event_coast_barbarian_invasion,
+        GlobalState.event_coast_merfolk,
         GlobalState.event_coast_sea_monster,
     },
 };
@@ -615,6 +617,23 @@ const Enemy = struct {
             .reward = Reward{ .spell_reward = Spell.spell_wolf_bite() },
         };
         enemy.sprite = &sprites.enemy_wolf;
+        return enemy;
+    }
+
+    pub fn enemy_merfolk() Enemy {
+        var enemy = zero();
+        const enemy_max_hp = 30;
+        enemy.hp = enemy_max_hp;
+        enemy.max_hp = enemy_max_hp;
+        enemy.intent[0] = EnemyIntent{
+            .trigger_time = 6 * 60,
+            .effect = Effect{ .damage_to_player = 3 },
+        };
+        enemy.intent[0] = EnemyIntent{
+            .trigger_time = 2 * 60,
+            .effect = Effect{ .damage_to_player = 5 },
+        };
+        enemy.sprite = &sprites.enemy_merfolk;
         return enemy;
     }
 
@@ -2109,6 +2128,13 @@ const event_barbarian_invasion_dialog = [_]Dialog{
     Dialog{ .text = "\"Barbarians are about to land on our shores, please help us fight them!\"" },
 };
 
+const event_merfolk_dialog = [_]Dialog{
+    Dialog{ .text = "A sudden tide sees you abruptly surrounded with water." },
+    Dialog.newline,
+    Dialog.newline,
+    Dialog{ .text = "A half-fish half-man being menacingly appears in front of you" },
+};
+
 const event_cavern_man_outcome = [_]Outcome{
     Outcome{ .guaranteed_reward = Reward{ .spell_reward = Spell.spell_sword() } },
     Outcome{ .state = GlobalState.fight_reward },
@@ -2425,6 +2451,7 @@ export fn update() void {
         GlobalState.event_chest_mimic => text_event_choice_2(&state, released_keys, &event_chest_dialog, "Skip", &event_chest_skip_outcome, "Open it", &event_chest_mimic_outcome),
         GlobalState.event_chest_mimic_fight_intro => fight_intro(&state, released_keys, Enemy.enemy_mimic(), &event_mimic_dialog),
         GlobalState.event_coast_barbarian_invasion => conditional_fight_intro(&state, released_keys, Enemy.enemy_barbarian(), &event_barbarian_invasion_dialog),
+        GlobalState.event_coast_merfolk => fight_intro(&state, released_keys, Enemy.enemy_merfolk(), &event_merfolk_dialog),
         GlobalState.event_coast_seagull => fight_intro(&state, released_keys, Enemy.enemy_seagull(), &event_seagull_dialog),
         GlobalState.event_coast_sea_monster => conditional_fight_intro(&state, released_keys, Enemy.enemy_sea_monster(), &event_sea_monster_dialog),
         GlobalState.event_coin_muncher => fight_intro(&state, released_keys, Enemy.enemy_coin_muncher(), &coin_muncher_dialog),
