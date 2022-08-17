@@ -333,6 +333,7 @@ const GlobalState = enum {
     event_chest_regular,
     event_chest_mimic, // same as other chest events, different outcome
     event_chest_mimic_fight_intro,
+    event_coast_sea_monster,
     event_coin_muncher,
     event_healer,
     event_healer_decline,
@@ -371,6 +372,14 @@ const Area = struct {
     name: []const u8,
     event_count: usize, // player is expected to play even_count events out of the total pool
     event_pool: []const GlobalState,
+};
+
+const coast_area = Area{
+    .name = "COAST",
+    .event_count = 3,
+    .event_pool = &[_]GlobalState{
+        GlobalState.event_coast_sea_monster,
+    },
 };
 
 const swamp_area = Area{
@@ -420,13 +429,13 @@ const boss_area = Area{
 };
 
 const easy_area_pool = [_]Area{
-    forest_area,
-    castle_area,
+    coast_area,
+    swamp_area,
 };
 
 const medium_area_pool = [_]Area{
     forest_area,
-    swamp_area,
+    castle_area,
 };
 
 const boss_area_pool = [_]Area{
@@ -595,6 +604,24 @@ const Enemy = struct {
         };
         enemy.guaranteed_reward = Reward{ .gold_reward = 50 };
         enemy.sprite = &sprites.enemy_militia;
+        return enemy;
+    }
+
+    pub fn enemy_sea_monster() Enemy {
+        var enemy = zero();
+        const enemy_max_hp = 35;
+        enemy.hp = enemy_max_hp;
+        enemy.max_hp = enemy_max_hp;
+        enemy.intent[0] = EnemyIntent{
+            .trigger_time = 4 * 60,
+            .effect = Effect{ .damage_to_player = 7 },
+        };
+        enemy.intent[1] = EnemyIntent{
+            .trigger_time = 5 * 60,
+            .effect = Effect{ .enemy_shield = 3 },
+        };
+        enemy.guaranteed_reward = Reward{ .gold_reward = 10 };
+        enemy.sprite = &sprites.enemy_sea_monster;
         return enemy;
     }
 
@@ -1261,6 +1288,37 @@ pub fn fight_intro(s: *State, released_keys: u8, enemy: Enemy, dialog: []const D
     }
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
+        s.enemy = enemy;
+        s.state = GlobalState.fight;
+    }
+    w4.DRAW_COLORS.* = 0x02;
+    draw_player_hud(s);
+    s.pager.set_cursor(10, 30);
+    draw_dialog_list(dialog, s);
+
+    draw_spell_list(&s.choices, &s.pager, 10, 140);
+}
+
+pub fn conditional_fight_intro(s: *State, released_keys: u8, enemy: Enemy, dialog: []const Dialog) void {
+    if (s.state_has_changed) {
+        s.set_choices_with_labels_2("Decline", "Fight!");
+
+        // player reset
+        s.reset_player_shield();
+        s.reset_spellbook();
+
+        // enemy reset
+        s.reset_enemy_intent();
+        s.enemy.intent_current_time = 0;
+        s.enemy.intent_index = 0;
+        s.enemy.guaranteed_reward = Reward.no_reward;
+        s.enemy.random_reward = RandomReward.zero();
+    }
+    process_choices_input(s, released_keys);
+    if (s.choices[0].is_completed()) {
+        s.state = GlobalState.pick_random_event;
+    }
+    if (s.choices[1].is_completed()) {
         s.enemy = enemy;
         s.state = GlobalState.fight;
     }
@@ -2036,6 +2094,16 @@ const event_chest_mimic_outcome = [_]Outcome{
     Outcome{ .state = GlobalState.event_chest_mimic_fight_intro },
 };
 
+const event_sea_monster_dialog = [_]Dialog{
+    Dialog{ .text = "Fishermen are approaching you, they say:" },
+    Dialog.newline,
+    Dialog.newline,
+    Dialog{ .text = "\"With the eclipse approaching, attacks from the sea monster are more frequent..\"" },
+    Dialog.newline,
+    Dialog.newline,
+    Dialog{ .text = "\"Can you help us get rid of it?\"" },
+};
+
 const coin_muncher_dialog = [_]Dialog{
     Dialog{ .text = "You suddenly wake up with something brushing against your leg!" },
     Dialog.newline,
@@ -2302,6 +2370,7 @@ export fn update() void {
         GlobalState.event_chest_regular => text_event_choice_2(&state, released_keys, &event_chest_dialog, "Skip", &event_chest_skip_outcome, "Open it", &event_chest_regular_gold_outcome),
         GlobalState.event_chest_mimic => text_event_choice_2(&state, released_keys, &event_chest_dialog, "Skip", &event_chest_skip_outcome, "Open it", &event_chest_mimic_outcome),
         GlobalState.event_chest_mimic_fight_intro => fight_intro(&state, released_keys, Enemy.enemy_mimic(), &event_mimic_dialog),
+        GlobalState.event_coast_sea_monster => conditional_fight_intro(&state, released_keys, Enemy.enemy_sea_monster(), &event_sea_monster_dialog),
         GlobalState.event_coin_muncher => fight_intro(&state, released_keys, Enemy.enemy_coin_muncher(), &coin_muncher_dialog),
         GlobalState.event_healer => process_event_healer(&state, released_keys),
         GlobalState.event_healer_decline => text_event_confirm(&state, released_keys, &event_healer_decline_dialog),
