@@ -1202,6 +1202,7 @@ const Dialog = union(enum) {
 
 const Outcome = union(enum) {
     state: GlobalState,
+    apply_effect: Effect,
     guaranteed_reward: Reward,
 };
 
@@ -1851,6 +1852,9 @@ pub fn apply_outcome_list(s: *State, outcome: []const Outcome) void {
             Outcome.guaranteed_reward => |reward| {
                 s.enemy.guaranteed_reward = reward;
             },
+            Outcome.apply_effect => |effect| {
+                s.apply_effect(effect);
+            },
         }
     }
 }
@@ -1902,30 +1906,26 @@ const coin_muncher_dialog = [_]Dialog{
     Dialog{ .text = "You discover a Coin Muncher feeding on the content of your purse!!" },
 };
 
-pub fn process_event_healer(s: *State, released_keys: u8) void {
-    if (s.state_has_changed) {
-        if (s.player_gold >= 10) {
-            s.set_choices_accept_decline();
-        } else {
-            s.set_choices_with_labels_1("You're broke");
-        }
-    }
-    process_choices_input(s, released_keys);
-    if (s.choices[0].is_completed()) {
-        s.state = GlobalState.event_healer_decline;
-    } else if (s.player_gold >= 10 and s.choices[1].is_completed()) {
-        s.apply_effect(Effect{ .gold_payment = 10 });
-        s.apply_effect(Effect.player_healing_max);
-        s.state = GlobalState.event_healer_accept;
-    }
-    w4.DRAW_COLORS.* = 0x02;
-    draw_player_hud(s);
-    s.pager.set_cursor(10, 30);
-    pager.f47_text(&s.pager, "You stumble upon an old man wearing druid clothes. He says:");
-    pager.f47_newline(&s.pager);
-    pager.f47_text(&s.pager, "\"I can heal your wounds for 10 gold. Are you interested?\"");
+const event_healer_dialog = [_]Dialog{
+    Dialog{ .text = "You stumble upon an old man wearing druid clothes. He says:" },
+    Dialog.newline,
+    Dialog{ .text = "\"I can heal your wounds for 10 gold. Are you interested?\"" },
+};
+const event_healer_decline_outcome = [_]Outcome{
+    Outcome{ .state = GlobalState.event_healer_decline },
+};
+const event_healer_accept_outcome = [_]Outcome{
+    Outcome{ .apply_effect = Effect{ .gold_payment = 10 } },
+    Outcome{ .apply_effect = Effect.player_healing_max },
+    Outcome{ .state = GlobalState.event_healer_accept },
+};
 
-    draw_spell_list(&s.choices, &s.pager, 10, 130);
+pub fn process_event_healer(s: *State, released_keys: u8) void {
+    if (s.player_gold >= 10) {
+        text_event_choice_2(s, released_keys, &event_healer_dialog, "Decline", &event_healer_decline_outcome, "Accept", &event_healer_accept_outcome);
+    } else {
+        text_event_choice_1(s, released_keys, &event_healer_dialog, "You're broke", &event_healer_decline_outcome);
+    }
 }
 
 const event_healer_decline_dialog = [_]Dialog{
