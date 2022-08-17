@@ -349,6 +349,7 @@ const GlobalState = enum {
     event_sun_fountain_heal,
     event_sun_fountain_refresh,
     fight,
+    fight_end,
     fight_reward,
     game_over,
     inventory,
@@ -1347,14 +1348,11 @@ pub fn process_fight(s: *State, released_keys: u8) void {
             }
         }
     } else {
-        s.set_choices_confirm();
-        s.reward_probability = @intCast(u8, @mod(rand(), 100));
-        s.state = GlobalState.fight_reward;
+        s.state = GlobalState.fight_end;
     }
 
     if (s.player_hp == 0) {
-        s.set_choices_confirm();
-        s.state = GlobalState.game_over;
+        s.state = GlobalState.fight_end;
     }
 
     // drawing
@@ -1387,9 +1385,52 @@ pub fn process_fight(s: *State, released_keys: u8) void {
     }
 }
 
+pub fn process_fight_end(s: *State, released_keys: u8) void {
+    _ = released_keys;
+    if (s.state_has_changed) {
+        s.frame_counter = 0;
+        w4.PALETTE[3] = 0xffffff;
+    } else {
+        s.frame_counter += 1;
+        w4.PALETTE[3] -= 0x030303;
+        if (s.frame_counter >= 80) {
+            if (s.player_hp == 0) {
+                s.state = GlobalState.game_over;
+            } else {
+                s.state = GlobalState.fight_reward;
+            }
+        }
+    }
+
+    // drawing
+    w4.DRAW_COLORS.* = 2;
+
+    draw_player_hud(s);
+
+    if (s.player_hp == 0) {
+        w4.DRAW_COLORS.* = 4;
+    } else {
+        w4.DRAW_COLORS.* = 2;
+    }
+    // hero
+    draw_hero(20, 34);
+
+    // enemy
+    if (s.enemy.hp == 0) {
+        w4.DRAW_COLORS.* = 4;
+    } else {
+        w4.DRAW_COLORS.* = 2;
+    }
+    w4.blit(state.enemy.sprite, 105 + s.enemy_animation, 42, sprites.enemy_width, sprites.enemy_height, w4.BLIT_1BPP);
+    w4.DRAW_COLORS.* = 2;
+    // TODO modify palette
+    s.pager.set_cursor(100, 15);
+    w4.hline(0, 80, 160);
+}
 pub fn process_fight_reward(s: *State, released_keys: u8) void {
     if (s.state_has_changed) {
         s.set_choices_confirm();
+        s.reward_probability = @intCast(u8, @mod(rand(), 100));
     }
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
@@ -1417,6 +1458,9 @@ pub fn process_fight_reward(s: *State, released_keys: u8) void {
 }
 
 pub fn process_game_over(s: *State, released_keys: u8) void {
+    if (s.state_has_changed) {
+        s.set_choices_confirm();
+    }
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         s.state = GlobalState.title;
@@ -2274,6 +2318,7 @@ export fn update() void {
         GlobalState.event_sun_fountain_heal => text_event_confirm(&state, released_keys, &event_sun_fountain_heal_dialog),
         GlobalState.event_sun_fountain_refresh => text_event_confirm(&state, released_keys, &event_sun_fountain_refresh_dialog),
         GlobalState.fight => process_fight(&state, released_keys),
+        GlobalState.fight_end => process_fight_end(&state, released_keys),
         GlobalState.fight_reward => process_fight_reward(&state, released_keys),
         GlobalState.game_over => process_game_over(&state, released_keys),
         GlobalState.inventory => process_inventory(&state, released_keys),
