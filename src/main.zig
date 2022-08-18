@@ -1632,9 +1632,9 @@ pub fn process_game_over(s: *State, released_keys: u8) void {
         s.state = GlobalState.title;
     }
     w4.DRAW_COLORS.* = 0x02;
-    w4.blit(&sprites.skull, 40, 48, sprites.skull_width, sprites.skull_height, w4.BLIT_1BPP);
+    w4.blit(&sprites.skull, 30, 48, sprites.skull_width, sprites.skull_height, w4.BLIT_1BPP);
     w4.blit(&sprites.skull, 102, 48, sprites.skull_width, sprites.skull_height, w4.BLIT_1BPP | w4.BLIT_FLIP_X);
-    s.pager.set_cursor(58, 50);
+    s.pager.set_cursor(48, 50);
     pager.fmg_text(&s.pager, "GAME OVER");
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 }
