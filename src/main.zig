@@ -1179,7 +1179,6 @@ pub fn draw_spell_list(spells: []Spell, s: *State, x: i32, y: i32) void {
         const blink_on = @mod(s.frame_counter, 10) < 5;
         if (s.frame_counter > 0 and spells[i].frame_triggered + 30 > s.frame_counter) {
             if (spells[i].is_defined() and blink_on) {
-                //draw_heart(0, var_y);
                 w4.DRAW_COLORS.* = 0x22;
                 w4.rect(10, var_y, 140, 9);
                 w4.DRAW_COLORS.* = 0x21;
@@ -2446,6 +2445,9 @@ pub fn draw_shop_tabs(s: *State, draw_second_tab: bool) void {
 }
 
 pub fn process_shop(s: *State, released_keys: u8) void {
+    if (s.state_has_changed) {
+        s.shop_list_index = 1; // start on the "Buy" tab
+    }
     if (released_keys == w4.BUTTON_LEFT or released_keys == w4.BUTTON_RIGHT) {
         s.shop_list_index = 1 - s.shop_list_index;
     }
