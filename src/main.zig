@@ -1642,6 +1642,7 @@ pub fn process_game_over(s: *State, released_keys: u8) void {
 pub fn process_inventory(s: *State, released_keys: u8) void {
     if (s.state_has_changed) {
         s.set_choices_back();
+        s.shop_list_index = 0;
     }
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
@@ -1655,8 +1656,9 @@ pub fn process_inventory(s: *State, released_keys: u8) void {
 
     w4.DRAW_COLORS.* = 0x02;
     draw_spell_details(10, 10, s, spell);
-    w4.hline(0, 80, 160);
-    draw_spell_inventory_list(10, 90, s, &s.spellbook, true);
+    draw_shop_tabs(s, false);
+    draw_shop_party(10, 50, s, "YOU", s.player_gold);
+    draw_spell_inventory_list(10, 70, s, &s.spellbook, true);
 
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 }
@@ -1734,7 +1736,7 @@ pub fn process_inventory_full_2(s: *State, released_keys: u8) void {
         draw_spell_inventory_list(10, 70, s, &s.shop_items, s.shop_list_index == 1);
     }
 
-    draw_shop_tabs(s);
+    draw_shop_tabs(s, true);
 
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 
@@ -2203,7 +2205,6 @@ const event_kidnapped_daughter_skip_outcome = [_]Outcome{
     },
 };
 
-// TODO
 const event_kidnapped_daughter_accept_outcome = [_]Outcome{
     Outcome{
         .area = pirate_area,
@@ -2349,7 +2350,7 @@ pub fn process_keys_spell_list(s: *State, released_keys: u8, spell_list: []Spell
     }
 }
 
-pub fn draw_shop_tabs(s: *State) void {
+pub fn draw_shop_tabs(s: *State, draw_second_tab: bool) void {
     _ = s;
     const y = 46;
     const tab_width = 69;
@@ -2360,9 +2361,11 @@ pub fn draw_shop_tabs(s: *State) void {
     w4.vline(left_tab_x - 1, y + 1, tab_height);
     w4.vline(left_tab_x + tab_width, y + 1, tab_height);
 
-    w4.hline(right_tab_x, y, tab_width);
-    w4.vline(right_tab_x - 1, y + 1, tab_height);
-    w4.vline(right_tab_x + tab_width, y + 1, tab_height);
+    if (draw_second_tab) {
+        w4.hline(right_tab_x, y, tab_width);
+        w4.vline(right_tab_x - 1, y + 1, tab_height);
+        w4.vline(right_tab_x + tab_width, y + 1, tab_height);
+    }
 
     w4.hline(0, y + tab_height, left_tab_x);
     w4.hline(left_tab_x + tab_width, y + tab_height, 11);
@@ -2430,7 +2433,7 @@ pub fn process_shop(s: *State, released_keys: u8) void {
         draw_spell_inventory_list(10, 70, s, &s.shop_items, s.shop_list_index == 1);
     }
 
-    draw_shop_tabs(s);
+    draw_shop_tabs(s, true);
 
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 
