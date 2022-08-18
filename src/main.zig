@@ -15,6 +15,7 @@ const Reward = union(enum(u8)) {
     no_reward: void,
     gold_reward: u16,
     spell_reward: Spell,
+    alignment_reward: i8,
     kidnapped_daughter_reward: void,
 };
 
@@ -30,6 +31,7 @@ const Effect = union(enum(u8)) {
     player_shield: i16,
     enemy_shield: i16,
     gold_payment: u16,
+    alignment: i16,
 };
 
 const spell_max_size: usize = 8;
@@ -358,6 +360,10 @@ const GlobalState = enum {
     event_healing_shop,
     event_forest_wolf,
     event_militia_ambush,
+    event_moon_altar,
+    event_moon_altar_skip,
+    event_moon_altar_pray,
+    event_moon_altar_destroy,
     event_pirate,
     event_pirate_captain,
     event_snake_pit,
@@ -423,6 +429,7 @@ const swamp_area = Area{
         GlobalState.event_swamp_people,
         GlobalState.event_snake_pit,
         GlobalState.event_healer,
+        GlobalState.event_moon_altar,
     },
 };
 
@@ -861,11 +868,11 @@ const State = struct {
             Reward.spell_reward => |spell| {
                 add_spell_to_list(spell, &self.spellbook);
             },
+            Reward.alignment_reward => |alignment| {
+                self.change_alignment(alignment);
+            },
             Reward.kidnapped_daughter_reward => {
-                self.player_alignment += 10;
-                if (self.player_alignment >= 100) {
-                    self.player_alignment = 100;
-                }
+                self.change_alignment(10);
                 self.player_gold += 50;
             },
         }
@@ -955,6 +962,9 @@ const State = struct {
             },
             Effect.enemy_shield => |amount| {
                 self.enemy.shield += @intCast(i16, amount);
+            },
+            Effect.alignment => |alignment| {
+                self.change_alignment(alignment);
             },
         }
     }
@@ -1273,6 +1283,10 @@ pub fn draw_reward(s: *State, reward: Reward) void {
             pager.fmg_text(&s.pager, spell.name);
             pager.fmg_text(&s.pager, " spell!");
             pager.fmg_newline(&s.pager);
+        },
+        Reward.alignment_reward => |alignment| {
+            _ = alignment;
+            // alignment reward is never explicit to the player
         },
         else => {},
     }
@@ -2471,6 +2485,62 @@ const forest_wolf_dialog = [_]Dialog{
     Dialog{ .text = "A giant lone wolf is snarling at you. You have no choice other than to fight for your life!" },
 };
 
+const event_moon_altar_skip_dialog = [_]Dialog{
+    Dialog{ .text = "There is a moon altar here." },
+    Dialog.newline,
+    Dialog{ .text = "However, you have no use of such a thing." },
+};
+
+const event_moon_altar_skip_1_dialog = [_]Dialog{
+    Dialog{ .text = "You move on, leaving the altar behind you." },
+};
+
+const event_moon_altar_pray_dialog = [_]Dialog{
+    Dialog{ .text = "There is a moon altar here." },
+    Dialog.newline,
+    Dialog{ .text = "Some respite for your mind if you wish..." },
+};
+
+const event_moon_altar_pray_1_dialog = [_]Dialog{
+    Dialog{ .text = "After praying for some time, you feel comforted in your allegiance to the moon." },
+};
+
+const event_moon_altar_destroy_dialog = [_]Dialog{
+    Dialog{ .text = "There is a moon altar here." },
+    Dialog.newline,
+    Dialog{ .text = "Such an altar is an insult to your allegiance. Destroy it?" },
+};
+
+const event_moon_altar_destroy_1_dialog = [_]Dialog{
+    Dialog{ .text = "You move on after turning the altar into a pile of rubble." },
+};
+
+const event_moon_altar_skip_outcome = [_]Outcome{
+    Outcome{ .state = GlobalState.event_moon_altar_skip },
+};
+
+const event_moon_altar_pray_outcome = [_]Outcome{
+    Outcome{ .apply_effect = Effect{ .alignment = -15 } },
+    Outcome{ .state = GlobalState.event_moon_altar_pray },
+};
+
+const event_moon_altar_destroy_outcome = [_]Outcome{
+    Outcome{ .apply_effect = Effect{ .alignment = 10 } },
+    Outcome{ .state = GlobalState.event_moon_altar_destroy },
+};
+
+pub fn process_event_moon_altar(s: *State, released_keys: u8) void {
+    _ = s;
+    _ = released_keys;
+    if (s.player_alignment <= -20) {
+        text_event_choice_2(s, released_keys, &event_moon_altar_pray_dialog, "Skip", &event_moon_altar_skip_outcome, "Pray", &event_moon_altar_pray_outcome);
+    } else if (s.player_alignment >= 20) {
+        text_event_choice_2(s, released_keys, &event_moon_altar_destroy_dialog, "Skip", &event_moon_altar_skip_outcome, "Destroy", &event_moon_altar_destroy_outcome);
+    } else {
+        text_event_choice_1(s, released_keys, &event_moon_altar_skip_dialog, "Skip", &event_moon_altar_skip_outcome);
+    }
+}
+
 const militia_ambush_dialog = [_]Dialog{
     Dialog{ .text = "You spot a lone militia soldier coming your way." },
     Dialog.newline,
@@ -2605,6 +2675,10 @@ export fn update() void {
         GlobalState.event_healer_accept => text_event_confirm(&state, released_keys, &event_healer_accept_dialog),
         GlobalState.event_healing_shop => shop_intro(&state, released_keys, &healing_shop_dialog, healing_shop_gold, &healing_shop_items),
         GlobalState.event_forest_wolf => fight_intro(&state, released_keys, Enemy.enemy_forest_wolf(), &forest_wolf_dialog),
+        GlobalState.event_moon_altar => process_event_moon_altar(&state, released_keys),
+        GlobalState.event_moon_altar_skip => text_event_confirm(&state, released_keys, &event_moon_altar_skip_1_dialog),
+        GlobalState.event_moon_altar_pray => text_event_confirm(&state, released_keys, &event_moon_altar_pray_1_dialog),
+        GlobalState.event_moon_altar_destroy => text_event_confirm(&state, released_keys, &event_moon_altar_destroy_1_dialog),
         GlobalState.event_militia_ambush => fight_intro(&state, released_keys, Enemy.enemy_militia_ambush(), &militia_ambush_dialog),
         GlobalState.event_pirate => fight_intro(&state, released_keys, Enemy.enemy_pirate(), &pirate_dialog),
         GlobalState.event_pirate_captain => fight_intro(&state, released_keys, Enemy.enemy_pirate_captain(), &pirate_captain_dialog),
