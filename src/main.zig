@@ -358,6 +358,7 @@ const GlobalState = enum {
     event_healing_shop,
     event_forest_wolf,
     event_militia_ambush,
+    event_pirate,
     event_pirate_captain,
     event_snake_pit,
     event_swamp_people,
@@ -406,9 +407,10 @@ const coast_area = Area{
 
 const pirate_area = Area{
     .name = "PIRATE SHIP",
-    .event_count = 2,
+    .event_count = 3,
     .event_pool = &[_]GlobalState{
         GlobalState.event_chest_regular,
+        GlobalState.event_pirate,
         GlobalState.event_pirate_captain,
     },
 };
@@ -666,6 +668,20 @@ const Enemy = struct {
         };
         enemy.guaranteed_reward = Reward{ .gold_reward = 50 };
         enemy.sprite = &sprites.enemy_militia;
+        return enemy;
+    }
+
+    pub fn enemy_pirate() Enemy {
+        var enemy = zero();
+        const enemy_max_hp = 15;
+        enemy.hp = enemy_max_hp;
+        enemy.max_hp = enemy_max_hp;
+        enemy.intent[0] = EnemyIntent{
+            .trigger_time = 4 * 60,
+            .effect = Effect{ .damage_to_player = 3 },
+        };
+        enemy.guaranteed_reward = Reward.no_reward;
+        enemy.sprite = &sprites.enemy_pirate;
         return enemy;
     }
 
@@ -2461,6 +2477,10 @@ const militia_ambush_dialog = [_]Dialog{
     Dialog{ .text = "He does not seem aware that you're here." },
 };
 
+const pirate_dialog = [_]Dialog{
+    Dialog{ .text = "A pirate appears and draws his sword!!" },
+};
+
 const pirate_captain_dialog = [_]Dialog{
     Dialog{ .text = "You confront the pirate captain, he laughs:" },
     Dialog.newline,
@@ -2586,6 +2606,7 @@ export fn update() void {
         GlobalState.event_healing_shop => shop_intro(&state, released_keys, &healing_shop_dialog, healing_shop_gold, &healing_shop_items),
         GlobalState.event_forest_wolf => fight_intro(&state, released_keys, Enemy.enemy_forest_wolf(), &forest_wolf_dialog),
         GlobalState.event_militia_ambush => fight_intro(&state, released_keys, Enemy.enemy_militia_ambush(), &militia_ambush_dialog),
+        GlobalState.event_pirate => fight_intro(&state, released_keys, Enemy.enemy_pirate(), &pirate_dialog),
         GlobalState.event_pirate_captain => fight_intro(&state, released_keys, Enemy.enemy_pirate_captain(), &pirate_captain_dialog),
         GlobalState.event_snake_pit => fight_intro(&state, released_keys, Enemy.enemy_snake_pit(), &snake_pit_dialog),
         GlobalState.event_swamp_people => fight_intro(&state, released_keys, Enemy.enemy_swamp_people(), &swamp_people_dialog),
