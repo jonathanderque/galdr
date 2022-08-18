@@ -56,6 +56,7 @@ const Spell = struct {
     alignment: i8 = 0,
     current_progress: usize = 0,
     effect: Effect = Effect.no_effect,
+    frame_triggered: i16 = 0, // used for visual feedback
 
     pub fn zero() Spell {
         var spell = Spell{
@@ -289,6 +290,7 @@ const Spell = struct {
             .price = 2,
             .alignment = -5,
             .effect = Effect{ .damage_to_enemy = 2 },
+            .frame_triggered = 0,
         };
         spell.set_spell(&[_]u8{ w4.BUTTON_RIGHT, w4.BUTTON_2 });
         return spell;
@@ -1170,13 +1172,25 @@ pub fn draw_spell(spell: *Spell, p: *pager.Pager, x: i32, y: i32) void {
     draw_spell_input(&spell.input, spell.current_progress, 10 + (12 * (1 + pager.fmg_letter_width)), y);
 }
 
-pub fn draw_spell_list(spells: []Spell, p: *pager.Pager, x: i32, y: i32) void {
+pub fn draw_spell_list(spells: []Spell, s: *State, x: i32, y: i32) void {
     var i: usize = 0;
     var var_y = y;
     while (i < spells.len) : (i += 1) {
-        draw_spell(&spells[i], p, x, var_y);
+        const blink_on = @mod(s.frame_counter, 10) < 5;
+        if (s.frame_counter > 0 and spells[i].frame_triggered + 30 > s.frame_counter) {
+            if (spells[i].is_defined() and blink_on) {
+                //draw_heart(0, var_y);
+                w4.DRAW_COLORS.* = 0x22;
+                w4.rect(10, var_y, 140, 9);
+                w4.DRAW_COLORS.* = 0x21;
+            }
+        } else {
+            w4.DRAW_COLORS.* = 0x02;
+        }
+        draw_spell(&spells[i], &s.pager, x, var_y);
         var_y += 10;
     }
+    w4.DRAW_COLORS.* = 0x02;
 }
 
 pub fn draw_progress_bar(x: i32, y: i32, width: u32, height: u32, v: u32, max: u32) void {
@@ -1449,7 +1463,7 @@ pub fn fight_intro(s: *State, released_keys: u8, enemy: Enemy, dialog: []const D
     s.pager.set_cursor(10, 30);
     draw_dialog_list(dialog, s);
 
-    draw_spell_list(&s.choices, &s.pager, 10, 140);
+    draw_spell_list(&s.choices, s, 10, 140);
 }
 
 pub fn conditional_fight_intro(s: *State, released_keys: u8, enemy: Enemy, dialog: []const Dialog) void {
@@ -1480,7 +1494,7 @@ pub fn conditional_fight_intro(s: *State, released_keys: u8, enemy: Enemy, dialo
     s.pager.set_cursor(10, 30);
     draw_dialog_list(dialog, s);
 
-    draw_spell_list(&s.choices, &s.pager, 10, 140);
+    draw_spell_list(&s.choices, s, 10, 140);
 }
 
 pub fn shop_intro(s: *State, released_keys: u8, dialog: []const Dialog, shop_gold: i16, shop_items: []const Spell) void {
@@ -1507,7 +1521,7 @@ pub fn shop_intro(s: *State, released_keys: u8, dialog: []const Dialog, shop_gol
     s.pager.set_cursor(10, 30);
     draw_dialog_list(dialog, s);
 
-    draw_spell_list(&s.choices, &s.pager, 10, 140);
+    draw_spell_list(&s.choices, s, 10, 140);
 }
 
 pub fn process_choices_input(s: *State, released_keys: u8) void {
@@ -1522,6 +1536,9 @@ pub fn process_fight(s: *State, released_keys: u8) void {
         s.player_animation = 0;
         s.enemy_animation = 0;
         s.musicode.start_track(&empty_track, false);
+        for (s.spellbook) |*spell| {
+            spell.frame_triggered = -40;
+        }
     } else {
         s.frame_counter += 1;
         if (@mod(s.frame_counter, 3) == 0) {
@@ -1587,10 +1604,11 @@ pub fn process_fight(s: *State, released_keys: u8) void {
     draw_effect(111, 32, s, s.enemy.intent[s.enemy.intent_index].effect);
 
     w4.hline(0, 80, 160);
-    draw_spell_list(s.spellbook[0..], &s.pager, 10, 90);
+    draw_spell_list(&s.spellbook, s, 10, 90);
 
     for (s.spellbook) |*spell| {
         if (spell.is_completed()) {
+            spell.frame_triggered = @intCast(i16, s.frame_counter);
             s.apply_effect(spell.effect);
             s.change_alignment(spell.alignment);
             spell.reset();
@@ -1666,7 +1684,7 @@ pub fn process_fight_reward(s: *State, released_keys: u8) void {
         draw_reward(s, s.enemy.random_reward.reward);
     }
 
-    draw_spell_list(&s.choices, &s.pager, 10, 140);
+    draw_spell_list(&s.choices, s, 10, 140);
 }
 
 pub fn process_game_over(s: *State, released_keys: u8) void {
@@ -1682,7 +1700,7 @@ pub fn process_game_over(s: *State, released_keys: u8) void {
     w4.blit(&sprites.skull, 102, 48, sprites.skull_width, sprites.skull_height, w4.BLIT_1BPP | w4.BLIT_FLIP_X);
     s.pager.set_cursor(48, 50);
     pager.fmg_text(&s.pager, "GAME OVER");
-    draw_spell_list(&s.choices, &s.pager, 10, 140);
+    draw_spell_list(&s.choices, s, 10, 140);
 }
 
 pub fn process_inventory(s: *State, released_keys: u8) void {
@@ -1706,7 +1724,7 @@ pub fn process_inventory(s: *State, released_keys: u8) void {
     draw_shop_party(10, 50, s, "YOU", s.player_gold);
     draw_spell_inventory_list(10, 70, s, &s.spellbook, true);
 
-    draw_spell_list(&s.choices, &s.pager, 10, 140);
+    draw_spell_list(&s.choices, s, 10, 140);
 }
 
 pub fn process_inventory_full(s: *State, released_keys: u8) void {
@@ -1728,7 +1746,7 @@ pub fn process_inventory_full(s: *State, released_keys: u8) void {
     pager.fmg_newline(&s.pager);
     pager.fmg_newline(&s.pager);
     pager.fmg_text(&s.pager, "You should discard some spells before continuing your adventure.");
-    draw_spell_list(&s.choices, &s.pager, 10, 140);
+    draw_spell_list(&s.choices, s, 10, 140);
 }
 
 pub fn process_inventory_full_2(s: *State, released_keys: u8) void {
@@ -1784,7 +1802,7 @@ pub fn process_inventory_full_2(s: *State, released_keys: u8) void {
 
     draw_shop_tabs(s, true);
 
-    draw_spell_list(&s.choices, &s.pager, 10, 140);
+    draw_spell_list(&s.choices, s, 10, 140);
 
     if (get_spell_list_size(&s.spellbook) >= spell_book_full_size) {
         s.pager.set_cursor(20, 38);
@@ -1840,7 +1858,7 @@ pub fn process_map(s: *State, released_keys: u8) void {
     }
 
     draw_player_hud(s);
-    draw_spell_list(&s.choices, &s.pager, 10, 140);
+    draw_spell_list(&s.choices, s, 10, 140);
 }
 
 pub fn process_pick_random_event(s: *State, released_keys: u8) void {
@@ -1892,7 +1910,7 @@ pub fn process_title(s: *State, released_keys: u8) void {
 
     w4.DRAW_COLORS.* = 0x02;
     w4.blit(&sprites.galdr_logo, 16, 50, sprites.galdr_logo_width, sprites.galdr_logo_height, w4.BLIT_1BPP);
-    draw_spell_list(&s.choices, &s.pager, 10, 140);
+    draw_spell_list(&s.choices, s, 10, 140);
 }
 
 pub fn process_tutorial_basics(s: *State, released_keys: u8) void {
@@ -1920,7 +1938,7 @@ pub fn process_tutorial_basics(s: *State, released_keys: u8) void {
     pager.fmg_text(&s.pager, " 2. then press and release ");
     draw_button_1(s.pager.cursor_x, s.pager.cursor_y, false);
 
-    draw_spell_list(&s.choices, &s.pager, 10, 140);
+    draw_spell_list(&s.choices, s, 10, 140);
 }
 
 pub fn process_tutorial_synergies(s: *State, released_keys: u8) void {
@@ -1944,7 +1962,7 @@ pub fn process_tutorial_synergies(s: *State, released_keys: u8) void {
         s.pager.set_cursor(120, 140);
         pager.fmg_text(&s.pager, "+1");
     }
-    draw_spell_list(&s.choices, &s.pager, 10, 140);
+    draw_spell_list(&s.choices, s, 10, 140);
 }
 
 pub fn process_tutorial_pause_menu(s: *State, released_keys: u8) void {
@@ -1971,7 +1989,7 @@ pub fn process_tutorial_pause_menu(s: *State, released_keys: u8) void {
     pager.fmg_newline(&s.pager);
     pager.fmg_text(&s.pager, "The Pause Menu stops time and lets you inspect your spellbook.");
 
-    draw_spell_list(&s.choices, &s.pager, 10, 140);
+    draw_spell_list(&s.choices, s, 10, 140);
 }
 
 pub fn process_tutorial_alignment(s: *State, released_keys: u8) void {
@@ -1996,7 +2014,7 @@ pub fn process_tutorial_alignment(s: *State, released_keys: u8) void {
     pager.fmg_newline(&s.pager);
     pager.fmg_text(&s.pager, "Alignment will affect the outcome of events, or even prevent you from picking certain options, so be mindful of your alignment.");
 
-    draw_spell_list(&s.choices, &s.pager, 10, 140);
+    draw_spell_list(&s.choices, s, 10, 140);
 }
 
 pub fn process_tutorial_end(s: *State, released_keys: u8) void {
@@ -2016,7 +2034,7 @@ pub fn process_tutorial_end(s: *State, released_keys: u8) void {
     pager.fmg_newline(&s.pager);
     pager.fmg_text(&s.pager, "Good luck!");
 
-    draw_spell_list(&s.choices, &s.pager, 10, 140);
+    draw_spell_list(&s.choices, s, 10, 140);
 }
 
 pub fn process_new_game_init() void {
@@ -2096,7 +2114,7 @@ pub fn process_crossroad(s: *State, released_keys: u8) void {
     pager.fmg_newline(&s.pager);
     pager.fmg_text(&s.pager, "Please pick your path carefully.");
     pager.fmg_newline(&s.pager);
-    draw_spell_list(&s.choices, &s.pager, 10, 140);
+    draw_spell_list(&s.choices, s, 10, 140);
     const area_pool = current_area_pool(s);
     if (s.choices[0].is_completed()) {
         s.area = area_pool[s.crossroad_index_1];
@@ -2215,7 +2233,7 @@ pub fn text_event_choice_2(s: *State, released_keys: u8, dialog: []const Dialog,
     draw_player_hud(s);
     s.pager.set_cursor(10, 30);
     draw_dialog_list(dialog, s);
-    draw_spell_list(&s.choices, &s.pager, 10, 140);
+    draw_spell_list(&s.choices, s, 10, 140);
 }
 
 pub fn text_event_choice_1(s: *State, released_keys: u8, dialog: []const Dialog, choice0: []const u8, outcome0: []const Outcome) void {
@@ -2483,7 +2501,7 @@ pub fn process_shop(s: *State, released_keys: u8) void {
 
     draw_shop_tabs(s, true);
 
-    draw_spell_list(&s.choices, &s.pager, 10, 140);
+    draw_spell_list(&s.choices, s, 10, 140);
 
     if (get_spell_list_size(&s.spellbook) >= spell_book_full_size) {
         s.pager.set_cursor(85, 140);
