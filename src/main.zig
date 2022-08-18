@@ -1689,10 +1689,12 @@ pub fn process_inventory_full_2(s: *State, released_keys: u8) void {
     }
     var spell: Spell = undefined;
     if (s.shop_list_index == 0) {
+        s.choices[0].name = "Discard";
         process_keys_spell_list(s, released_keys, &s.spellbook);
         spell = s.spellbook[@intCast(usize, s.spell_index)];
     }
     if (s.shop_list_index == 1) {
+        s.choices[0].name = "Pick up";
         process_keys_spell_list(s, released_keys, &s.shop_items);
         spell = s.shop_items[@intCast(usize, s.spell_index)];
     }
@@ -1720,21 +1722,25 @@ pub fn process_inventory_full_2(s: *State, released_keys: u8) void {
     }
 
     draw_spell_details(10, 10, s, spell);
-    w4.hline(0, 40, 160);
 
     draw_shop_party(10, 50, s, "YOU", s.player_gold);
-    draw_spell_inventory_list(10, 70, s, &s.spellbook, s.shop_list_index == 0);
+    if (s.shop_list_index == 0) {
+        draw_spell_inventory_list(10, 70, s, &s.spellbook, s.shop_list_index == 0);
+    }
 
-    draw_shop_party(80, 50, s, "GROUND", s.shop_gold);
-    draw_spell_inventory_list(90, 70, s, &s.shop_items, s.shop_list_index == 1);
+    s.pager.set_cursor(90, 50);
+    pager.fmg_text(&s.pager, "GROUND");
+    if (s.shop_list_index == 1) {
+        draw_spell_inventory_list(10, 70, s, &s.shop_items, s.shop_list_index == 1);
+    }
+
+    draw_shop_tabs(s);
 
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 
     if (get_spell_list_size(&s.spellbook) >= spell_book_full_size) {
-        s.pager.set_cursor(85, 140);
-        pager.fmg_text(&s.pager, "Can't leave. ");
-        s.pager.set_cursor(85, 150);
-        pager.fmg_text(&s.pager, "Spellbook full");
+        s.pager.set_cursor(20, 38);
+        pager.f35_text(&s.pager, "CAN'T LEAVE. SPELLBOOK FULL!");
     }
 }
 
