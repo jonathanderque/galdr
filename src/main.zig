@@ -367,6 +367,10 @@ const GlobalState = enum {
     event_pirate,
     event_pirate_captain,
     event_snake_pit,
+    event_sun_altar,
+    event_sun_altar_skip,
+    event_sun_altar_pay,
+    event_sun_altar_destroy,
     event_swamp_people,
     event_swamp_creature,
     event_sun_fountain,
@@ -445,6 +449,7 @@ const forest_area = Area{
         GlobalState.event_cavern_man,
         GlobalState.event_militia_ambush,
         GlobalState.event_healing_shop,
+        GlobalState.event_sun_altar,
     },
 };
 
@@ -2530,8 +2535,6 @@ const event_moon_altar_destroy_outcome = [_]Outcome{
 };
 
 pub fn process_event_moon_altar(s: *State, released_keys: u8) void {
-    _ = s;
-    _ = released_keys;
     if (s.player_alignment <= -20) {
         text_event_choice_2(s, released_keys, &event_moon_altar_pray_dialog, "Skip", &event_moon_altar_skip_outcome, "Pray", &event_moon_altar_pray_outcome);
     } else if (s.player_alignment >= 20) {
@@ -2563,6 +2566,71 @@ const snake_pit_dialog = [_]Dialog{
     Dialog.newline,
     Dialog{ .text = "You can't get out safely without dealing with your slithery foes first." },
 };
+
+const event_sun_altar_skip_dialog = [_]Dialog{
+    Dialog{ .text = "There is a sun altar here." },
+    Dialog.newline,
+    Dialog{ .text = "However, you have no use of such a thing." },
+};
+
+const event_sun_altar_skip_1_dialog = [_]Dialog{
+    Dialog{ .text = "You move on, leaving the altar behind you." },
+};
+
+const event_sun_altar_pay_dialog = [_]Dialog{
+    Dialog{ .text = "There is a sun altar here." },
+    Dialog.newline,
+    Dialog{ .text = "Some respite for your mind in exchange of some gold." },
+};
+
+const event_sun_altar_no_pay_dialog = [_]Dialog{
+    Dialog{ .text = "There is a sun altar here." },
+    Dialog.newline,
+    Dialog{ .text = "This would be a welcome tribute, however you do not have enough gold." },
+};
+
+const event_sun_altar_pay_1_dialog = [_]Dialog{
+    Dialog{ .text = "After leaving a tribute, you feel comforted in your allegiance to the sun." },
+};
+
+const event_sun_altar_destroy_dialog = [_]Dialog{
+    Dialog{ .text = "There is a sun altar here." },
+    Dialog.newline,
+    Dialog{ .text = "Such an altar is an insult to your allegiance. Destroy it?" },
+};
+
+const event_sun_altar_destroy_1_dialog = [_]Dialog{
+    Dialog{ .text = "You move on after turning the altar into a pile of rubble." },
+};
+
+const event_sun_altar_skip_outcome = [_]Outcome{
+    Outcome{ .state = GlobalState.event_sun_altar_skip },
+};
+
+const event_sun_altar_pay_outcome = [_]Outcome{
+    Outcome{ .apply_effect = Effect{ .gold_payment = 20 } },
+    Outcome{ .apply_effect = Effect{ .alignment = 15 } },
+    Outcome{ .state = GlobalState.event_sun_altar_pay },
+};
+
+const event_sun_altar_destroy_outcome = [_]Outcome{
+    Outcome{ .apply_effect = Effect{ .alignment = -10 } },
+    Outcome{ .state = GlobalState.event_sun_altar_destroy },
+};
+
+pub fn process_event_sun_altar(s: *State, released_keys: u8) void {
+    if (s.player_alignment >= 20) {
+        if (s.player_gold >= 20) {
+            text_event_choice_2(s, released_keys, &event_sun_altar_pay_dialog, "Skip", &event_sun_altar_skip_outcome, "Pay", &event_sun_altar_pay_outcome);
+        } else {
+            text_event_choice_1(s, released_keys, &event_sun_altar_no_pay_dialog, "Skip", &event_sun_altar_skip_outcome);
+        }
+    } else if (s.player_alignment <= -20) {
+        text_event_choice_2(s, released_keys, &event_sun_altar_destroy_dialog, "Skip", &event_sun_altar_skip_outcome, "Destroy", &event_sun_altar_destroy_outcome);
+    } else {
+        text_event_choice_1(s, released_keys, &event_sun_altar_skip_dialog, "Skip", &event_sun_altar_skip_outcome);
+    }
+}
 
 const swamp_people_dialog = [_]Dialog{
     Dialog{ .text = "Swamp people do not have a reputation of being friendly" },
@@ -2683,6 +2751,10 @@ export fn update() void {
         GlobalState.event_pirate => fight_intro(&state, released_keys, Enemy.enemy_pirate(), &pirate_dialog),
         GlobalState.event_pirate_captain => fight_intro(&state, released_keys, Enemy.enemy_pirate_captain(), &pirate_captain_dialog),
         GlobalState.event_snake_pit => fight_intro(&state, released_keys, Enemy.enemy_snake_pit(), &snake_pit_dialog),
+        GlobalState.event_sun_altar => process_event_sun_altar(&state, released_keys),
+        GlobalState.event_sun_altar_skip => text_event_confirm(&state, released_keys, &event_sun_altar_skip_1_dialog),
+        GlobalState.event_sun_altar_pay => text_event_confirm(&state, released_keys, &event_sun_altar_pay_1_dialog),
+        GlobalState.event_sun_altar_destroy => text_event_confirm(&state, released_keys, &event_sun_altar_destroy_1_dialog),
         GlobalState.event_swamp_people => fight_intro(&state, released_keys, Enemy.enemy_swamp_people(), &swamp_people_dialog),
         GlobalState.event_swamp_creature => fight_intro(&state, released_keys, Enemy.enemy_swamp_creature(), &swamp_creature_dialog),
         GlobalState.event_sun_fountain => process_event_sun_fountain(&state, released_keys),
