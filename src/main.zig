@@ -1,6 +1,10 @@
 const w4 = @import("wasm4.zig");
 const pager = @import("pager.zig");
 const sprites = @import("sprites.zig");
+const notes = @import("notes.zig");
+const musicode = @import("musicode.zig");
+const Instrument = musicode.Instrument;
+const Musicode = musicode.Musicode;
 
 const rand_a: u64 = 6364136223846793005;
 const rand_c: u64 = 1442695040888963407;
@@ -846,6 +850,8 @@ const State = struct {
     visited_events: [visited_events_max_size]bool = undefined,
     choices: [spell_book_max_size]Spell = undefined,
     frame_counter: u16 = 0,
+    // sound engine
+    musicode: Musicode,
     // player
     player_hp: i16 = 0,
     player_max_hp: i16 = 0,
@@ -906,6 +912,7 @@ const State = struct {
                         self.player_hp = 0;
                     }
                     self.player_animation = 4;
+                    self.musicode.start_track(&damage_track, false);
                 } else {
                     self.player_shield -= dmg;
                 }
@@ -918,6 +925,7 @@ const State = struct {
                         self.enemy.hp = 0;
                     }
                     self.enemy_animation = 4;
+                    self.musicode.start_track(&damage_track, false);
                 } else {
                     self.enemy.shield -= dmg;
                 }
@@ -935,6 +943,7 @@ const State = struct {
                         self.enemy.hp = self.enemy.max_hp;
                     }
                     self.player_animation = 4;
+                    self.musicode.start_track(&damage_track, false);
                 } else {
                     self.player_shield -= dmg;
                 }
@@ -952,6 +961,7 @@ const State = struct {
                         self.player_hp = self.player_max_hp;
                     }
                     self.enemy_animation = 4;
+                    self.musicode.start_track(&damage_track, false);
                 } else {
                     self.enemy.shield -= dmg;
                 }
@@ -1511,6 +1521,7 @@ pub fn process_fight(s: *State, released_keys: u8) void {
         s.frame_counter = 0;
         s.player_animation = 0;
         s.enemy_animation = 0;
+        s.musicode.start_track(&empty_track, false);
     } else {
         s.frame_counter += 1;
         if (@mod(s.frame_counter, 3) == 0) {
@@ -1522,6 +1533,7 @@ pub fn process_fight(s: *State, released_keys: u8) void {
             }
         }
     }
+    s.musicode.play();
     s.inventory_menu_spell.process(released_keys);
     if (s.inventory_menu_spell.is_completed()) {
         s.apply_effect(s.inventory_menu_spell.effect);
@@ -1591,6 +1603,7 @@ pub fn process_fight_end(s: *State, released_keys: u8) void {
     if (s.state_has_changed) {
         s.frame_counter = 0;
         w4.PALETTE[3] = 0xffffff;
+        s.musicode.start_track(&fight_death_sfx_track, false);
     } else {
         s.frame_counter += 1;
         w4.PALETTE[3] -= 0x030303;
@@ -1602,6 +1615,7 @@ pub fn process_fight_end(s: *State, released_keys: u8) void {
             }
         }
     }
+    s.musicode.play();
 
     // drawing
     w4.DRAW_COLORS.* = 2;
@@ -2011,6 +2025,7 @@ pub fn process_new_game_init() void {
     state = State{
         .previous_input = 0,
         .pager = pager.Pager.new(),
+        .musicode = Musicode.new(),
         // global state
         .state = GlobalState.crossroad,
         .choices = undefined,
@@ -2026,6 +2041,8 @@ pub fn process_new_game_init() void {
         // enemy
         .enemy = Enemy.zero(),
     };
+
+    initialize_instruments(&state);
 
     var i: usize = 0;
     while (i < state.spellbook.len) : (i += 1) {
@@ -2697,7 +2714,88 @@ const event_sun_fountain_refresh_dialog = [_]Dialog{
     Dialog{ .text = "After resting for a bit, you move on to your next adventure." },
 };
 
+const empty_track = [_]u8{
+    Musicode.wait(1),
+};
+const damage_track = [_]u8{
+    Musicode.instr(4), // 1
+};
+const fight_death_sfx_track = [_]u8{
+    Musicode.instr(6), // 1
+};
+const title_track = [_]u8{
+    Musicode.instr(4), // 1
+    Musicode.instr(3),
+    Musicode.wait(15),
+    Musicode.instr(5),
+    Musicode.wait(15),
+    Musicode.instr(5),
+    Musicode.wait(15),
+    Musicode.instr(5),
+    Musicode.wait(15),
+    Musicode.instr(4), // 3
+    Musicode.wait(15),
+    Musicode.instr(5),
+    Musicode.wait(15),
+    Musicode.instr(5),
+    Musicode.wait(15),
+    Musicode.instr(5),
+    Musicode.wait(15),
+    Musicode.instr_with_note(1), // 1
+    0,                 98, // G2
+    // TODO add note
+    Musicode.instr(3), Musicode.wait(15),
+    Musicode.instr(5), Musicode.wait(15),
+    Musicode.instr(3), Musicode.wait(15),
+    Musicode.instr(5), Musicode.wait(15),
+    Musicode.instr(4), // 3
+    Musicode.wait(15),
+    Musicode.instr(5),
+    Musicode.wait(15),
+    Musicode.instr(5),
+    Musicode.wait(15),
+    Musicode.instr(5),
+    Musicode.wait(15),
+};
+
 var state: State = undefined;
+
+pub fn initialize_instruments(s: *State) void {
+    //state.musicode.instruments[0] = Instrument{ .freq1 = 500, .sustain = 5, .sustain_vol = 80, .channel = w4.TONE_NOISE };
+    s.musicode.instruments[0] = Instrument{
+        .freq1 = 440,
+        .decay = 2,
+        .sustain = 5,
+        .release = 1,
+        .sustain_vol = 4,
+        .channel = w4.TONE_PULSE1,
+    };
+    // sweep
+    s.musicode.instruments[1] = Instrument{
+        .freq1 = notes.A3,
+        .attack = 26,
+        .decay = 45,
+        .sustain = 1,
+        .release = 44,
+        .sustain_vol = 4,
+        .channel = w4.TONE_TRIANGLE,
+    };
+    // lead
+    s.musicode.instruments[2] = Instrument{
+        .freq1 = notes.A3,
+        .sustain = 10,
+        .sustain_vol = 80,
+        .channel = w4.TONE_PULSE1,
+    };
+    // kick
+    s.musicode.instruments[3] = Instrument{ .freq1 = 150, .sustain = 5, .sustain_vol = 80, .channel = w4.TONE_NOISE };
+    // snare
+    s.musicode.instruments[4] = Instrument{ .freq1 = 500, .sustain = 5, .sustain_vol = 80, .channel = w4.TONE_NOISE };
+    // hi hats
+    s.musicode.instruments[5] = Instrument{ .freq1 = 700, .sustain = 3, .sustain_vol = 80, .channel = w4.TONE_NOISE };
+    // death sfx
+    s.musicode.instruments[6] = Instrument{ .freq1 = 330, .freq2 = 190, .release = 100, .sustain_vol = 80, .channel = w4.TONE_NOISE };
+}
 
 export fn start() void {
     w4.PALETTE.* = .{
@@ -2707,7 +2805,10 @@ export fn start() void {
         0xcc5555,
     };
 
-    state = State{};
+    state = State{
+        .musicode = Musicode.new(),
+    };
+    initialize_instruments(&state);
 }
 
 export fn update() void {
