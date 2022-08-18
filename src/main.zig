@@ -1229,10 +1229,11 @@ pub fn draw_effect(x: i32, y: i32, s: *State, effect: Effect) void {
 pub fn draw_shop_party(x: i32, y: i23, s: *State, name: []const u8, gold_amount: i16) void {
     s.pager.set_cursor(x, y);
     pager.fmg_text(&s.pager, name);
-    pager.fmg_text(&s.pager, " * ");
+    pager.fmg_text(&s.pager, "(");
     draw_coin(s.pager.cursor_x, y - 1);
     s.pager.set_cursor(s.pager.cursor_x + 11, y);
     pager.fmg_number(&s.pager, gold_amount);
+    pager.fmg_text(&s.pager, ")");
 }
 
 pub fn draw_reward(s: *State, reward: Reward) void {
@@ -1271,12 +1272,13 @@ pub fn draw_spell_details(x: i32, y: i32, s: *State, spell: Spell) void {
     }
     s.pager.set_cursor(s.pager.cursor_x + 11, y);
     pager.fmg_text(&s.pager, " * ");
-    draw_effect(s.pager.cursor_x, y - 1, s, spell.effect);
-    pager.fmg_text(&s.pager, " * ");
     draw_coin(s.pager.cursor_x, y - 1);
     s.pager.set_cursor(s.pager.cursor_x + 11, y);
     pager.fmg_number(&s.pager, spell.price);
-    draw_spell_input(&spell.input, 0, x, y + 2 * (pager.fmg_letter_height + 1));
+    const second_line_y = y + 2 * (pager.fmg_letter_height + 1);
+    draw_spell_input(&spell.input, 0, x, second_line_y);
+    s.pager.set_cursor(90, s.pager.cursor_y);
+    draw_effect(s.pager.cursor_x, second_line_y, s, spell.effect);
 }
 
 // draws a list of spell names + cursor
@@ -2341,16 +2343,45 @@ pub fn process_keys_spell_list(s: *State, released_keys: u8, spell_list: []Spell
     }
 }
 
+pub fn draw_shop_tabs(s: *State) void {
+    _ = s;
+    const y = 46;
+    const tab_width = 69;
+    const tab_height = 13;
+    const left_tab_x = 6;
+    const right_tab_x = 86;
+    w4.hline(left_tab_x, y, tab_width);
+    w4.vline(left_tab_x - 1, y + 1, tab_height);
+    w4.vline(left_tab_x + tab_width, y + 1, tab_height);
+
+    w4.hline(right_tab_x, y, tab_width);
+    w4.vline(right_tab_x - 1, y + 1, tab_height);
+    w4.vline(right_tab_x + tab_width, y + 1, tab_height);
+
+    w4.hline(0, y + tab_height, left_tab_x);
+    w4.hline(left_tab_x + tab_width, y + tab_height, 11);
+    w4.hline(right_tab_x + tab_width, y + tab_height, 10);
+
+    if (s.shop_list_index == 0) {
+        w4.hline(right_tab_x, y + tab_height, tab_width);
+    }
+    if (s.shop_list_index == 1) {
+        w4.hline(left_tab_x, y + tab_height, tab_width);
+    }
+}
+
 pub fn process_shop(s: *State, released_keys: u8) void {
     if (released_keys == w4.BUTTON_LEFT or released_keys == w4.BUTTON_RIGHT) {
         s.shop_list_index = 1 - s.shop_list_index;
     }
     var spell: Spell = undefined;
     if (s.shop_list_index == 0) {
+        s.choices[0].name = "Sell";
         process_keys_spell_list(s, released_keys, &s.spellbook);
         spell = s.spellbook[@intCast(usize, s.spell_index)];
     }
     if (s.shop_list_index == 1) {
+        s.choices[0].name = "Buy";
         process_keys_spell_list(s, released_keys, &s.shop_items);
         spell = s.shop_items[@intCast(usize, s.spell_index)];
     }
@@ -2382,13 +2413,18 @@ pub fn process_shop(s: *State, released_keys: u8) void {
 
     w4.DRAW_COLORS.* = 0x02;
     draw_spell_details(10, 10, s, spell);
-    w4.hline(0, 40, 160);
 
     draw_shop_party(10, 50, s, "YOU", s.player_gold);
-    draw_spell_inventory_list(10, 70, s, &s.spellbook, s.shop_list_index == 0);
+    if (s.shop_list_index == 0) {
+        draw_spell_inventory_list(10, 70, s, &s.spellbook, s.shop_list_index == 0);
+    }
 
-    draw_shop_party(80, 50, s, "SHOP", s.shop_gold);
-    draw_spell_inventory_list(80, 70, s, &s.shop_items, s.shop_list_index == 1);
+    draw_shop_party(90, 50, s, "SHOP", s.shop_gold);
+    if (s.shop_list_index == 1) {
+        draw_spell_inventory_list(10, 70, s, &s.shop_items, s.shop_list_index == 1);
+    }
+
+    draw_shop_tabs(s);
 
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 
