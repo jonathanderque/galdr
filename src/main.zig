@@ -1877,8 +1877,7 @@ pub fn process_title(s: *State, released_keys: u8) void {
     _ = rand();
 
     w4.DRAW_COLORS.* = 0x02;
-    s.pager.set_cursor(52, 50);
-    pager.fmg_text(&s.pager, "G A L D R");
+    w4.blit(&sprites.galdr_logo, 16, 50, sprites.galdr_logo_width, sprites.galdr_logo_height, w4.BLIT_1BPP);
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 }
 
