@@ -1239,12 +1239,12 @@ pub fn draw_shop_party(x: i32, y: i23, s: *State, name: []const u8, gold_amount:
 pub fn draw_reward(s: *State, reward: Reward) void {
     switch (reward) {
         Reward.kidnapped_daughter_reward => {
-            pager.fmg_text(&s.pager, "You saved the kidnapped daughter, and return her to her family.");
-            pager.fmg_newline(&s.pager);
-            pager.fmg_newline(&s.pager);
             pager.fmg_text(&s.pager, "The parents say:");
             pager.fmg_newline(&s.pager);
-            pager.fmg_text(&s.pager, "\"Thank you!! We don't have much, but it is now yours\"");
+            pager.fmg_text(&s.pager, "\"Thank you for saving our daughter!! We don't have much, but it is now yours.\" (");
+            draw_coin(s.pager.cursor_x, s.pager.cursor_y - 1);
+            s.pager.set_cursor(s.pager.cursor_x + 11, s.pager.cursor_y);
+            pager.fmg_text(&s.pager, "50)");
         },
         Reward.gold_reward => |amount| {
             pager.fmg_text(&s.pager, "You gained ");
@@ -1608,17 +1608,14 @@ pub fn process_fight_reward(s: *State, released_keys: u8) void {
     }
     w4.DRAW_COLORS.* = 0x02;
     draw_player_hud(s);
-    s.pager.set_cursor(10, 30);
-    pager.fmg_text(&s.pager, "Victory!!");
-    pager.fmg_newline(&s.pager);
-    pager.fmg_newline(&s.pager);
+    draw_hero(20, 34);
+    w4.hline(0, 80, 160);
+    s.pager.set_cursor(10, 90);
     draw_reward(s, s.enemy.guaranteed_reward);
 
     if (s.reward_probability < s.enemy.random_reward.probability) {
         draw_reward(s, s.enemy.random_reward.reward);
     }
-
-    w4.blit(state.enemy.sprite, 10, 70, sprites.enemy_width, sprites.enemy_height, w4.BLIT_1BPP);
 
     draw_spell_list(&s.choices, &s.pager, 10, 140);
 }
