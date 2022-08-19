@@ -197,17 +197,33 @@ const Spell = struct {
     pub fn spell_lightning() Spell {
         var s = Spell{
             .name = "LIGHTNING",
-            .alignment = 10,
-            .price = 9,
-            .effect = Effect{ .damage_to_enemy = 7 },
+            .alignment = 3,
+            .price = 3,
+            .effect = Effect{ .damage_to_enemy = 4 },
         };
         s.set_spell(&[_]u8{
-            w4.BUTTON_RIGHT,
-            w4.BUTTON_RIGHT,
+            w4.BUTTON_UP,
+            w4.BUTTON_UP,
             w4.BUTTON_LEFT,
             w4.BUTTON_1,
             w4.BUTTON_RIGHT,
             w4.BUTTON_2,
+        });
+        return s;
+    }
+
+    pub fn spell_bolt() Spell {
+        var s = Spell{
+            .name = "BOLT",
+            .alignment = 2,
+            .price = 3,
+            .effect = Effect{ .damage_to_enemy = 3 },
+        };
+        s.set_spell(&[_]u8{
+            w4.BUTTON_UP,
+            w4.BUTTON_UP,
+            w4.BUTTON_LEFT,
+            w4.BUTTON_1,
         });
         return s;
     }
@@ -217,7 +233,7 @@ const Spell = struct {
             .name = "SHIELD",
             .price = 12,
             .alignment = 2,
-            .effect = Effect{ .player_shield = 2 },
+            .effect = Effect{ .player_shield = 7 },
         };
         s.set_spell(&[_]u8{
             w4.BUTTON_DOWN,
@@ -384,6 +400,9 @@ const GlobalState = enum {
     event_sun_fountain_damage,
     event_sun_fountain_heal,
     event_sun_fountain_refresh,
+    event_training_fight_1,
+    event_training_fight_2,
+    event_training_bat,
     fight,
     fight_end,
     fight_reward,
@@ -407,6 +426,16 @@ const Area = struct {
     name: []const u8,
     event_count: usize, // player is expected to play even_count events out of the total pool
     event_pool: []const GlobalState,
+};
+
+const training_area = Area{
+    .name = "WIZARD CAMP",
+    .event_count = 3,
+    .event_pool = &[_]GlobalState{
+        GlobalState.event_training_fight_1,
+        GlobalState.event_training_fight_2,
+        GlobalState.event_training_bat,
+    },
 };
 
 const coast_area = Area{
@@ -479,12 +508,17 @@ const boss_area = Area{
     },
 };
 
+const training_area_pool = [_]Area{
+    training_area,
+};
+
 const easy_area_pool = [_]Area{
-    coast_area,
+    forest_area,
     swamp_area,
 };
 
 const medium_area_pool = [_]Area{
+    coast_area,
     forest_area,
     castle_area,
 };
@@ -796,6 +830,52 @@ const Enemy = struct {
         };
         enemy.guaranteed_reward = Reward{ .gold_reward = 20 };
         enemy.sprite = &sprites.enemy_swamp_creature;
+        return enemy;
+    }
+
+    pub fn enemy_training_soldier_1() Enemy {
+        var enemy = zero();
+        const enemy_max_hp = 25;
+        enemy.hp = enemy_max_hp;
+        enemy.max_hp = enemy_max_hp;
+        enemy.intent[0] = EnemyIntent{
+            .trigger_time = 12 * 60,
+            .effect = Effect{ .damage_to_player = 7 },
+        };
+        enemy.guaranteed_reward = Reward.no_reward;
+        enemy.sprite = &sprites.enemy_barbarian;
+        return enemy;
+    }
+
+    pub fn enemy_training_soldier_2() Enemy {
+        var enemy = zero();
+        const enemy_max_hp = 25;
+        enemy.hp = enemy_max_hp;
+        enemy.max_hp = enemy_max_hp;
+        enemy.intent[0] = EnemyIntent{
+            .trigger_time = 12 * 60,
+            .effect = Effect{ .damage_to_player = 7 },
+        };
+        enemy.intent[1] = EnemyIntent{
+            .trigger_time = 3 * 60,
+            .effect = Effect{ .enemy_shield = 4 },
+        };
+        enemy.guaranteed_reward = Reward.no_reward;
+        enemy.sprite = &sprites.enemy_barbarian;
+        return enemy;
+    }
+
+    pub fn enemy_training_bat() Enemy {
+        var enemy = zero();
+        const enemy_max_hp = 15;
+        enemy.hp = enemy_max_hp;
+        enemy.max_hp = enemy_max_hp;
+        enemy.intent[0] = EnemyIntent{
+            .trigger_time = 12 * 60,
+            .effect = Effect{ .vampirism_to_player = 5 },
+        };
+        enemy.guaranteed_reward = Reward.no_reward;
+        enemy.sprite = &sprites.enemy_castle_bat;
         return enemy;
     }
 };
@@ -2074,16 +2154,17 @@ pub fn process_new_game_init() void {
         state.spellbook[i] = Spell.zero();
     }
 
-    state.spellbook[0] = Spell.spell_fireball();
-    state.spellbook[1] = Spell.spell_lightning();
+    state.spellbook[0] = Spell.spell_lightning();
+    state.spellbook[1] = Spell.spell_bolt();
     state.spellbook[2] = Spell.spell_shield();
 }
 
 pub fn current_area_pool(s: *State) []const Area {
     return switch (s.area_counter) {
-        0 => &easy_area_pool,
-        1 => &medium_area_pool,
-        2 => &boss_area_pool,
+        0 => &training_area_pool,
+        1 => &easy_area_pool,
+        2 => &medium_area_pool,
+        3 => &boss_area_pool,
         else => unreachable,
     };
 }
@@ -2742,6 +2823,27 @@ const event_sun_fountain_refresh_dialog = [_]Dialog{
     Dialog{ .text = "After resting for a bit, you move on to your next adventure." },
 };
 
+const training_fight_dialog_1 = [_]Dialog{
+    Dialog{ .text = "Your mentor says:" },
+    Dialog.newline,
+    Dialog.newline,
+    Dialog{ .text = "\"Let's pratice your fighting skills against this soldier. Try to avoid taking any damage.\"" },
+};
+
+const training_fight_dialog_2 = [_]Dialog{
+    Dialog{ .text = "Your mentor says:" },
+    Dialog.newline,
+    Dialog.newline,
+    Dialog{ .text = "\"You'll have to cast more spells here to go through your enemy shield!\"" },
+};
+
+const training_bat_dialog = [_]Dialog{
+    Dialog{ .text = "Your mentor says:" },
+    Dialog.newline,
+    Dialog.newline,
+    Dialog{ .text = "\"This bat will drain your blood to heal herself. Use your shield to prevent this!" },
+};
+
 const empty_track = [_]u8{
     Musicode.wait(1),
 };
@@ -2890,6 +2992,9 @@ export fn update() void {
         GlobalState.event_sun_fountain_damage => text_event_confirm(&state, released_keys, &event_sun_fountain_damage_dialog),
         GlobalState.event_sun_fountain_heal => text_event_confirm(&state, released_keys, &event_sun_fountain_heal_dialog),
         GlobalState.event_sun_fountain_refresh => text_event_confirm(&state, released_keys, &event_sun_fountain_refresh_dialog),
+        GlobalState.event_training_fight_1 => fight_intro(&state, released_keys, Enemy.enemy_training_soldier_1(), &training_fight_dialog_1),
+        GlobalState.event_training_fight_2 => fight_intro(&state, released_keys, Enemy.enemy_training_soldier_2(), &training_fight_dialog_2),
+        GlobalState.event_training_bat => fight_intro(&state, released_keys, Enemy.enemy_training_bat(), &training_bat_dialog),
         GlobalState.fight => process_fight(&state, released_keys),
         GlobalState.fight_end => process_fight_end(&state, released_keys),
         GlobalState.fight_reward => process_fight_reward(&state, released_keys),
