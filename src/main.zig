@@ -495,6 +495,17 @@ const training_area = Area{
     },
 };
 
+const road_area = Area{
+    .name = "ROAD",
+    .event_count = 3,
+    .event_pool = &[_]GlobalState{
+        GlobalState.event_chest_regular,
+        GlobalState.event_coin_muncher,
+        GlobalState.event_snake_pit,
+        GlobalState.event_militia_ambush,
+    },
+};
+
 const coast_area = Area{
     .name = "COAST",
     .event_count = 4,
@@ -540,7 +551,6 @@ const forest_area = Area{
         GlobalState.event_forest_wolf,
         GlobalState.event_cavern_man,
         GlobalState.event_militia_ambush,
-        GlobalState.event_militia_ambush,
     },
 };
 
@@ -570,7 +580,7 @@ const boss_area = Area{
 };
 
 const training_area_pool = [_]Area{
-    forest_area,
+    road_area,
     training_area,
 };
 
