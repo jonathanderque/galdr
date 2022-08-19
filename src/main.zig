@@ -852,6 +852,8 @@ const State = struct {
     visited_events: [visited_events_max_size]bool = undefined,
     choices: [spell_book_max_size]Spell = undefined,
     frame_counter: u16 = 0,
+    // options
+    with_sound: bool = false,
     // sound engine
     musicode: Musicode,
     // player
@@ -871,6 +873,12 @@ const State = struct {
     shop_items: [shop_items_max_size]Spell = undefined,
     shop_list_index: usize = 0, // 0= player_inventory 1= shop_inventory
     shop_gold: i16 = 0,
+
+    pub fn music_tick(self: *State) void {
+        if (self.with_sound) {
+            self.musicode.tick();
+        }
+    }
 
     pub fn apply_reward(self: *State, reward: Reward) void {
         switch (reward) {
@@ -1549,7 +1557,7 @@ pub fn process_fight(s: *State, released_keys: u8) void {
             }
         }
     }
-    s.musicode.play();
+    s.music_tick();
     s.inventory_menu_spell.process(released_keys);
     if (s.inventory_menu_spell.is_completed()) {
         s.apply_effect(s.inventory_menu_spell.effect);
@@ -1632,7 +1640,7 @@ pub fn process_fight_end(s: *State, released_keys: u8) void {
             }
         }
     }
-    s.musicode.play();
+    s.music_tick();
 
     // drawing
     w4.DRAW_COLORS.* = 2;

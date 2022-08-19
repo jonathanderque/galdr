@@ -85,7 +85,7 @@ pub const Musicode = struct {
         self.loop = loop;
     }
 
-    pub fn play(self: *Musicode) void {
+    pub fn tick(self: *Musicode) void {
         if (self.bpm_count == 0) {
             var is_wait = false;
             while (is_wait == false and self.track_index < self.track.len) {
