@@ -1009,6 +1009,7 @@ const State = struct {
     visited_events: [visited_events_max_size]bool = undefined,
     choices: [spell_book_max_size]Spell = undefined,
     frame_counter: u16 = 0,
+    text_progress: u16 = 0,
     // options
     with_sound: bool = false,
     // sound engine
@@ -1035,6 +1036,14 @@ const State = struct {
         if (self.with_sound) {
             self.musicode.tick();
         }
+    }
+
+    pub fn text_tick(self: *State) void {
+        self.pager.set_progressive_display(true);
+        self.pager.reset_steps();
+        self.text_progress += 1;
+        self.pager.set_max_steps(2 * state.text_progress);
+        self.pager.animation_step = state.text_progress / 8;
     }
 
     pub fn apply_reward(self: *State, reward: Reward) void {
@@ -1340,6 +1349,7 @@ pub fn draw_spell(spell: *Spell, p: *pager.Pager, x: i32, y: i32) void {
 pub fn draw_spell_list(spells: []Spell, s: *State, x: i32, y: i32) void {
     var i: usize = 0;
     var var_y = y;
+    s.pager.set_progressive_display(false);
     while (i < spells.len) : (i += 1) {
         const blink_on = @mod(s.frame_counter, 10) < 5;
         if (s.frame_counter > 0 and spells[i].frame_triggered + 30 > s.frame_counter) {
@@ -2030,6 +2040,8 @@ pub fn process_pick_character(s: *State, released_keys: u8) void {
     _ = s;
     if (s.state_has_changed) {
         s.set_choices_with_labels_2("Moon", "Sun");
+    } else {
+        s.text_tick();
     }
     process_choices_input(s, released_keys);
     // Moon loadout
@@ -2047,7 +2059,11 @@ pub fn process_pick_character(s: *State, released_keys: u8) void {
         s.state = GlobalState.pick_character_2;
     }
     s.pager.set_cursor(10, 10);
-    pager.fmg_text(&s.pager, "Welcome to GALDR!!");
+    pager.fmg_text(&s.pager, "Welcome to ");
+    s.pager.animate(true);
+    pager.fmg_text(&s.pager, "GALDR");
+    s.pager.animate(false);
+    pager.fmg_text(&s.pager, "!!");
     pager.fmg_newline(&s.pager);
     pager.fmg_newline(&s.pager);
     pager.fmg_text(&s.pager, "Legend says an eclipse will occur soon and will change our land forever.");
@@ -3066,6 +3082,10 @@ export fn update() void {
     state.previous_input = gamepad;
 
     const previous_state = state.state;
+
+    if (state.state_has_changed) {
+        state.text_progress = 0;
+    }
 
     switch (state.state) {
         GlobalState.crossroad => process_crossroad(&state, released_keys),
