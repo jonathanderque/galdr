@@ -188,9 +188,48 @@ const Spell = struct {
             .name = "FIREBALL",
             .price = 5,
             .alignment = -2,
-            .effect = Effect{ .damage_to_enemy = 4 },
+            .effect = Effect{ .damage_to_enemy = 6 },
         };
-        s.set_spell(&[_]u8{ w4.BUTTON_LEFT, w4.BUTTON_1 });
+        s.set_spell(&[_]u8{
+            w4.BUTTON_RIGHT,
+            w4.BUTTON_LEFT,
+            w4.BUTTON_LEFT,
+            w4.BUTTON_1,
+            w4.BUTTON_DOWN,
+            w4.BUTTON_2,
+        });
+        return s;
+    }
+
+    pub fn spell_ash() Spell {
+        var s = Spell{
+            .name = "ASH",
+            .price = 5,
+            .alignment = -1,
+            .effect = Effect{ .damage_to_enemy = 2 },
+        };
+        s.set_spell(&[_]u8{
+            w4.BUTTON_LEFT,
+            w4.BUTTON_LEFT,
+            w4.BUTTON_1,
+            w4.BUTTON_DOWN,
+        });
+        return s;
+    }
+
+    pub fn spell_shade() Spell {
+        var s = Spell{
+            .name = "SHADE",
+            .price = 12,
+            .alignment = 0,
+            .effect = Effect{ .player_shield = 4 },
+        };
+        s.set_spell(&[_]u8{
+            w4.BUTTON_DOWN,
+            w4.BUTTON_DOWN,
+            w4.BUTTON_RIGHT,
+            w4.BUTTON_1,
+        });
         return s;
     }
 
@@ -428,6 +467,8 @@ const GlobalState = enum {
     inventory_full_2,
     map,
     new_game_init,
+    pick_character,
+    pick_character_2,
     pick_random_event,
     shop,
     title,
@@ -1973,6 +2014,56 @@ pub fn process_map(s: *State, released_keys: u8) void {
     draw_spell_list(&s.choices, s, 10, 140);
 }
 
+pub fn process_pick_character(s: *State, released_keys: u8) void {
+    _ = released_keys;
+    _ = s;
+    if (s.state_has_changed) {
+        s.set_choices_with_labels_2("Moon", "Sun");
+    }
+    process_choices_input(s, released_keys);
+    // Moon loadout
+    if (s.choices[0].is_completed()) {
+        state.spellbook[0] = Spell.spell_fireball();
+        state.spellbook[1] = Spell.spell_ash();
+        state.spellbook[2] = Spell.spell_shade();
+        s.state = GlobalState.pick_character_2;
+    }
+    // Sun loadout
+    if (s.choices[1].is_completed()) {
+        state.spellbook[0] = Spell.spell_lightning();
+        state.spellbook[1] = Spell.spell_bolt();
+        state.spellbook[2] = Spell.spell_shield();
+        s.state = GlobalState.pick_character_2;
+    }
+    s.pager.set_cursor(10, 10);
+    pager.fmg_text(&s.pager, "Welcome to GALDR!!");
+    pager.fmg_newline(&s.pager);
+    pager.fmg_newline(&s.pager);
+    pager.fmg_text(&s.pager, "Legend says an eclipse will occur soon and will change our land forever.");
+    pager.fmg_newline(&s.pager);
+    pager.fmg_newline(&s.pager);
+    pager.fmg_text(&s.pager, "I predict you will have a role to play in this,");
+    pager.fmg_text(&s.pager, "but only you can choose where your destiny will lead you.");
+    pager.fmg_newline(&s.pager);
+    pager.fmg_newline(&s.pager);
+    pager.fmg_text(&s.pager, "Which one do you prefer?");
+
+    draw_spell_list(&s.choices, s, 10, 140);
+}
+
+const pick_character_2_dialog = [_]Dialog{
+    Dialog{ .text = "Very well." },
+    Dialog.newline,
+    Dialog.newline,
+    Dialog{ .text = "You will now proceed with your quest." },
+    Dialog.newline,
+    Dialog{ .text = "I'd recommend you training first at the Wizard Camp though." },
+};
+
+const pick_character_2_outcome = [_]Outcome{
+    Outcome{ .state = GlobalState.crossroad },
+};
+
 pub fn process_pick_random_event(s: *State, released_keys: u8) void {
     _ = released_keys;
 
@@ -2157,7 +2248,7 @@ pub fn process_new_game_init() void {
         .pager = pager.Pager.new(),
         .musicode = Musicode.new(),
         // global state
-        .state = GlobalState.crossroad,
+        .state = GlobalState.pick_character,
         .choices = undefined,
         .area = swamp_area,
         .visited_events = undefined,
@@ -2178,10 +2269,6 @@ pub fn process_new_game_init() void {
     while (i < state.spellbook.len) : (i += 1) {
         state.spellbook[i] = Spell.zero();
     }
-
-    state.spellbook[0] = Spell.spell_lightning();
-    state.spellbook[1] = Spell.spell_bolt();
-    state.spellbook[2] = Spell.spell_shield();
 }
 
 pub fn current_area_pool(s: *State) []const Area {
@@ -3030,6 +3117,8 @@ export fn update() void {
         GlobalState.map => process_map(&state, released_keys),
         GlobalState.new_game_init => process_new_game_init(),
         GlobalState.pick_random_event => process_pick_random_event(&state, released_keys),
+        GlobalState.pick_character => process_pick_character(&state, released_keys),
+        GlobalState.pick_character_2 => text_event_choice_1(&state, released_keys, &pick_character_2_dialog, "Confirm", &pick_character_2_outcome),
         GlobalState.shop => process_shop(&state, released_keys),
         GlobalState.title => process_title(&state, released_keys),
         GlobalState.tutorial_basics => process_tutorial_basics(&state, released_keys),
