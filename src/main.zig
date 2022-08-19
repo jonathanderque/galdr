@@ -2165,7 +2165,7 @@ pub fn process_new_game_init() void {
         .player_hp = player_max_hp,
         .player_max_hp = player_max_hp,
         .spellbook = undefined,
-        .player_gold = 19,
+        .player_gold = 5,
         .inventory_menu_spell = Spell.spell_inventory_menu(),
 
         // enemy
