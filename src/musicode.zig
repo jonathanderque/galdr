@@ -31,7 +31,7 @@ pub const Instrument = struct {
         w4.tone(toneFrequency(self.freq1, self.freq2), toneDuration(self.attack, self.decay, self.sustain, self.release), toneVolume(self.peak_vol, self.sustain_vol), self.channel);
     }
 
-    pub fn play_with_note(self: *Instrument, note: u32) void {
+    pub fn play_with_note(self: *const Instrument, note: u32) void {
         w4.tone(toneFrequency(note, self.freq2), toneDuration(self.attack, self.decay, self.sustain, self.release), toneVolume(self.peak_vol, self.sustain_vol), self.channel);
     }
 };
@@ -53,25 +53,18 @@ fn toneFlags(channel: u32, mode: u32, pan: u32) u32 {
 }
 
 pub const Musicode = struct {
-    instruments: [8]Instrument,
+    instruments: []const Instrument,
     bpm_count: u32,
     track_index: usize,
     track: []const u8 = undefined,
     loop: bool = true,
 
-    pub fn new() Musicode {
-        var result = Musicode{
-            .instruments = undefined,
+    pub fn new(instruments: []const Instrument) Musicode {
+        return Musicode{
+            .instruments = instruments,
             .bpm_count = 1,
             .track_index = 0,
         };
-
-        var i: usize = 0;
-        while (i < result.instruments.len) : (i += 1) {
-            result.instruments[i] = Instrument.zero();
-        }
-
-        return result;
     }
 
     pub fn reset(self: *Musicode) void {
@@ -154,23 +147,16 @@ const _MusiscoreInstrWithNote = struct {
 };
 
 pub const Musiscore = struct {
-    instruments: [8]Instrument,
+    instruments: []const Instrument,
     bpm_count: u32,
     track_index: usize,
 
-    pub fn new() Musiscore {
-        var result = Musiscore{
-            .instruments = undefined,
+    pub fn new(instruments: []const Instrument) Musiscore {
+        return Musiscore{
+            .instruments = instruments,
             .bpm_count = 1,
             .track_index = 0,
         };
-
-        var i: usize = 0;
-        while (i < result.instruments.len) : (i += 1) {
-            result.instruments[i] = Instrument.zero();
-        }
-
-        return result;
     }
 
     fn play_instr(self: *Musiscore, instrr: MusiscoreInstrument) void {

@@ -3,6 +3,8 @@ const pager = @import("pager.zig");
 const sprites = @import("sprites.zig");
 const notes = @import("notes.zig");
 const musicode = @import("musicode.zig");
+const instruments = @import("instruments.zig");
+const tracks = @import("tracks.zig");
 const Instrument = musicode.Instrument;
 const Musicode = musicode.Musicode;
 
@@ -1065,6 +1067,18 @@ const State = struct {
         }
     }
 
+    fn play_sfx_hit(s: *State) void {
+        if (s.with_sound) {
+            instruments.instruments[8].play();
+        }
+    }
+
+    fn play_sfx_death(s: *State) void {
+        if (s.with_sound) {
+            instruments.instruments[7].play();
+        }
+    }
+
     pub fn apply_effect(self: *State, effect: Effect) void {
         switch (effect) {
             Effect.no_effect => {},
@@ -1088,7 +1102,7 @@ const State = struct {
                         self.player_hp = 0;
                     }
                     self.player_animation = 4;
-                    self.musicode.start_track(&damage_track, false);
+                    self.play_sfx_hit();
                 } else {
                     self.player_shield -= dmg;
                 }
@@ -1101,7 +1115,7 @@ const State = struct {
                         self.enemy.hp = 0;
                     }
                     self.enemy_animation = 4;
-                    self.musicode.start_track(&damage_track, false);
+                    self.play_sfx_hit();
                 } else {
                     self.enemy.shield -= dmg;
                 }
@@ -1119,7 +1133,7 @@ const State = struct {
                         self.enemy.hp = self.enemy.max_hp;
                     }
                     self.player_animation = 4;
-                    self.musicode.start_track(&damage_track, false);
+                    self.play_sfx_hit();
                 } else {
                     self.player_shield -= dmg;
                 }
@@ -1137,7 +1151,7 @@ const State = struct {
                         self.player_hp = self.player_max_hp;
                     }
                     self.enemy_animation = 4;
-                    self.musicode.start_track(&damage_track, false);
+                    self.play_sfx_hit();
                 } else {
                     self.enemy.shield -= dmg;
                 }
@@ -1795,7 +1809,7 @@ pub fn process_fight_end(s: *State, released_keys: u8) void {
     if (s.state_has_changed) {
         s.frame_counter = 0;
         w4.PALETTE[3] = 0xffffff;
-        s.musicode.start_track(&fight_death_sfx_track, false);
+        s.play_sfx_death();
     } else {
         s.frame_counter += 1;
         w4.PALETTE[3] -= 0x030303;
@@ -2040,8 +2054,10 @@ pub fn process_pick_character(s: *State, released_keys: u8) void {
     _ = s;
     if (s.state_has_changed) {
         s.set_choices_with_labels_2("Moon", "Sun");
+        s.musicode.start_track(tracks.fanfare_track[0..], false);
     } else {
         s.text_tick();
+        s.music_tick();
     }
     process_choices_input(s, released_keys);
     // Moon loadout
@@ -2125,6 +2141,9 @@ pub fn process_title(s: *State, released_keys: u8) void {
         s.reset_choices();
         s.choices[0] = Spell.spell_title_tutorial();
         s.choices[1] = Spell.spell_title_start_game();
+        s.musicode.start_track(tracks.title_track[0..], true);
+    } else {
+        s.music_tick();
     }
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
@@ -2273,7 +2292,7 @@ pub fn process_new_game_init() void {
     state = State{
         .previous_input = 0,
         .pager = pager.Pager.new(),
-        .musicode = Musicode.new(),
+        .musicode = Musicode.new(&instruments.instruments),
         // global state
         .state = GlobalState.pick_character,
         .choices = undefined,
@@ -2289,8 +2308,6 @@ pub fn process_new_game_init() void {
         // enemy
         .enemy = Enemy.zero(),
     };
-
-    initialize_instruments(&state);
 
     var i: usize = 0;
     while (i < state.spellbook.len) : (i += 1) {
@@ -3024,55 +3041,17 @@ const title_track = [_]u8{
 
 var state: State = undefined;
 
-pub fn initialize_instruments(s: *State) void {
-    //state.musicode.instruments[0] = Instrument{ .freq1 = 500, .sustain = 5, .sustain_vol = 80, .channel = w4.TONE_NOISE };
-    s.musicode.instruments[0] = Instrument{
-        .freq1 = 440,
-        .decay = 2,
-        .sustain = 5,
-        .release = 1,
-        .sustain_vol = 4,
-        .channel = w4.TONE_PULSE1,
-    };
-    // sweep
-    s.musicode.instruments[1] = Instrument{
-        .freq1 = notes.A3,
-        .attack = 26,
-        .decay = 45,
-        .sustain = 1,
-        .release = 44,
-        .sustain_vol = 4,
-        .channel = w4.TONE_TRIANGLE,
-    };
-    // lead
-    s.musicode.instruments[2] = Instrument{
-        .freq1 = notes.A3,
-        .sustain = 10,
-        .sustain_vol = 80,
-        .channel = w4.TONE_PULSE1,
-    };
-    // kick
-    s.musicode.instruments[3] = Instrument{ .freq1 = 150, .sustain = 5, .sustain_vol = 80, .channel = w4.TONE_NOISE };
-    // snare
-    s.musicode.instruments[4] = Instrument{ .freq1 = 500, .sustain = 5, .sustain_vol = 80, .channel = w4.TONE_NOISE };
-    // hi hats
-    s.musicode.instruments[5] = Instrument{ .freq1 = 700, .sustain = 3, .sustain_vol = 80, .channel = w4.TONE_NOISE };
-    // death sfx
-    s.musicode.instruments[6] = Instrument{ .freq1 = 330, .freq2 = 190, .release = 100, .sustain_vol = 80, .channel = w4.TONE_NOISE };
-}
-
 export fn start() void {
     w4.PALETTE.* = .{
         0x000000,
         0xcccccc,
-        0x55cc55,
-        0xcc5555,
+        0xcccccc,
+        0xcccccc,
     };
 
     state = State{
-        .musicode = Musicode.new(),
+        .musicode = Musicode.new(&instruments.instruments),
     };
-    initialize_instruments(&state);
 }
 
 export fn update() void {
