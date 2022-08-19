@@ -1641,6 +1641,7 @@ pub fn fight_intro(s: *State, released_keys: u8, enemy: Enemy, dialog: []const D
         s.enemy.guaranteed_reward = Reward.no_reward;
         s.enemy.random_reward = RandomReward.zero();
     }
+    s.text_tick();
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         s.enemy = enemy;
@@ -1669,6 +1670,7 @@ pub fn conditional_fight_intro(s: *State, released_keys: u8, enemy: Enemy, dialo
         s.enemy.guaranteed_reward = Reward.no_reward;
         s.enemy.random_reward = RandomReward.zero();
     }
+    s.text_tick();
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         s.state = GlobalState.pick_random_event;
@@ -1861,6 +1863,7 @@ pub fn process_fight_reward(s: *State, released_keys: u8) void {
         }
         s.state = GlobalState.pick_random_event;
     }
+    s.text_tick();
     w4.DRAW_COLORS.* = 0x02;
     draw_player_hud(s);
     draw_hero(20, 34);
@@ -2056,9 +2059,9 @@ pub fn process_pick_character(s: *State, released_keys: u8) void {
         s.set_choices_with_labels_2("Moon", "Sun");
         s.musicode.start_track(tracks.fanfare_track[0..], false);
     } else {
-        s.text_tick();
         s.music_tick();
     }
+    s.text_tick();
     process_choices_input(s, released_keys);
     // Moon loadout
     if (s.choices[0].is_completed()) {
@@ -2346,6 +2349,7 @@ pub fn process_crossroad(s: *State, released_keys: u8) void {
         s.set_choices_with_labels_2(area_pool[s.crossroad_index_1].name, area_pool[s.crossroad_index_2].name);
         s.enemy.sprite = &sprites.crossroad;
     }
+    s.text_tick();
     process_choices_input(s, released_keys);
     // display choices / manage user input
     w4.DRAW_COLORS.* = 2;
@@ -2451,6 +2455,7 @@ pub fn apply_outcome_list(s: *State, outcome: []const Outcome) void {
 
 pub fn text_event_choice_2(s: *State, released_keys: u8, dialog: []const Dialog, choice0: []const u8, outcome0: []const Outcome, choice1: ?[]const u8, outcome1: []const Outcome) void {
     if (s.state_has_changed) {
+        s.pager.reset_steps();
         s.reset_choices();
         if (choice1 != null) {
             s.set_choices_with_labels_2(choice0, choice1.?);
@@ -2460,12 +2465,8 @@ pub fn text_event_choice_2(s: *State, released_keys: u8, dialog: []const Dialog,
         s.enemy.random_reward = RandomReward.zero();
         s.enemy.guaranteed_reward = Reward.no_reward;
     }
+    s.text_tick();
     process_choices_input(s, released_keys);
-    _ = s;
-    _ = released_keys;
-    _ = dialog;
-    _ = outcome0;
-    _ = outcome1;
     if (s.choices[0].is_defined() and s.choices[0].is_completed()) {
         apply_outcome_list(s, outcome0);
         return;
