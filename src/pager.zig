@@ -375,8 +375,8 @@ pub const Pager = struct {
 
     fn get_y(self: *Pager) i32 {
         if (self.animation_flag) {
-            //var animated_y: i32 = @intCast(i32, @mod(self.steps + self.animation_step, 3)) - 2;
-            var animated_y: i32 = @intCast(i32, @mod(self.steps + self.animation_step, 2)) - 1;
+            var animated_y: i32 = @intCast(i32, @mod(self.steps + self.animation_step, 3)) - 2;
+            //var animated_y: i32 = @intCast(i32, @mod(self.steps + self.animation_step, 2)) - 1;
 
             return self.cursor_y + animated_y;
         } else {
