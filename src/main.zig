@@ -519,15 +519,16 @@ const pirate_area = Area{
 
 const swamp_area = Area{
     .name = "SWAMP",
-    .event_count = 3,
+    .event_count = 4,
     .event_pool = &[_]GlobalState{
+        GlobalState.event_chest_regular,
         GlobalState.event_swamp_creature,
         GlobalState.event_swamp_people,
         GlobalState.event_snake_pit,
-        GlobalState.event_healer,
         GlobalState.event_moon_altar,
     },
 };
+// GlobalState.event_healer,
 
 const forest_area = Area{
     .name = "FOREST",
@@ -855,7 +856,7 @@ const Enemy = struct {
         enemy.hp = enemy_max_hp;
         enemy.max_hp = enemy_max_hp;
         enemy.intent[0] = EnemyIntent{
-            .trigger_time = 4 * 60,
+            .trigger_time = 5 * 60,
             .effect = Effect{ .damage_to_player = 3 },
         };
         enemy.guaranteed_reward = Reward{ .gold_reward = 2 };
@@ -865,15 +866,15 @@ const Enemy = struct {
 
     pub fn enemy_swamp_people() Enemy {
         var enemy = zero();
-        const enemy_max_hp = 15;
+        const enemy_max_hp = 20;
         enemy.hp = enemy_max_hp;
         enemy.max_hp = enemy_max_hp;
         enemy.intent[0] = EnemyIntent{
-            .trigger_time = 4 * 60,
-            .effect = Effect{ .damage_to_player = 5 },
+            .trigger_time = 5 * 60,
+            .effect = Effect{ .damage_to_player = 8 },
         };
         enemy.intent[1] = EnemyIntent{
-            .trigger_time = 1 * 60,
+            .trigger_time = 2 * 60,
             .effect = Effect{ .enemy_shield = 1 },
         };
         enemy.guaranteed_reward = Reward{ .gold_reward = 2 };
@@ -883,16 +884,16 @@ const Enemy = struct {
 
     pub fn enemy_swamp_creature() Enemy {
         var enemy = zero();
-        const enemy_max_hp = 15;
+        const enemy_max_hp = 30;
         enemy.hp = enemy_max_hp;
         enemy.max_hp = enemy_max_hp;
         enemy.intent[0] = EnemyIntent{
-            .trigger_time = 5 * 60,
+            .trigger_time = 7 * 60,
             .effect = Effect{ .damage_to_player = 9 },
         };
         enemy.intent[1] = EnemyIntent{
             .trigger_time = 3 * 60,
-            .effect = Effect{ .enemy_shield = 11 },
+            .effect = Effect{ .enemy_shield = 2 },
         };
         enemy.guaranteed_reward = Reward{ .gold_reward = 20 };
         enemy.sprite = &sprites.enemy_swamp_creature;
