@@ -460,6 +460,7 @@ const GlobalState = enum {
     event_coast_seagull,
     event_coast_sea_monster,
     event_coin_muncher,
+    event_hard_swamp_creature,
     event_healer,
     event_healer_decline,
     event_healer_accept,
@@ -568,7 +569,18 @@ const swamp_area = Area{
         GlobalState.event_moon_altar,
     },
 };
-// GlobalState.event_healer,
+
+const hard_swamp_area = Area{
+    .name = "SWAMP",
+    .event_count = 3,
+    .event_pool = &[_]GlobalState{
+        GlobalState.event_chest_regular,
+        GlobalState.event_chest_mimic,
+        GlobalState.event_healer,
+        GlobalState.event_hard_swamp_creature,
+        GlobalState.event_moon_altar,
+    },
+};
 
 const forest_area = Area{
     .name = "FOREST",
@@ -623,6 +635,12 @@ const medium_area_pool = [_]Area{
     coast_area,
     forest_area,
     castle_area,
+};
+
+const hard_area_pool = [_]Area{
+    castle_area,
+    hard_swamp_area,
+    //TODO mine_area? with trolls
 };
 
 const boss_area_pool = [_]Area{
@@ -941,6 +959,28 @@ const Enemy = struct {
         enemy.guaranteed_reward = Reward{ .gold_reward = 4 };
         enemy.random_reward = RandomReward{
             .probability = 40,
+            .reward = Reward{ .spell_reward = Spell.spell_moon_shiv() },
+        };
+        enemy.sprite = &sprites.enemy_swamp_creature;
+        return enemy;
+    }
+
+    pub fn enemy_hard_swamp_creature() Enemy {
+        var enemy = zero();
+        const enemy_max_hp = 50;
+        enemy.hp = enemy_max_hp;
+        enemy.max_hp = enemy_max_hp;
+        enemy.intent[0] = EnemyIntent{
+            .trigger_time = 6 * 60,
+            .effect = Effect{ .damage_to_player = 13 },
+        };
+        enemy.intent[1] = EnemyIntent{
+            .trigger_time = 5 * 60,
+            .effect = Effect{ .enemy_shield = 5 },
+        };
+        enemy.guaranteed_reward = Reward{ .gold_reward = 7 };
+        enemy.random_reward = RandomReward{
+            .probability = 10,
             .reward = Reward{ .spell_reward = Spell.spell_moon_shiv() },
         };
         enemy.sprite = &sprites.enemy_swamp_creature;
@@ -2358,14 +2398,15 @@ pub fn current_area_pool(s: *State) []const Area {
         0 => &training_area_pool,
         1 => &easy_area_pool,
         2 => &medium_area_pool,
-        3 => &boss_area_pool,
+        3 => &hard_area_pool,
+        4 => &boss_area_pool,
         else => unreachable,
     };
 }
 
 pub fn process_crossroad(s: *State, released_keys: u8) void {
     if (s.state_has_changed) {
-        if (s.area_counter == 4) {
+        if (s.area_counter == 5) {
             s.state = GlobalState.title;
             return;
         }
@@ -3121,6 +3162,7 @@ export fn update() void {
         GlobalState.event_coast_seagull => fight_intro(&state, released_keys, Enemy.enemy_seagull(), &event_seagull_dialog),
         GlobalState.event_coast_sea_monster => conditional_fight_intro(&state, released_keys, Enemy.enemy_sea_monster(), &event_sea_monster_dialog),
         GlobalState.event_coin_muncher => fight_intro(&state, released_keys, Enemy.enemy_coin_muncher(), &coin_muncher_dialog),
+        GlobalState.event_hard_swamp_creature => fight_intro(&state, released_keys, Enemy.enemy_hard_swamp_creature(), &swamp_creature_dialog),
         GlobalState.event_healer => process_event_healer(&state, released_keys),
         GlobalState.event_healer_decline => text_event_confirm(&state, released_keys, &event_healer_decline_dialog),
         GlobalState.event_healer_accept => text_event_confirm(&state, released_keys, &event_healer_accept_dialog),
