@@ -2196,7 +2196,7 @@ pub fn current_area_pool(s: *State) []const Area {
 
 pub fn process_crossroad(s: *State, released_keys: u8) void {
     if (s.state_has_changed) {
-        if (s.area_counter == 3) {
+        if (s.area_counter == 4) {
             s.state = GlobalState.title;
             return;
         }
