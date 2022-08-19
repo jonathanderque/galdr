@@ -244,6 +244,22 @@ const Spell = struct {
         return s;
     }
 
+    pub fn spell_iron_plate() Spell {
+        var s = Spell{
+            .name = "IRON PLATE",
+            .price = 3,
+            .alignment = -2,
+            .effect = Effect{ .player_shield = 1 },
+        };
+        s.set_spell(&[_]u8{
+            w4.BUTTON_LEFT,
+            w4.BUTTON_1,
+            w4.BUTTON_RIGHT,
+            w4.BUTTON_2,
+        });
+        return s;
+    }
+
     pub fn spell_wolf_bite() Spell {
         var wolf_bite = Spell{
             .name = "WOLF BITE",
@@ -476,17 +492,20 @@ const forest_area = Area{
     .name = "FOREST",
     .event_count = 4,
     .event_pool = &[_]GlobalState{
-        GlobalState.event_chest_regular,
-        GlobalState.event_chest_mimic,
         GlobalState.event_coin_muncher,
         GlobalState.event_sun_fountain,
         GlobalState.event_forest_wolf,
+        GlobalState.event_forest_wolf,
         GlobalState.event_cavern_man,
         GlobalState.event_militia_ambush,
-        GlobalState.event_healing_shop,
-        GlobalState.event_sun_altar,
+        GlobalState.event_militia_ambush,
     },
 };
+
+//        GlobalState.event_sun_altar,
+//        GlobalState.event_healing_shop,
+//        GlobalState.event_chest_regular,
+//        GlobalState.event_chest_mimic,
 
 const castle_area = Area{
     .name = "CASTLE",
@@ -509,9 +528,11 @@ const boss_area = Area{
 };
 
 const training_area_pool = [_]Area{
+    forest_area,
     training_area,
 };
 
+// same overall difficulty than the training camp, but has rewards and other quests
 const easy_area_pool = [_]Area{
     forest_area,
     swamp_area,
@@ -672,14 +693,14 @@ const Enemy = struct {
         enemy.hp = enemy_max_hp;
         enemy.max_hp = enemy_max_hp;
         enemy.intent[0] = EnemyIntent{
-            .trigger_time = 4 * 60,
-            .effect = Effect{ .damage_to_player = 3 },
-        };
-        enemy.intent[1] = EnemyIntent{
-            .trigger_time = 7 * 60,
+            .trigger_time = 5 * 60,
             .effect = Effect{ .damage_to_player = 7 },
         };
-        enemy.guaranteed_reward = Reward{ .gold_reward = 10 };
+        enemy.intent[1] = EnemyIntent{
+            .trigger_time = 9 * 60,
+            .effect = Effect{ .damage_to_player = 12 },
+        };
+        enemy.guaranteed_reward = Reward{ .gold_reward = 1 };
         enemy.random_reward = RandomReward{
             .probability = 33,
             .reward = Reward{ .spell_reward = Spell.spell_wolf_bite() },
@@ -711,14 +732,18 @@ const Enemy = struct {
         enemy.hp = enemy_max_hp;
         enemy.max_hp = enemy_max_hp;
         enemy.intent[0] = EnemyIntent{
-            .trigger_time = 4 * 60,
-            .effect = Effect{ .damage_to_player = 5 },
+            .trigger_time = 8 * 60,
+            .effect = Effect{ .damage_to_player = 10 },
         };
         enemy.intent[1] = EnemyIntent{
-            .trigger_time = 5 * 60,
-            .effect = Effect{ .enemy_shield = 3 },
+            .trigger_time = 3 * 60,
+            .effect = Effect{ .enemy_shield = 4 },
         };
-        enemy.guaranteed_reward = Reward{ .gold_reward = 50 };
+        enemy.random_reward = RandomReward{
+            .probability = 40,
+            .reward = Reward{ .spell_reward = Spell.spell_iron_plate() },
+        };
+        enemy.guaranteed_reward = Reward{ .gold_reward = 2 };
         enemy.sprite = &sprites.enemy_militia;
         return enemy;
     }
