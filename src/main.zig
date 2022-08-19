@@ -322,7 +322,7 @@ const Spell = struct {
             .name = "WOLF BITE",
             .price = 9,
             .alignment = -7,
-            .effect = Effect{ .damage_to_enemy = 5 },
+            .effect = Effect{ .damage_to_enemy = 3 },
         };
         wolf_bite.set_spell(&[_]u8{ w4.BUTTON_LEFT, w4.BUTTON_UP, w4.BUTTON_DOWN, w4.BUTTON_1 });
         return wolf_bite;
@@ -423,7 +423,7 @@ const Spell = struct {
             .name = "FANGS",
             .price = 13,
             .alignment = -9,
-            .effect = Effect{ .vampirism_to_enemy = 3 },
+            .effect = Effect{ .vampirism_to_enemy = 1 },
         };
         spell.set_spell(&[_]u8{ w4.BUTTON_UP, w4.BUTTON_DOWN, w4.BUTTON_LEFT, w4.BUTTON_1 });
         return spell;
