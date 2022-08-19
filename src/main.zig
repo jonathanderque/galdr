@@ -895,7 +895,7 @@ const Enemy = struct {
             .trigger_time = 3 * 60,
             .effect = Effect{ .enemy_shield = 2 },
         };
-        enemy.guaranteed_reward = Reward{ .gold_reward = 20 };
+        enemy.guaranteed_reward = Reward{ .gold_reward = 4 };
         enemy.sprite = &sprites.enemy_swamp_creature;
         return enemy;
     }
