@@ -290,13 +290,29 @@ const Spell = struct {
             .name = "IRON PLATE",
             .price = 3,
             .alignment = -2,
-            .effect = Effect{ .player_shield = 1 },
+            .effect = Effect{ .player_shield = 3 },
         };
         s.set_spell(&[_]u8{
-            w4.BUTTON_LEFT,
-            w4.BUTTON_1,
-            w4.BUTTON_RIGHT,
+            w4.BUTTON_UP,
+            w4.BUTTON_UP,
             w4.BUTTON_2,
+            w4.BUTTON_DOWN,
+        });
+        return s;
+    }
+
+    pub fn spell_mud_plate() Spell {
+        var s = Spell{
+            .name = "MUD PLATE",
+            .price = 3,
+            .alignment = -2,
+            .effect = Effect{ .player_shield = 2 },
+        };
+        s.set_spell(&[_]u8{
+            w4.BUTTON_DOWN,
+            w4.BUTTON_DOWN,
+            w4.BUTTON_2,
+            w4.BUTTON_UP,
         });
         return s;
     }
@@ -901,6 +917,10 @@ const Enemy = struct {
             .effect = Effect{ .enemy_shield = 1 },
         };
         enemy.guaranteed_reward = Reward{ .gold_reward = 2 };
+        enemy.random_reward = RandomReward{
+            .probability = 30,
+            .reward = Reward{ .spell_reward = Spell.spell_mud_plate() },
+        };
         enemy.sprite = &sprites.enemy_swamp_people;
         return enemy;
     }
