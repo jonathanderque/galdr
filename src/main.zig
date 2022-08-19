@@ -315,7 +315,7 @@ const Spell = struct {
     pub fn spell_heal() Spell {
         var s = Spell{
             .name = "HEAL",
-            .price = 5,
+            .price = 9,
             .alignment = 2,
             .effect = Effect{ .player_heal = 2 },
         };
@@ -323,14 +323,25 @@ const Spell = struct {
         return s;
     }
 
-    pub fn spell_heal_plus() Spell {
+    pub fn spell_sun_shiv() Spell {
         var s = Spell{
-            .name = "HEAL+",
-            .price = 12,
-            .alignment = 5,
-            .effect = Effect{ .player_heal = 5 },
+            .name = "SUN SHIV",
+            .price = 11,
+            .alignment = 2,
+            .effect = Effect{ .damage_to_enemy = 1 },
         };
-        s.set_spell(&[_]u8{ w4.BUTTON_LEFT, w4.BUTTON_UP, w4.BUTTON_DOWN, w4.BUTTON_1 });
+        s.set_spell(&[_]u8{ w4.BUTTON_UP, w4.BUTTON_1, w4.BUTTON_DOWN, w4.BUTTON_2 });
+        return s;
+    }
+
+    pub fn spell_moon_shiv() Spell {
+        var s = Spell{
+            .name = "MOON SHIV",
+            .price = 11,
+            .alignment = -2,
+            .effect = Effect{ .damage_to_enemy = 1 },
+        };
+        s.set_spell(&[_]u8{ w4.BUTTON_DOWN, w4.BUTTON_2, w4.BUTTON_UP, w4.BUTTON_1 });
         return s;
     }
 
@@ -908,6 +919,10 @@ const Enemy = struct {
             .effect = Effect{ .enemy_shield = 2 },
         };
         enemy.guaranteed_reward = Reward{ .gold_reward = 4 };
+        enemy.random_reward = RandomReward{
+            .probability = 40,
+            .reward = Reward{ .spell_reward = Spell.spell_moon_shiv() },
+        };
         enemy.sprite = &sprites.enemy_swamp_creature;
         return enemy;
     }
@@ -2619,7 +2634,7 @@ const event_healer_accept_dialog = [_]Dialog{
 const healing_shop_gold = 50;
 const healing_shop_items = [_]Spell{
     Spell.spell_heal(),
-    Spell.spell_heal_plus(),
+    Spell.spell_sun_shiv(),
 };
 const healing_shop_dialog = [_]Dialog{
     Dialog{ .text = "The merchant greets you:" },
