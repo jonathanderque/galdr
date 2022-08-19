@@ -2718,17 +2718,12 @@ pub fn process_shop(s: *State, released_keys: u8) void {
     draw_spell_list(&s.choices, s, 10, 140);
 
     if (get_spell_list_size(&s.spellbook) >= spell_book_full_size) {
-        s.pager.set_cursor(85, 140);
-        pager.fmg_text(&s.pager, "Can't leave. ");
-        s.pager.set_cursor(85, 150);
-        pager.fmg_text(&s.pager, "Spellbook full");
+        s.pager.set_cursor(20, 38);
+        pager.f35_text(&s.pager, "CAN'T LEAVE. SPELLBOOK FULL!");
     }
     if (s.player_gold < 0 or s.shop_gold < 0) {
-        s.pager.set_cursor(85, 140);
-        pager.fmg_text(&s.pager, "Can't leave. ");
-        s.pager.set_cursor(85, 150);
-        pager.fmg_text(&s.pager, "Not enough");
-        draw_coin(s.pager.cursor_x + 3, 150 - 1);
+        s.pager.set_cursor(18, 38);
+        pager.f35_text(&s.pager, "CAN'T LEAVE. NOT ENOUGH MONEY!");
     }
 }
 
