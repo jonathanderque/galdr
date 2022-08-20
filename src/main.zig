@@ -1253,24 +1253,25 @@ pub fn get_spell_list_size(spell_list: []Spell) usize {
     return size;
 }
 fn play_sfx_hit() void {
-    // TODO SFX volume instead
-    if (options[1] > 0) {
-        instruments.instruments[8].play();
+    if (options[2] > 0) {
+        instruments.instruments[8].play(options[2]);
     }
 }
 
 fn play_sfx_death() void {
-    // TODO SFX volume instead
-    if (options[1] > 0) {
-        instruments.instruments[7].play();
+    if (options[2] > 0) {
+        instruments.instruments[7].play(options[2]);
     }
 }
 
 fn play_sfx_sweep() void {
-    // TODO SFX volume instead
-    if (options[1] > 0) {
-        instruments.instruments[1].play();
+    if (options[2] > 0) {
+        instruments.instruments[1].play(options[2]);
     }
+}
+
+fn play_sfx_menu(volume: u8) void {
+    instruments.instruments[2].play(volume);
 }
 
 // TODO title track
@@ -1329,18 +1330,21 @@ const State = struct {
 
     fn play_track_fanfare02(self: *State) void {
         if (options[1] > 0) {
+            self.musicode.volume = options[1];
             self.musicode.start_track(tracks.fanfare02_track[0..], false);
         }
     }
 
     fn play_track_fanfare03(self: *State) void {
         if (options[1] > 0) {
+            self.musicode.volume = options[1];
             self.musicode.start_track(tracks.fanfare03_track[0..], false);
         }
     }
 
     fn play_track_title(self: *State) void {
         if (options[1] > 0) {
+            self.musicode.volume = options[1];
             self.musicode.start_track(tracks.title_track[0..], true);
         }
     }
@@ -2273,12 +2277,21 @@ pub fn process_options(s: *State, released_keys: u8) void {
     } else {
         pager.fmg_number(&s.pager, options[1]);
     }
+    pager.fmg_newline(&s.pager);
+
+    // SFX Volume
+    pager.fmg_text(&s.pager, "  SFX volume: ");
+    if (options[2] == 0) {
+        pager.fmg_text(&s.pager, "Off");
+    } else {
+        pager.fmg_number(&s.pager, options[2]);
+    }
 
     draw_right_triangle(10, 25 + s.spell_index * (pager.fmg_letter_height + 1));
     if (released_keys == w4.BUTTON_UP and s.spell_index > 0) {
         s.spell_index -= 1;
     }
-    if (released_keys == w4.BUTTON_DOWN and s.spell_index < 1) {
+    if (released_keys == w4.BUTTON_DOWN and s.spell_index < 2) {
         s.spell_index += 1;
     }
     process_choices_input(s, released_keys);
@@ -2294,6 +2307,14 @@ pub fn process_options(s: *State, released_keys: u8) void {
                 if (options[1] > 100) {
                     options[1] = 0;
                 }
+                play_sfx_menu(options[1]);
+            },
+            2 => { // Music Volume
+                options[2] += 10;
+                if (options[2] > 100) {
+                    options[2] = 0;
+                }
+                play_sfx_menu(options[2]);
             },
             else => {},
         }
@@ -3652,6 +3673,7 @@ const title_track = [_]u8{
 var options = [_]u8{
     1, // BLINK
     0, // MUSIC VOLUME
+    0, // SFX VOLUME
 };
 var state: State = undefined;
 

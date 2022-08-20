@@ -27,12 +27,12 @@ pub const Instrument = struct {
         return Instrument{};
     }
 
-    pub fn play(self: *const Instrument) void {
-        w4.tone(toneFrequency(self.freq1, self.freq2), toneDuration(self.attack, self.decay, self.sustain, self.release), toneVolume(self.peak_vol, self.sustain_vol), self.channel);
+    pub fn play(self: *const Instrument, volume: u8) void {
+        w4.tone(toneFrequency(self.freq1, self.freq2), toneDuration(self.attack, self.decay, self.sustain, self.release), toneVolume(self.peak_vol * volume / 100, self.sustain_vol * volume / 100), self.channel);
     }
 
-    pub fn play_with_note(self: *const Instrument, note: u32) void {
-        w4.tone(toneFrequency(note, self.freq2), toneDuration(self.attack, self.decay, self.sustain, self.release), toneVolume(self.peak_vol, self.sustain_vol), self.channel);
+    pub fn play_with_note(self: *const Instrument, note: u32, volume: u8) void {
+        w4.tone(toneFrequency(note, self.freq2), toneDuration(self.attack, self.decay, self.sustain, self.release), toneVolume(self.peak_vol * volume / 100, self.sustain_vol * volume / 100), self.channel);
     }
 };
 
@@ -58,12 +58,14 @@ pub const Musicode = struct {
     track_index: usize,
     track: []const u8 = undefined,
     loop: bool = true,
+    volume: u8 = 40,
 
     pub fn new(instruments: []const Instrument) Musicode {
         return Musicode{
             .instruments = instruments,
             .bpm_count = 1,
             .track_index = 0,
+            .volume = 40,
         };
     }
 
@@ -86,7 +88,7 @@ pub const Musicode = struct {
                 if (instrument & 0b1100_0000 == 0b1100_0000) {
                     // TODO
                     const i = self.instruments[instrument & 0b0011_1111];
-                    i.play();
+                    i.play(self.volume);
                 } else if (instrument & 0b1000_0000 == 0b1000_0000) { // play with note
                     const i = instrument & 0b0011_1111;
                     var note: u32 = 0;
@@ -94,7 +96,7 @@ pub const Musicode = struct {
                     note = (note << 8) | self.track[self.track_index];
                     self.track_index += 1;
                     note = (note << 8) | self.track[self.track_index];
-                    self.instruments[i].play_with_note(note);
+                    self.instruments[i].play_with_note(note, self.volume);
                 } else { // top bit is not set -> wait
                     self.bpm_count = instrument & 0b0011_1111;
                     is_wait = true;
