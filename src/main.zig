@@ -443,6 +443,9 @@ const Spell = struct {
 
 const GlobalState = enum {
     crossroad,
+    event_boss_intro,
+    event_boss_intro_2,
+    event_boss_outro,
     event_boss,
     event_castle_bat,
     event_castle_candle,
@@ -460,6 +463,7 @@ const GlobalState = enum {
     event_coast_seagull,
     event_coast_sea_monster,
     event_coin_muncher,
+    event_credits,
     event_hard_swamp_creature,
     event_healer,
     event_healer_decline,
@@ -640,7 +644,7 @@ const medium_area_pool = [_]Area{
 const hard_area_pool = [_]Area{
     castle_area,
     hard_swamp_area,
-    //TODO mine_area? with trolls
+    //TODO mine_area? with hard hitting trolls
 };
 
 const boss_area_pool = [_]Area{
@@ -1477,6 +1481,10 @@ pub fn draw_hero(x: i32, y: i32) void {
     w4.blit(&sprites.hero, x, y, sprites.hero_width, sprites.hero_height, w4.BLIT_1BPP);
 }
 
+pub fn draw_logo(x: i32, y: i32) void {
+    w4.blit(&sprites.galdr_logo, x, y, sprites.galdr_logo_width, sprites.galdr_logo_height, w4.BLIT_1BPP);
+}
+
 pub fn draw_shield(x: i32, y: i32) void {
     w4.blitSub(&sprites.effects, x, y, 9, 9, 9, 0, sprites.effects_width, w4.BLIT_1BPP);
 }
@@ -2128,8 +2136,6 @@ pub fn process_map(s: *State, released_keys: u8) void {
 }
 
 pub fn process_pick_character(s: *State, released_keys: u8) void {
-    _ = released_keys;
-    _ = s;
     if (s.state_has_changed) {
         s.set_choices_with_labels_2("Moon", "Sun");
         s.musicode.start_track(tracks.fanfare_track[0..], false);
@@ -2193,6 +2199,29 @@ pub fn process_pick_random_event(s: *State, released_keys: u8) void {
         return;
     }
 
+    if (s.area_counter >= 5) { // last boss
+        s.area_event_counter += 1;
+        switch (s.area_event_counter) {
+            1 => {
+                s.state = GlobalState.event_boss_intro;
+            },
+            2 => {
+                s.state = GlobalState.event_boss_intro_2;
+            },
+            3 => {
+                s.state = GlobalState.event_boss;
+            },
+            4 => {
+                s.state = GlobalState.event_boss_outro;
+            },
+            5 => {
+                s.state = GlobalState.event_credits;
+            },
+            else => s.state = GlobalState.title,
+        }
+        return;
+    }
+
     if (s.area_event_counter >= s.area.event_count) {
         s.state = GlobalState.crossroad;
         return;
@@ -2236,7 +2265,7 @@ pub fn process_title(s: *State, released_keys: u8) void {
     _ = rand();
 
     w4.DRAW_COLORS.* = 0x02;
-    w4.blit(&sprites.galdr_logo, 16, 50, sprites.galdr_logo_width, sprites.galdr_logo_height, w4.BLIT_1BPP);
+    draw_logo(16, 50);
     draw_spell_list(&s.choices, s, 10, 140);
 }
 
@@ -2406,8 +2435,17 @@ pub fn current_area_pool(s: *State) []const Area {
 
 pub fn process_crossroad(s: *State, released_keys: u8) void {
     if (s.state_has_changed) {
-        if (s.area_counter == 5) {
+        if (s.area_counter >= 5) {
             s.state = GlobalState.title;
+            return;
+        }
+
+        if (s.area_counter == 4) { // last boss
+            s.area = boss_area;
+            s.area_counter += 1;
+            s.area_event_counter = 0;
+            s.reset_visited_events();
+            s.state = GlobalState.pick_random_event;
             return;
         }
 
@@ -2455,8 +2493,35 @@ pub fn process_crossroad(s: *State, released_keys: u8) void {
     }
 }
 
+const event_boss_intro_dialog = [_]Dialog{
+    Dialog{ .text = "The eclipse is at its peak and the temperature is noticably colder." },
+    Dialog.newline,
+    Dialog.newline,
+    Dialog{ .text = "You arrive at what seems to be a sacrificial site. " },
+    Dialog{ .text = "A group of wizards you don't recognize are all working together on a casting an invocation spell." },
+};
+
+const event_boss_intro_dialog_2 = [_]Dialog{
+    Dialog{ .text = "After a flash of light, a giant silver dragon appears!" },
+    Dialog.newline,
+    Dialog.newline,
+    Dialog{ .text = "With one swift movement, the dragon kills most of the wizards that helped him come back to life. The rest of them tries to flee, but in vain." },
+};
+
 const boss_dialog = [_]Dialog{
-    Dialog{ .text = "Be prepared, this is it!" },
+    Dialog.newline,
+    Dialog.newline,
+    Dialog{ .text = "With the dragon's roar piercing your ears, you understand there is no turning back!!" },
+};
+
+const event_boss_outro_dialog = [_]Dialog{
+    Dialog{ .text = "After one last spell, the dragon finally collapses." },
+    Dialog.newline,
+    Dialog.newline,
+    Dialog{ .text = "You too fall on the ground, not so much due to your injuries, but because of exhaustion." },
+    Dialog.newline,
+    Dialog.newline,
+    Dialog{ .text = "As the eclipse fades out, you close your eyes knowing that you saved the world..." },
 };
 
 const castle_bat_dialog = [_]Dialog{
@@ -2506,6 +2571,45 @@ const castle_vampire_shop_items = [_]Spell{
     Spell.spell_fangs(),
     Spell.spell_cloak(),
 };
+
+pub fn process_credits(s: *State, released_keys: u8) void {
+    if (s.state_has_changed) {
+        s.set_choices_with_labels_1("Done");
+    }
+
+    if (s.choices[0].is_completed()) {
+        s.state = GlobalState.title;
+    }
+    process_choices_input(s, released_keys);
+    s.music_tick();
+    s.text_tick();
+
+    draw_logo(16, 10);
+
+    s.pager.set_cursor(28, 60);
+    pager.f35_text(&s.pager, "A GAME BY JONATHAN DERQUE");
+
+    s.pager.set_cursor(10, 80);
+    pager.f35_text(&s.pager, "THIS GAME COULD NOT HAVE BEEN MADE WITHOUT:");
+    pager.f35_newline(&s.pager);
+    pager.f35_text(&s.pager, " - ART FROM THE SCROLL-O-SPRITES");
+    pager.f35_newline(&s.pager);
+    pager.f35_text(&s.pager, "   BY QUALE");
+    pager.f35_newline(&s.pager);
+    pager.f35_text(&s.pager, " - MONOGRAM FONT BY DATAGOBLIN");
+    pager.f35_newline(&s.pager);
+    pager.f35_text(&s.pager, " - THE WASM-4 FANTASY CONSOLE BY");
+    pager.f35_newline(&s.pager);
+    pager.f35_text(&s.pager, "   ADUROS, AND ITS COMMUNITY");
+
+    s.pager.set_cursor(20, 135);
+
+    s.pager.animate(true);
+    pager.f35_text(&s.pager, "THANK YOU FOR PLAYING GALDR");
+    s.pager.animate(false);
+
+    draw_spell_list(&s.choices, s, 10, 150);
+}
 
 pub fn apply_outcome_list(s: *State, outcome: []const Outcome) void {
     for (outcome) |o| {
@@ -3145,6 +3249,9 @@ export fn update() void {
 
     switch (state.state) {
         GlobalState.crossroad => process_crossroad(&state, released_keys),
+        GlobalState.event_boss_intro => text_event_confirm(&state, released_keys, &event_boss_intro_dialog),
+        GlobalState.event_boss_intro_2 => text_event_confirm(&state, released_keys, &event_boss_intro_dialog_2),
+        GlobalState.event_boss_outro => text_event_confirm(&state, released_keys, &event_boss_outro_dialog),
         GlobalState.event_boss => fight_intro(&state, released_keys, Enemy.enemy_boss(), &boss_dialog),
         GlobalState.event_castle_bat => fight_intro(&state, released_keys, Enemy.enemy_castle_bat(), &castle_bat_dialog),
         GlobalState.event_castle_candle => fight_intro(&state, released_keys, Enemy.enemy_castle_candle(), &castle_candle_dialog),
@@ -3162,6 +3269,7 @@ export fn update() void {
         GlobalState.event_coast_seagull => fight_intro(&state, released_keys, Enemy.enemy_seagull(), &event_seagull_dialog),
         GlobalState.event_coast_sea_monster => conditional_fight_intro(&state, released_keys, Enemy.enemy_sea_monster(), &event_sea_monster_dialog),
         GlobalState.event_coin_muncher => fight_intro(&state, released_keys, Enemy.enemy_coin_muncher(), &coin_muncher_dialog),
+        GlobalState.event_credits => process_credits(&state, released_keys),
         GlobalState.event_hard_swamp_creature => fight_intro(&state, released_keys, Enemy.enemy_hard_swamp_creature(), &swamp_creature_dialog),
         GlobalState.event_healer => process_event_healer(&state, released_keys),
         GlobalState.event_healer_decline => text_event_confirm(&state, released_keys, &event_healer_decline_dialog),
