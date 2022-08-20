@@ -630,13 +630,14 @@ const swamp_area = Area{
 
 const hard_swamp_area = Area{
     .name = "SWAMP",
-    .event_count = 3,
+    .event_count = 4,
     .event_pool = &[_]GlobalState{
         GlobalState.event_chest_regular,
         GlobalState.event_chest_mimic,
         GlobalState.event_healer,
         GlobalState.event_hard_swamp_creature,
         GlobalState.event_moon_altar,
+        // add a shop
     },
 };
 
@@ -1039,12 +1040,12 @@ const Enemy = struct {
         enemy.hp = enemy_max_hp;
         enemy.max_hp = enemy_max_hp;
         enemy.intent[0] = EnemyIntent{
-            .trigger_time = 6 * 60,
-            .effect = Effect{ .damage_to_player = 13 },
+            .trigger_time = 3 * 60,
+            .effect = Effect{ .damage_to_player = 22 },
         };
         enemy.intent[1] = EnemyIntent{
             .trigger_time = 5 * 60,
-            .effect = Effect{ .enemy_shield = 5 },
+            .effect = Effect{ .enemy_shield = 20 },
         };
         enemy.guaranteed_reward = Reward{ .gold_reward = 7 };
         enemy.random_reward = RandomReward{
