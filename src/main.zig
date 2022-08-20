@@ -2294,6 +2294,20 @@ pub fn process_options(s: *State, released_keys: u8) void {
     if (released_keys == w4.BUTTON_DOWN and s.spell_index < 2) {
         s.spell_index += 1;
     }
+
+    s.pager.set_cursor(10, 70);
+    switch (s.spell_index) {
+        0 => { // Blink
+            pager.fmg_text(&s.pager, "Enable/Disable blinking of completed spells.");
+        },
+        1 => { // Music volume
+            pager.fmg_text(&s.pager, "Change the volume used for music playback.");
+        },
+        2 => { // SFX volume
+            pager.fmg_text(&s.pager, "Change the volume used for sound effects playback.");
+        },
+        else => {},
+    }
     const incr = 10;
     if (released_keys == w4.BUTTON_LEFT) {
         if (s.spell_index == 0) { // Blink
