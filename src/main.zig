@@ -507,6 +507,7 @@ const GlobalState = enum {
     pick_random_event,
     shop,
     title,
+    title_1,
     tutorial_basics,
     tutorial_synergies,
     tutorial_pause_menu,
@@ -2250,13 +2251,58 @@ pub fn process_pick_random_event(s: *State, released_keys: u8) void {
 }
 
 pub fn process_title(s: *State, released_keys: u8) void {
+    _ = released_keys;
+    if (s.state_has_changed) {
+        s.frame_counter = 0;
+        s.set_choices_with_labels_1("Skip");
+        s.pager.set_progressive_display(false);
+        s.moon_x = 20;
+        w4.PALETTE[3] = 0x000000;
+    } else {
+        s.frame_counter += 1;
+    }
+    if (s.choices[0].is_completed()) {
+        s.state = GlobalState.title_1;
+    }
+    process_choices_input(s, released_keys);
+
+    if (@mod(s.frame_counter, 5) == 0) {
+        s.moon_x += 1;
+    }
+    if (@mod(s.frame_counter, 3) == 0 and s.frame_counter < 120) {
+        w4.PALETTE[3] += 0x050505;
+    }
+
+    if (@mod(s.frame_counter, 3) == 0 and s.frame_counter > 200) {
+        w4.PALETTE[3] -= 0x050505;
+    }
+    if (s.frame_counter >= 320) {
+        s.state = GlobalState.title_1;
+    }
+
+    const size = 60;
+    w4.DRAW_COLORS.* = 0x04;
+    w4.oval(s.moon_x, 50, size, size);
+    w4.DRAW_COLORS.* = 0x11; // 0x11
+    w4.oval(s.moon_x + 18 - @divTrunc(s.moon_x, 3), 51, size - 1, size - 1);
+}
+
+pub fn process_title_1(s: *State, released_keys: u8) void {
     if (s.state_has_changed) {
         s.reset_choices();
         s.choices[0] = Spell.spell_title_tutorial();
         s.choices[1] = Spell.spell_title_start_game();
+        s.choices[0].frame_triggered = -99;
+        s.choices[1].frame_triggered = -99;
         s.musicode.start_track(tracks.title_track[0..], true);
+        w4.PALETTE[3] = 0x000000;
+        s.frame_counter = 0;
     } else {
         s.music_tick();
+        s.frame_counter += 1;
+    }
+    if (@mod(s.frame_counter, 3) == 0 and s.frame_counter < 120) {
+        w4.PALETTE[3] += 0x050505;
     }
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
@@ -2270,8 +2316,9 @@ pub fn process_title(s: *State, released_keys: u8) void {
     // generate randomness
     _ = rand();
 
-    w4.DRAW_COLORS.* = 0x02;
+    w4.DRAW_COLORS.* = 0x04;
     draw_logo(16, 50);
+    w4.DRAW_COLORS.* = 0x02;
     draw_spell_list(&s.choices, s, 10, 140);
 }
 
@@ -2514,11 +2561,6 @@ pub fn process_event_boss_cutscene(s: *State, released_keys: u8) void {
     }
     process_choices_input(s, released_keys);
 
-    w4.DRAW_COLORS.* = 0x02;
-    s.pager.set_cursor(10, 0);
-    pager.f35_text(&s.pager, "FRAME COUNT: ");
-    pager.f35_number(&s.pager, @intCast(i32, s.frame_counter));
-
     if (@mod(s.frame_counter, 10) == 0 and s.moon_x > 51) {
         s.moon_x -= 1;
     }
@@ -2541,7 +2583,7 @@ pub fn process_event_boss_cutscene(s: *State, released_keys: u8) void {
 }
 
 const event_boss_intro_dialog = [_]Dialog{
-    Dialog{ .text = "The eclipse is at its peak and the temperature is noticably colder." },
+    Dialog{ .text = "The eclipse is at its peak and the temperature is noticeably colder." },
     Dialog.newline,
     Dialog.newline,
     Dialog{ .text = "You arrive at what seems to be a sacrificial site. " },
@@ -3360,6 +3402,7 @@ export fn update() void {
         GlobalState.pick_character_2 => text_event_choice_1(&state, released_keys, &pick_character_2_dialog, "Confirm", &pick_character_2_outcome),
         GlobalState.shop => process_shop(&state, released_keys),
         GlobalState.title => process_title(&state, released_keys),
+        GlobalState.title_1 => process_title_1(&state, released_keys),
         GlobalState.tutorial_basics => process_tutorial_basics(&state, released_keys),
         GlobalState.tutorial_synergies => process_tutorial_synergies(&state, released_keys),
         GlobalState.tutorial_pause_menu => process_tutorial_pause_menu(&state, released_keys),
