@@ -671,9 +671,19 @@ const forest_area = Area{
     },
 };
 
-//        GlobalState.event_sun_altar,
-//        GlobalState.event_chest_regular,
-//        GlobalState.event_chest_mimic,
+const medium_forest_area = Area{
+    .name = "FOREST",
+    .event_count = 4,
+    .event_pool = &[_]GlobalState{
+        GlobalState.event_sun_altar,
+        GlobalState.event_chest_regular,
+        GlobalState.event_chest_mimic,
+        GlobalState.event_sun_fountain,
+        GlobalState.event_forest_wolf,
+        GlobalState.event_militia_ambush,
+        // TODO more interesting fights ?
+    },
+};
 
 const castle_area = Area{
     .name = "CASTLE",
@@ -719,7 +729,7 @@ const easy_area_pool = [_]Area{
 
 const medium_area_pool = [_]Area{
     coast_area,
-    forest_area,
+    medium_forest_area,
     castle_area,
 };
 
