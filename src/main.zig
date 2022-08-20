@@ -443,6 +443,7 @@ const Spell = struct {
 
 const GlobalState = enum {
     crossroad,
+    event_boss_cutscene,
     event_boss_intro,
     event_boss_intro_2,
     event_boss_outro,
@@ -1091,6 +1092,8 @@ const State = struct {
     choices: [spell_book_max_size]Spell = undefined,
     frame_counter: u16 = 0,
     text_progress: u16 = 0,
+    // cutscene
+    moon_x: i32 = 0,
     // options
     with_sound: bool = false,
     // sound engine
@@ -2203,18 +2206,21 @@ pub fn process_pick_random_event(s: *State, released_keys: u8) void {
         s.area_event_counter += 1;
         switch (s.area_event_counter) {
             1 => {
-                s.state = GlobalState.event_boss_intro;
+                s.state = GlobalState.event_boss_cutscene;
             },
             2 => {
-                s.state = GlobalState.event_boss_intro_2;
+                s.state = GlobalState.event_boss_intro;
             },
             3 => {
-                s.state = GlobalState.event_boss;
+                s.state = GlobalState.event_boss_intro_2;
             },
             4 => {
-                s.state = GlobalState.event_boss_outro;
+                s.state = GlobalState.event_boss;
             },
             5 => {
+                s.state = GlobalState.event_boss_outro;
+            },
+            6 => {
                 s.state = GlobalState.event_credits;
             },
             else => s.state = GlobalState.title,
@@ -2491,6 +2497,47 @@ pub fn process_crossroad(s: *State, released_keys: u8) void {
         s.reset_visited_events();
         s.state = GlobalState.pick_random_event;
     }
+}
+
+pub fn process_event_boss_cutscene(s: *State, released_keys: u8) void {
+    if (s.state_has_changed) {
+        s.frame_counter = 0;
+        s.set_choices_with_labels_1("Skip");
+        s.pager.set_progressive_display(false);
+        s.moon_x = 70;
+        w4.PALETTE[3] = 0x000000;
+    } else {
+        s.frame_counter += 1;
+    }
+    if (s.choices[0].is_completed()) {
+        s.state = GlobalState.pick_random_event;
+    }
+    process_choices_input(s, released_keys);
+
+    w4.DRAW_COLORS.* = 0x02;
+    s.pager.set_cursor(10, 0);
+    pager.f35_text(&s.pager, "FRAME COUNT: ");
+    pager.f35_number(&s.pager, @intCast(i32, s.frame_counter));
+
+    if (@mod(s.frame_counter, 10) == 0 and s.moon_x > 51) {
+        s.moon_x -= 1;
+    }
+    if (@mod(s.frame_counter, 3) == 0 and s.frame_counter < 120) {
+        w4.PALETTE[3] += 0x050505;
+    }
+
+    if (@mod(s.frame_counter, 3) == 0 and s.frame_counter > 180) {
+        w4.PALETTE[3] -= 0x050505;
+    }
+    if (s.frame_counter >= 300) {
+        s.state = GlobalState.pick_random_event;
+    }
+
+    const size = 60;
+    w4.DRAW_COLORS.* = 0x04;
+    w4.oval(50, 50, size, size);
+    w4.DRAW_COLORS.* = 0x11;
+    w4.oval(s.moon_x, 51, size - 1, size - 1);
 }
 
 const event_boss_intro_dialog = [_]Dialog{
@@ -3249,6 +3296,7 @@ export fn update() void {
 
     switch (state.state) {
         GlobalState.crossroad => process_crossroad(&state, released_keys),
+        GlobalState.event_boss_cutscene => process_event_boss_cutscene(&state, released_keys),
         GlobalState.event_boss_intro => text_event_confirm(&state, released_keys, &event_boss_intro_dialog),
         GlobalState.event_boss_intro_2 => text_event_confirm(&state, released_keys, &event_boss_intro_dialog_2),
         GlobalState.event_boss_outro => text_event_confirm(&state, released_keys, &event_boss_outro_dialog),
