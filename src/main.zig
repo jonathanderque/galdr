@@ -851,7 +851,7 @@ const Enemy = struct {
         enemy.sprite = &sprites.enemy_castle_schmoo;
         enemy.guaranteed_reward = Reward{ .gold_reward = 5 };
         enemy.random_reward = RandomReward{
-            .probability = 10,
+            .probability = 4,
             .reward = Reward{ .spell_reward = Spell.spell_crissaegrim() },
         };
         return enemy;
