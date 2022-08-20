@@ -1159,6 +1159,7 @@ const State = struct {
     moon_x: i32 = 0,
     // options
     with_sound: bool = false,
+    with_blink: bool = false,
     // sound engine
     musicode: Musicode,
     // player
@@ -1510,7 +1511,7 @@ pub fn draw_spell_list(spells: []Spell, s: *State, x: i32, y: i32) void {
     var var_y = y;
     s.pager.set_progressive_display(false);
     while (i < spells.len) : (i += 1) {
-        const blink_on = @mod(s.frame_counter, 10) < 5;
+        const blink_on = s.with_blink and @mod(s.frame_counter, 10) < 5;
         if (s.frame_counter > 0 and spells[i].frame_triggered + 30 > s.frame_counter) {
             if (spells[i].is_defined() and blink_on) {
                 w4.DRAW_COLORS.* = 0x22;
