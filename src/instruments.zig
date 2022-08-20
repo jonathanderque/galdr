@@ -15,8 +15,14 @@ pub fn sweepn(note: u16) MusiscoreInstrument {
 pub fn bassn(note: u16) MusiscoreInstrument {
     return MusiscoreInstrument.instr_with_note(6, note);
 }
+pub fn basslongn(note: u16) MusiscoreInstrument {
+    return MusiscoreInstrument.instr_with_note(9, note);
+}
 pub fn leadn(note: u16) MusiscoreInstrument {
     return MusiscoreInstrument.instr_with_note(2, note);
+}
+pub fn leadlongn(note: u16) MusiscoreInstrument {
+    return MusiscoreInstrument.instr_with_note(10, note);
 }
 
 pub const instruments = [_]Instrument{
@@ -58,4 +64,8 @@ pub const instruments = [_]Instrument{
     Instrument{ .freq1 = 330, .freq2 = 190, .release = 100, .sustain_vol = 80, .channel = w4.TONE_NOISE },
     // death SFX
     Instrument{ .freq1 = 500, .sustain = 5, .sustain_vol = 80, .channel = w4.TONE_NOISE },
+    // bass long
+    Instrument{ .freq1 = 100, .attack = 1, .sustain = 40, .sustain_vol = 80, .channel = w4.TONE_TRIANGLE },
+    // lead long
+    Instrument{ .freq1 = 100, .attack = 1, .sustain = 40, .sustain_vol = 20, .channel = w4.TONE_PULSE1 },
 };

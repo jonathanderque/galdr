@@ -1246,7 +1246,7 @@ const State = struct {
     // cutscene
     moon_x: i32 = 0,
     // options
-    with_sound: bool = false,
+    with_sound: bool = true,
     with_blink: bool = false,
     // sound engine
     musicode: Musicode,
@@ -1311,6 +1311,20 @@ const State = struct {
         if (s.with_sound) {
             instruments.instruments[7].play();
         }
+    }
+
+    fn play_sfx_sweep(s: *State) void {
+        if (s.with_sound) {
+            instruments.instruments[1].play();
+        }
+    }
+
+    fn play_track_fanfare02(s: *State) void {
+        s.musicode.start_track(tracks.fanfare02_track[0..], false);
+    }
+
+    fn play_track_fanfare03(s: *State) void {
+        s.musicode.start_track(tracks.fanfare03_track[0..], false);
     }
 
     pub fn apply_effect(self: *State, effect: Effect) void {
@@ -2092,6 +2106,7 @@ pub fn process_fight_reward(s: *State, released_keys: u8) void {
     if (s.state_has_changed) {
         s.set_choices_confirm();
         s.reward_probability = @intCast(u8, @mod(rand(), 100));
+        s.play_track_fanfare03();
     }
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
@@ -2102,6 +2117,7 @@ pub fn process_fight_reward(s: *State, released_keys: u8) void {
         s.state = GlobalState.pick_random_event;
     }
     s.text_tick();
+    s.music_tick();
     w4.DRAW_COLORS.* = 0x02;
     draw_player_hud(s);
     draw_hero(20, 34);
@@ -2119,11 +2135,13 @@ pub fn process_fight_reward(s: *State, released_keys: u8) void {
 pub fn process_game_over(s: *State, released_keys: u8) void {
     if (s.state_has_changed) {
         s.set_choices_confirm();
+        s.play_track_fanfare02();
     }
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         s.state = GlobalState.title;
     }
+    s.music_tick();
     w4.DRAW_COLORS.* = 0x02;
     w4.blit(&sprites.skull, 30, 48, sprites.skull_width, sprites.skull_height, w4.BLIT_1BPP);
     w4.blit(&sprites.skull, 102, 48, sprites.skull_width, sprites.skull_height, w4.BLIT_1BPP | w4.BLIT_FLIP_X);
@@ -2293,7 +2311,7 @@ pub fn process_map(s: *State, released_keys: u8) void {
 pub fn process_pick_character(s: *State, released_keys: u8) void {
     if (s.state_has_changed) {
         s.set_choices_with_labels_2("Moon", "Sun");
-        s.musicode.start_track(tracks.fanfare_track[0..], false);
+        s.play_track_fanfare02();
     } else {
         s.music_tick();
     }
@@ -2409,6 +2427,7 @@ pub fn process_title(s: *State, released_keys: u8) void {
         s.pager.set_progressive_display(false);
         s.moon_x = 20;
         w4.PALETTE[3] = 0x000000;
+        s.play_sfx_sweep();
     } else {
         s.frame_counter += 1;
     }
@@ -2704,6 +2723,7 @@ pub fn process_event_boss_cutscene(s: *State, released_keys: u8) void {
         s.pager.set_progressive_display(false);
         s.moon_x = 70;
         w4.PALETTE[3] = 0x000000;
+        s.play_sfx_sweep();
     } else {
         s.frame_counter += 1;
     }
@@ -2815,6 +2835,7 @@ const castle_vampire_shop_items = [_]Spell{
 pub fn process_credits(s: *State, released_keys: u8) void {
     if (s.state_has_changed) {
         s.set_choices_with_labels_1("Done");
+        s.play_track_fanfare02();
     }
 
     if (s.choices[0].is_completed()) {
