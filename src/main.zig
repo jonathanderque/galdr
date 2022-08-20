@@ -2509,7 +2509,7 @@ pub fn process_tutorial_synergies(s: *State, released_keys: u8) void {
         s.state = GlobalState.tutorial_pause_menu;
     }
     s.pager.set_cursor(10, 10);
-    pager.fmg_text(&s.pager, "Look carefully at the spells below; you'll notice similarities between the input needed for these two spells.");
+    pager.fmg_text(&s.pager, "Now, look at the spells below; you'll notice similarities between the input needed for these two spells.");
     pager.fmg_newline(&s.pager);
     pager.fmg_newline(&s.pager);
     pager.fmg_text(&s.pager, "Because your input applies for all spells, casting NEXT will also cast HEAL!");
@@ -2544,7 +2544,7 @@ pub fn process_tutorial_pause_menu(s: *State, released_keys: u8) void {
     draw_button_1(s.pager.cursor_x + 22, s.pager.cursor_y - 1, false);
     draw_button_1(s.pager.cursor_x + 33, s.pager.cursor_y - 1, false);
     s.pager.set_cursor(s.pager.cursor_x + 44, s.pager.cursor_y);
-    pager.fmg_text(&s.pager, " will get you in the Trance of the Pause Menu.");
+    pager.fmg_text(&s.pager, " will put you in the Trance of the Pause Menu.");
     pager.fmg_newline(&s.pager);
     pager.fmg_newline(&s.pager);
     pager.fmg_text(&s.pager, "The Pause Menu stops time and lets you inspect your spellbook.");
