@@ -491,6 +491,17 @@ const Spell = struct {
         spell.set_spell(&[_]u8{ w4.BUTTON_DOWN, w4.BUTTON_UP, w4.BUTTON_RIGHT, w4.BUTTON_1 });
         return spell;
     }
+
+    pub fn spell_mirror_shield() Spell {
+        var spell = Spell{
+            .name = "MIRROR SHIELD",
+            .price = 9,
+            .alignment = 8,
+            .effect = Effect{ .player_shield = 8 },
+        };
+        spell.set_spell(&[_]u8{ w4.BUTTON_DOWN, w4.BUTTON_1, w4.BUTTON_LEFT, w4.BUTTON_LEFT });
+        return spell;
+    }
 };
 
 const GlobalState = enum {
@@ -3065,6 +3076,7 @@ const coastal_shop_items = [_]Spell{
     Spell.spell_ice_shard(),
     Spell.spell_moon_shiv(),
     Spell.spell_fireball(),
+    Spell.spell_mirror_shield(),
 };
 const coastal_shop_dialog = [_]Dialog{
     Dialog{ .text = "The merchant says:" },
