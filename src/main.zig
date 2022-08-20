@@ -2294,6 +2294,45 @@ pub fn process_options(s: *State, released_keys: u8) void {
     if (released_keys == w4.BUTTON_DOWN and s.spell_index < 2) {
         s.spell_index += 1;
     }
+    const incr = 10;
+    if (released_keys == w4.BUTTON_LEFT) {
+        if (s.spell_index == 0) { // Blink
+            options[0] = 1 - options[0];
+        } else if (s.spell_index == 1) { // Music volume
+            if (options[1] > incr) {
+                options[1] -= incr;
+            } else {
+                options[1] = 0;
+            }
+            play_sfx_menu(options[1]);
+        } else if (s.spell_index == 2) { // SFX Volume
+            if (options[2] > incr) {
+                options[2] -= incr;
+            } else {
+                options[2] = 0;
+            }
+            play_sfx_menu(options[2]);
+        }
+    }
+    if (released_keys == w4.BUTTON_RIGHT) {
+        if (s.spell_index == 0) { // Blink
+            options[0] = 1 - options[0];
+        } else if (s.spell_index == 1) { // Music volume
+            if (options[1] < 100 - incr) {
+                options[1] += incr;
+            } else {
+                options[1] = 100;
+            }
+            play_sfx_menu(options[1]);
+        } else if (s.spell_index == 2) { // SFX Volume
+            if (options[2] < 100 - incr) {
+                options[2] += incr;
+            } else {
+                options[2] = 100;
+            }
+            play_sfx_menu(options[2]);
+        }
+    }
     process_choices_input(s, released_keys);
 
     if (s.choices[0].is_completed()) {
@@ -3672,8 +3711,8 @@ const title_track = [_]u8{
 
 var options = [_]u8{
     1, // BLINK
-    0, // MUSIC VOLUME
-    0, // SFX VOLUME
+    50, // MUSIC VOLUME
+    50, // SFX VOLUME
 };
 var state: State = undefined;
 
