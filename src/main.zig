@@ -123,7 +123,7 @@ const Spell = struct {
             .name = "Tutorial",
             .effect = Effect.no_effect,
         };
-        s.set_spell(&[_]u8{w4.BUTTON_1});
+        s.set_spell(&[_]u8{w4.BUTTON_2});
         return s;
     }
 
@@ -132,7 +132,7 @@ const Spell = struct {
             .name = "Start Game",
             .effect = Effect.no_effect,
         };
-        s.set_spell(&[_]u8{ w4.BUTTON_RIGHT, w4.BUTTON_2 });
+        s.set_spell(&[_]u8{ w4.BUTTON_RIGHT, w4.BUTTON_1 });
         return s;
     }
 
