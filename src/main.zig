@@ -1252,6 +1252,28 @@ pub fn get_spell_list_size(spell_list: []Spell) usize {
     }
     return size;
 }
+fn play_sfx_hit() void {
+    // TODO SFX volume instead
+    if (options[1] > 0) {
+        instruments.instruments[8].play();
+    }
+}
+
+fn play_sfx_death() void {
+    // TODO SFX volume instead
+    if (options[1] > 0) {
+        instruments.instruments[7].play();
+    }
+}
+
+fn play_sfx_sweep() void {
+    // TODO SFX volume instead
+    if (options[1] > 0) {
+        instruments.instruments[1].play();
+    }
+}
+
+// TODO title track
 
 const choices_max_size: usize = 5;
 const spell_book_full_size: usize = 8;
@@ -1279,8 +1301,6 @@ const State = struct {
     text_progress: u16 = 0,
     // cutscene
     moon_x: i32 = 0,
-    // options
-    with_sound: bool = false,
     // sound engine
     musicode: Musicode,
     // player
@@ -1302,8 +1322,26 @@ const State = struct {
     shop_gold: i16 = 0,
 
     pub fn music_tick(self: *State) void {
-        if (self.with_sound) {
+        if (options[1] > 0) {
             self.musicode.tick();
+        }
+    }
+
+    fn play_track_fanfare02(self: *State) void {
+        if (options[1] > 0) {
+            self.musicode.start_track(tracks.fanfare02_track[0..], false);
+        }
+    }
+
+    fn play_track_fanfare03(self: *State) void {
+        if (options[1] > 0) {
+            self.musicode.start_track(tracks.fanfare03_track[0..], false);
+        }
+    }
+
+    fn play_track_title(self: *State) void {
+        if (options[1] > 0) {
+            self.musicode.start_track(tracks.title_track[0..], true);
         }
     }
 
@@ -1334,32 +1372,6 @@ const State = struct {
         }
     }
 
-    fn play_sfx_hit(s: *State) void {
-        if (s.with_sound) {
-            instruments.instruments[8].play();
-        }
-    }
-
-    fn play_sfx_death(s: *State) void {
-        if (s.with_sound) {
-            instruments.instruments[7].play();
-        }
-    }
-
-    fn play_sfx_sweep(s: *State) void {
-        if (s.with_sound) {
-            instruments.instruments[1].play();
-        }
-    }
-
-    fn play_track_fanfare02(s: *State) void {
-        s.musicode.start_track(tracks.fanfare02_track[0..], false);
-    }
-
-    fn play_track_fanfare03(s: *State) void {
-        s.musicode.start_track(tracks.fanfare03_track[0..], false);
-    }
-
     pub fn apply_effect(self: *State, effect: Effect) void {
         switch (effect) {
             Effect.no_effect => {},
@@ -1383,7 +1395,7 @@ const State = struct {
                         self.player_hp = 0;
                     }
                     self.player_animation = 4;
-                    self.play_sfx_hit();
+                    play_sfx_hit();
                 } else {
                     self.player_shield -= dmg;
                 }
@@ -1396,7 +1408,7 @@ const State = struct {
                         self.enemy.hp = 0;
                     }
                     self.enemy_animation = 4;
-                    self.play_sfx_hit();
+                    play_sfx_hit();
                 } else {
                     self.enemy.shield -= dmg;
                 }
@@ -1414,7 +1426,7 @@ const State = struct {
                         self.enemy.hp = self.enemy.max_hp;
                     }
                     self.player_animation = 4;
-                    self.play_sfx_hit();
+                    play_sfx_hit();
                 } else {
                     self.player_shield -= dmg;
                 }
@@ -1432,7 +1444,7 @@ const State = struct {
                         self.player_hp = self.player_max_hp;
                     }
                     self.enemy_animation = 4;
-                    self.play_sfx_hit();
+                    play_sfx_hit();
                 } else {
                     self.enemy.shield -= dmg;
                 }
@@ -1813,6 +1825,9 @@ pub fn draw_spell_details(x: i32, y: i32, s: *State, spell: Spell) void {
     draw_effect(s.pager.cursor_x, second_line_y, s, spell.effect);
 }
 
+pub fn draw_right_triangle(x: i32, y: i32) void {
+    w4.blitSub(&sprites.arrows, x, y, 5, 9, 0, 9, sprites.arrows_width, w4.BLIT_1BPP | w4.BLIT_FLIP_X);
+}
 // draws a list of spell names + cursor
 pub fn draw_spell_inventory_list(x: i32, y: i32, s: *State, list: []Spell, show_cursor: bool) void {
     var i: usize = 0;
@@ -1820,7 +1835,7 @@ pub fn draw_spell_inventory_list(x: i32, y: i32, s: *State, list: []Spell, show_
         const y_list = y + @intCast(i32, i * (pager.fmg_letter_height + 2));
         s.pager.set_cursor(x, y_list);
         if (show_cursor and i == s.spell_index) {
-            w4.blitSub(&sprites.arrows, x + 2, y_list - 1, 5, 9, 0, 9, sprites.arrows_width, w4.BLIT_1BPP | w4.BLIT_FLIP_X);
+            draw_right_triangle(x + 2, y_list - 1);
         }
         s.pager.set_cursor(x + 10, y_list);
         pager.fmg_text(&s.pager, list[i].name);
@@ -2096,7 +2111,7 @@ pub fn process_fight_end(s: *State, released_keys: u8) void {
     if (s.state_has_changed) {
         s.frame_counter = 0;
         w4.PALETTE[3] = 0xffffff;
-        s.play_sfx_death();
+        play_sfx_death();
     } else {
         s.frame_counter += 1;
         w4.PALETTE[3] -= 0x030303;
@@ -2243,17 +2258,29 @@ pub fn process_options(s: *State, released_keys: u8) void {
     pager.fmg_newline(&s.pager);
     pager.fmg_newline(&s.pager);
     // BLINK
-    if (s.spell_index == 0) {
-        pager.fmg_text(&s.pager, "> ");
-    }
-    pager.fmg_text(&s.pager, "Blink (");
+    pager.fmg_text(&s.pager, "  Blink: ");
     if (options[0] == 1) {
         pager.fmg_text(&s.pager, "On");
     } else {
         pager.fmg_text(&s.pager, "Off");
     }
-    pager.fmg_text(&s.pager, ")");
+    pager.fmg_newline(&s.pager);
 
+    // Music Volume
+    pager.fmg_text(&s.pager, "  Music volume: ");
+    if (options[1] == 0) {
+        pager.fmg_text(&s.pager, "Off");
+    } else {
+        pager.fmg_number(&s.pager, options[1]);
+    }
+
+    draw_right_triangle(10, 25 + s.spell_index * (pager.fmg_letter_height + 1));
+    if (released_keys == w4.BUTTON_UP and s.spell_index > 0) {
+        s.spell_index -= 1;
+    }
+    if (released_keys == w4.BUTTON_DOWN and s.spell_index < 1) {
+        s.spell_index += 1;
+    }
     process_choices_input(s, released_keys);
 
     if (s.choices[0].is_completed()) {
@@ -2261,6 +2288,12 @@ pub fn process_options(s: *State, released_keys: u8) void {
         switch (s.spell_index) {
             0 => { // BLINK
                 options[0] = 1 - options[0];
+            },
+            1 => { // Music Volume
+                options[1] += 10;
+                if (options[1] > 100) {
+                    options[1] = 0;
+                }
             },
             else => {},
         }
@@ -2504,7 +2537,7 @@ pub fn process_title(s: *State, released_keys: u8) void {
         s.pager.set_progressive_display(false);
         s.moon_x = 20;
         w4.PALETTE[3] = 0x000000;
-        s.play_sfx_sweep();
+        play_sfx_sweep();
     } else {
         s.frame_counter += 1;
     }
@@ -2544,7 +2577,7 @@ pub fn process_title_1(s: *State, released_keys: u8) void {
         s.choices[0].frame_triggered = -99;
         s.choices[1].frame_triggered = -99;
         s.choices[2].frame_triggered = -99;
-        s.musicode.start_track(tracks.title_track[0..], true);
+        s.play_track_title();
         w4.PALETTE[3] = 0x000000;
         s.frame_counter = 0;
     } else {
@@ -2805,7 +2838,7 @@ pub fn process_event_boss_cutscene(s: *State, released_keys: u8) void {
         s.pager.set_progressive_display(false);
         s.moon_x = 70;
         w4.PALETTE[3] = 0x000000;
-        s.play_sfx_sweep();
+        play_sfx_sweep();
     } else {
         s.frame_counter += 1;
     }
@@ -3618,6 +3651,7 @@ const title_track = [_]u8{
 
 var options = [_]u8{
     1, // BLINK
+    0, // MUSIC VOLUME
 };
 var state: State = undefined;
 
