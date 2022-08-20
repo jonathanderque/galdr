@@ -524,6 +524,9 @@ const GlobalState = enum {
     event_healing_shop,
     event_forest_wolf,
     event_militia_ambush,
+    event_mine_troll,
+    event_mine_troll_warrior,
+    event_mine_troll_king,
     event_moon_altar,
     event_moon_altar_skip,
     event_moon_altar_pray,
@@ -671,6 +674,16 @@ const castle_area = Area{
     },
 };
 
+const mine_area = Area{
+    .name = "MINES",
+    .event_count = 3,
+    .event_pool = &[_]GlobalState{
+        GlobalState.event_mine_troll,
+        GlobalState.event_mine_troll_warrior,
+        GlobalState.event_mine_troll_king,
+    },
+};
+
 const boss_area = Area{
     .name = "ECLIPSE",
     .event_count = 1,
@@ -699,7 +712,7 @@ const medium_area_pool = [_]Area{
 const hard_area_pool = [_]Area{
     castle_area,
     hard_swamp_area,
-    //TODO mine_area? with hard hitting trolls
+    mine_area,
 };
 
 const boss_area_pool = [_]Area{
@@ -907,6 +920,72 @@ const Enemy = struct {
         };
         enemy.guaranteed_reward = Reward{ .gold_reward = 2 };
         enemy.sprite = &sprites.enemy_militia;
+        return enemy;
+    }
+
+    pub fn enemy_mine_troll_king() Enemy {
+        var enemy = zero();
+        const enemy_max_hp = 50;
+        enemy.hp = enemy_max_hp;
+        enemy.max_hp = enemy_max_hp;
+        enemy.intent[0] = EnemyIntent{
+            .trigger_time = 5 * 60,
+            .effect = Effect{ .damage_to_player = 32 },
+        };
+        enemy.intent[1] = EnemyIntent{
+            .trigger_time = 3 * 60,
+            .effect = Effect{ .enemy_shield = 18 },
+        };
+        enemy.guaranteed_reward = Reward{ .gold_reward = 25 };
+        enemy.random_reward = RandomReward{
+            .probability = 50,
+            .reward = Reward{ .spell_reward = Spell.spell_mud_plate() },
+        };
+        enemy.sprite = &sprites.enemy_mine_troll_king;
+        return enemy;
+    }
+
+    pub fn enemy_mine_troll_warrior() Enemy {
+        var enemy = zero();
+        const enemy_max_hp = 30;
+        enemy.hp = enemy_max_hp;
+        enemy.max_hp = enemy_max_hp;
+        enemy.intent[0] = EnemyIntent{
+            .trigger_time = 4 * 60,
+            .effect = Effect{ .damage_to_player = 22 },
+        };
+        enemy.intent[1] = EnemyIntent{
+            .trigger_time = 3 * 60,
+            .effect = Effect{ .enemy_shield = 14 },
+        };
+        enemy.guaranteed_reward = Reward{ .gold_reward = 7 };
+        enemy.random_reward = RandomReward{
+            .probability = 50,
+            .reward = Reward{ .spell_reward = Spell.spell_mud_plate() },
+        };
+        enemy.sprite = &sprites.enemy_mine_troll_warrior;
+        return enemy;
+    }
+
+    pub fn enemy_mine_troll() Enemy {
+        var enemy = zero();
+        const enemy_max_hp = 20;
+        enemy.hp = enemy_max_hp;
+        enemy.max_hp = enemy_max_hp;
+        enemy.intent[0] = EnemyIntent{
+            .trigger_time = 3 * 60,
+            .effect = Effect{ .damage_to_player = 15 },
+        };
+        enemy.intent[1] = EnemyIntent{
+            .trigger_time = 5 * 60,
+            .effect = Effect{ .enemy_shield = 16 },
+        };
+        enemy.guaranteed_reward = Reward{ .gold_reward = 7 };
+        enemy.random_reward = RandomReward{
+            .probability = 50,
+            .reward = Reward{ .spell_reward = Spell.spell_earth_ball() },
+        };
+        enemy.sprite = &sprites.enemy_mine_troll;
         return enemy;
     }
 
@@ -3100,6 +3179,29 @@ const forest_wolf_dialog = [_]Dialog{
     Dialog{ .text = "A giant lone wolf is snarling at you. You have no choice other than to fight for your life!" },
 };
 
+const mine_troll_dialog = [_]Dialog{
+    Dialog{ .text = "As you exit a narrow gallery in the mines, you are being chased by a troll." },
+    Dialog.newline,
+    Dialog.newline,
+    Dialog{ .text = "They certainly know their way in these dark places!" },
+};
+
+const mine_troll_warrior_dialog = [_]Dialog{
+    Dialog{ .text = "A troll warrior screems when seeing you wandering in the mines." },
+    Dialog.newline,
+    Dialog.newline,
+    Dialog{ .text = "You should prevent him from rallying his friends!!" },
+    Dialog{ .text = "Using your spellbook is the only way to shut him down.." },
+};
+
+const mine_troll_king_dialog = [_]Dialog{
+    Dialog{ .text = "You arrive at a wide chamber carved deep in the mountain." },
+    Dialog.newline,
+    Dialog.newline,
+    Dialog{ .text = "Amongst skeletons and chests the troll king is mumbling to himself" },
+    Dialog{ .text = "This unpleasant sound turns into a terrifying scream as soon as he notices you.." },
+};
+
 const event_moon_altar_skip_dialog = [_]Dialog{
     Dialog{ .text = "There is a moon altar here." },
     Dialog.newline,
@@ -3430,6 +3532,9 @@ export fn update() void {
         GlobalState.event_healer_accept => text_event_confirm(&state, released_keys, &event_healer_accept_dialog),
         GlobalState.event_healing_shop => shop_intro(&state, released_keys, &healing_shop_dialog, healing_shop_gold, &healing_shop_items),
         GlobalState.event_forest_wolf => fight_intro(&state, released_keys, Enemy.enemy_forest_wolf(), &forest_wolf_dialog),
+        GlobalState.event_mine_troll_warrior => fight_intro(&state, released_keys, Enemy.enemy_mine_troll_warrior(), &mine_troll_warrior_dialog),
+        GlobalState.event_mine_troll_king => fight_intro(&state, released_keys, Enemy.enemy_mine_troll_king(), &mine_troll_king_dialog),
+        GlobalState.event_mine_troll => fight_intro(&state, released_keys, Enemy.enemy_mine_troll(), &mine_troll_dialog),
         GlobalState.event_moon_altar => process_event_moon_altar(&state, released_keys),
         GlobalState.event_moon_altar_skip => text_event_confirm(&state, released_keys, &event_moon_altar_skip_1_dialog),
         GlobalState.event_moon_altar_pray => text_event_confirm(&state, released_keys, &event_moon_altar_pray_1_dialog),
