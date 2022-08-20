@@ -521,6 +521,8 @@ const GlobalState = enum {
     event_healer,
     event_healer_decline,
     event_healer_accept,
+    event_coastal_shop,
+    event_mine_shop,
     event_healing_shop,
     event_forest_wolf,
     event_militia_ambush,
@@ -606,6 +608,7 @@ const coast_area = Area{
         GlobalState.event_coast_kidnapped_daughter,
         GlobalState.event_coast_merfolk,
         GlobalState.event_coast_sea_monster,
+        GlobalState.event_coastal_shop,
     },
 };
 
@@ -651,14 +654,13 @@ const forest_area = Area{
         GlobalState.event_coin_muncher,
         GlobalState.event_sun_fountain,
         GlobalState.event_forest_wolf,
-        GlobalState.event_forest_wolf,
+        GlobalState.event_healing_shop,
         GlobalState.event_cavern_man,
         GlobalState.event_militia_ambush,
     },
 };
 
 //        GlobalState.event_sun_altar,
-//        GlobalState.event_healing_shop,
 //        GlobalState.event_chest_regular,
 //        GlobalState.event_chest_mimic,
 
@@ -678,6 +680,7 @@ const mine_area = Area{
     .name = "MINES",
     .event_count = 3,
     .event_pool = &[_]GlobalState{
+        GlobalState.event_mine_shop,
         GlobalState.event_mine_troll,
         GlobalState.event_mine_troll_warrior,
         GlobalState.event_mine_troll_king,
@@ -1246,7 +1249,7 @@ const State = struct {
     // cutscene
     moon_x: i32 = 0,
     // options
-    with_sound: bool = true,
+    with_sound: bool = false,
     with_blink: bool = false,
     // sound engine
     musicode: Musicode,
@@ -3057,6 +3060,35 @@ const event_healer_accept_dialog = [_]Dialog{
     Dialog{ .text = "The druid utters weird sounds that only him can understand, but you already feels better." },
 };
 
+const coastal_shop_gold = 50;
+const coastal_shop_items = [_]Spell{
+    Spell.spell_ice_shard(),
+    Spell.spell_moon_shiv(),
+    Spell.spell_fireball(),
+};
+const coastal_shop_dialog = [_]Dialog{
+    Dialog{ .text = "The merchant says:" },
+    Dialog.newline,
+    Dialog.newline,
+    Dialog{ .text = "\"I used to be a wizard like you. Then I took a wand in the knee.\"" },
+};
+
+const mine_shop_gold = 50;
+const mine_shop_items = [_]Spell{
+    Spell.spell_root(),
+    Spell.spell_mud_plate(),
+    Spell.spell_earth_ball(),
+};
+const mine_shop_dialog = [_]Dialog{
+    Dialog{ .text = "The sign at the entrance reads" },
+    Dialog.newline,
+    Dialog.newline,
+    Dialog{ .text = "\"This shop in an abandonned mine tunnel is bought to you by HildinVPN!\"" },
+    Dialog.newline,
+    Dialog.newline,
+    Dialog{ .text = "You do not like this trend of seeing ads everywhere..." },
+};
+
 const healing_shop_gold = 50;
 const healing_shop_items = [_]Spell{
     Spell.spell_heal(),
@@ -3066,7 +3098,7 @@ const healing_shop_dialog = [_]Dialog{
     Dialog{ .text = "The merchant greets you:" },
     Dialog.newline,
     Dialog.newline,
-    Dialog{ .text = "\"Welcome to Hildan's Heap of Heals!\"" },
+    Dialog{ .text = "\"Welcome to Hildin's Heap of Heals!\"" },
 };
 
 pub fn process_keys_spell_list(s: *State, released_keys: u8, spell_list: []Spell) void {
@@ -3559,6 +3591,8 @@ export fn update() void {
         GlobalState.event_healer => process_event_healer(&state, released_keys),
         GlobalState.event_healer_decline => text_event_confirm(&state, released_keys, &event_healer_decline_dialog),
         GlobalState.event_healer_accept => text_event_confirm(&state, released_keys, &event_healer_accept_dialog),
+        GlobalState.event_coastal_shop => shop_intro(&state, released_keys, &coastal_shop_dialog, coastal_shop_gold, &coastal_shop_items),
+        GlobalState.event_mine_shop => shop_intro(&state, released_keys, &mine_shop_dialog, mine_shop_gold, &mine_shop_items),
         GlobalState.event_healing_shop => shop_intro(&state, released_keys, &healing_shop_dialog, healing_shop_gold, &healing_shop_items),
         GlobalState.event_forest_wolf => fight_intro(&state, released_keys, Enemy.enemy_forest_wolf(), &forest_wolf_dialog),
         GlobalState.event_mine_troll_warrior => fight_intro(&state, released_keys, Enemy.enemy_mine_troll_warrior(), &mine_troll_warrior_dialog),
