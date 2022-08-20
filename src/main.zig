@@ -127,6 +127,15 @@ const Spell = struct {
         return s;
     }
 
+    pub fn spell_title_options() Spell {
+        var s = Spell{
+            .name = "Options",
+            .effect = Effect.no_effect,
+        };
+        s.set_spell(&[_]u8{ w4.BUTTON_LEFT, w4.BUTTON_1 });
+        return s;
+    }
+
     pub fn spell_title_start_game() Spell {
         var s = Spell{
             .name = "Start Game",
@@ -569,6 +578,7 @@ const GlobalState = enum {
     inventory_full,
     inventory_full_2,
     map,
+    options,
     new_game_init,
     pick_character,
     pick_character_2,
@@ -1271,7 +1281,6 @@ const State = struct {
     moon_x: i32 = 0,
     // options
     with_sound: bool = false,
-    with_blink: bool = false,
     // sound engine
     musicode: Musicode,
     // player
@@ -1637,7 +1646,7 @@ pub fn draw_spell_list(spells: []Spell, s: *State, x: i32, y: i32) void {
     var var_y = y;
     s.pager.set_progressive_display(false);
     while (i < spells.len) : (i += 1) {
-        const blink_on = s.with_blink and @mod(s.frame_counter, 10) < 5;
+        const blink_on = (options[0] == 1) and @mod(s.frame_counter, 10) < 5;
         if (s.frame_counter > 0 and spells[i].frame_triggered + 30 > s.frame_counter) {
             if (spells[i].is_defined() and blink_on) {
                 w4.DRAW_COLORS.* = 0x22;
@@ -2220,6 +2229,50 @@ pub fn process_inventory_full(s: *State, released_keys: u8) void {
     draw_spell_list(&s.choices, s, 10, 140);
 }
 
+pub fn process_options(s: *State, released_keys: u8) void {
+    // spell_index is reused to keep track of the hilighted options
+    if (s.state_has_changed) {
+        s.set_choices_with_labels_2("Change", "Exit");
+        state.choices[0].set_spell(&[_]u8{w4.BUTTON_1});
+        state.choices[1].set_spell(&[_]u8{w4.BUTTON_2});
+        s.spell_index = 0;
+    }
+
+    s.pager.set_cursor(10, 10);
+    pager.fmg_text(&s.pager, "Options:");
+    pager.fmg_newline(&s.pager);
+    pager.fmg_newline(&s.pager);
+    // BLINK
+    if (s.spell_index == 0) {
+        pager.fmg_text(&s.pager, "> ");
+    }
+    pager.fmg_text(&s.pager, "Blink (");
+    if (options[0] == 1) {
+        pager.fmg_text(&s.pager, "On");
+    } else {
+        pager.fmg_text(&s.pager, "Off");
+    }
+    pager.fmg_text(&s.pager, ")");
+
+    process_choices_input(s, released_keys);
+
+    if (s.choices[0].is_completed()) {
+        s.choices[0].reset();
+        switch (s.spell_index) {
+            0 => { // BLINK
+                options[0] = 1 - options[0];
+            },
+            else => {},
+        }
+    }
+    if (s.choices[1].is_completed()) {
+        _ = w4.diskw(&options, @sizeOf(@TypeOf(options)));
+        s.state = GlobalState.title_1;
+    }
+
+    draw_spell_list(&s.choices, s, 10, 140);
+}
+
 pub fn process_inventory_full_2(s: *State, released_keys: u8) void {
     if (released_keys == w4.BUTTON_LEFT or released_keys == w4.BUTTON_RIGHT) {
         s.shop_list_index = 1 - s.shop_list_index;
@@ -2486,8 +2539,11 @@ pub fn process_title_1(s: *State, released_keys: u8) void {
         s.reset_choices();
         s.choices[0] = Spell.spell_title_tutorial();
         s.choices[1] = Spell.spell_title_start_game();
+        s.choices[2] = Spell.spell_title_options();
+        // prevent blinking for the menu :-(
         s.choices[0].frame_triggered = -99;
         s.choices[1].frame_triggered = -99;
+        s.choices[2].frame_triggered = -99;
         s.musicode.start_track(tracks.title_track[0..], true);
         w4.PALETTE[3] = 0x000000;
         s.frame_counter = 0;
@@ -2505,6 +2561,8 @@ pub fn process_title_1(s: *State, released_keys: u8) void {
         s.state = GlobalState.tutorial_basics;
     } else if (s.choices[1].is_completed()) {
         s.state = GlobalState.new_game_init;
+    } else if (s.choices[2].is_completed()) {
+        s.state = GlobalState.options;
     }
 
     // generate randomness
@@ -2513,7 +2571,7 @@ pub fn process_title_1(s: *State, released_keys: u8) void {
     w4.DRAW_COLORS.* = 0x04;
     draw_logo(16, 50);
     w4.DRAW_COLORS.* = 0x02;
-    draw_spell_list(&s.choices, s, 10, 140);
+    draw_spell_list(&s.choices, s, 10, 130);
 }
 
 pub fn process_tutorial_basics(s: *State, released_keys: u8) void {
@@ -3558,6 +3616,9 @@ const title_track = [_]u8{
     Musicode.wait(15),
 };
 
+var options = [_]u8{
+    1, // BLINK
+};
 var state: State = undefined;
 
 export fn start() void {
@@ -3568,6 +3629,7 @@ export fn start() void {
         0xcccccc,
     };
 
+    _ = w4.diskr(&options, @sizeOf(@TypeOf(options)));
     state = State{
         .musicode = Musicode.new(&instruments.instruments),
     };
@@ -3650,6 +3712,7 @@ export fn update() void {
         GlobalState.inventory_full => process_inventory_full(&state, released_keys),
         GlobalState.inventory_full_2 => process_inventory_full_2(&state, released_keys),
         GlobalState.map => process_map(&state, released_keys),
+        GlobalState.options => process_options(&state, released_keys),
         GlobalState.new_game_init => process_new_game_init(),
         GlobalState.pick_random_event => process_pick_random_event(&state, released_keys),
         GlobalState.pick_character => process_pick_character(&state, released_keys),
