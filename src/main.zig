@@ -274,7 +274,7 @@ const Spell = struct {
             .name = "SHIELD",
             .price = 12,
             .alignment = 2,
-            .effect = Effect{ .player_shield = 7 },
+            .effect = Effect{ .player_shield = 5 },
         };
         s.set_spell(&[_]u8{
             w4.BUTTON_DOWN,
@@ -285,14 +285,31 @@ const Spell = struct {
         return s;
     }
 
-    pub fn spell_iron_plate() Spell {
+    pub fn spell_ice_wall() Spell {
         var s = Spell{
-            .name = "IRON PLATE",
-            .price = 3,
+            .name = "ICE WALL",
+            .price = 4,
             .alignment = -2,
-            .effect = Effect{ .player_shield = 3 },
+            .effect = Effect{ .player_shield = 5 },
         };
         s.set_spell(&[_]u8{
+            w4.BUTTON_UP,
+            w4.BUTTON_UP,
+            w4.BUTTON_2,
+            w4.BUTTON_DOWN,
+        });
+        return s;
+    }
+
+    pub fn spell_ice_shard() Spell {
+        var s = Spell{
+            .name = "ICE SHARD",
+            .price = 7,
+            .alignment = -2,
+            .effect = Effect{ .damage_to_enemy = 9 },
+        };
+        s.set_spell(&[_]u8{
+            w4.BUTTON_DOWN,
             w4.BUTTON_UP,
             w4.BUTTON_UP,
             w4.BUTTON_2,
@@ -305,14 +322,49 @@ const Spell = struct {
         var s = Spell{
             .name = "MUD PLATE",
             .price = 3,
-            .alignment = -2,
-            .effect = Effect{ .player_shield = 2 },
+            .alignment = 2,
+            .effect = Effect{ .player_shield = 4 },
         };
         s.set_spell(&[_]u8{
             w4.BUTTON_DOWN,
             w4.BUTTON_DOWN,
             w4.BUTTON_2,
             w4.BUTTON_UP,
+        });
+        return s;
+    }
+
+    pub fn spell_earth_ball() Spell {
+        var s = Spell{
+            .name = "EARTH BALL",
+            .price = 3,
+            .alignment = 4,
+            .effect = Effect{ .damage_to_enemy = 11 },
+        };
+        s.set_spell(&[_]u8{
+            w4.BUTTON_UP,
+            w4.BUTTON_DOWN,
+            w4.BUTTON_DOWN,
+            w4.BUTTON_2,
+            w4.BUTTON_UP,
+            w4.BUTTON_1,
+        });
+        return s;
+    }
+
+    pub fn spell_root() Spell {
+        var s = Spell{
+            .name = "ROOT",
+            .price = 3,
+            .alignment = 4,
+            .effect = Effect{ .vampirism_to_enemy = 5 },
+        };
+        s.set_spell(&[_]u8{
+            w4.BUTTON_2,
+            w4.BUTTON_UP,
+            w4.BUTTON_1,
+            w4.BUTTON_UP,
+            w4.BUTTON_DOWN,
         });
         return s;
     }
@@ -344,7 +396,7 @@ const Spell = struct {
             .name = "SUN SHIV",
             .price = 11,
             .alignment = 2,
-            .effect = Effect{ .damage_to_enemy = 1 },
+            .effect = Effect{ .damage_to_enemy = 2 },
         };
         s.set_spell(&[_]u8{ w4.BUTTON_UP, w4.BUTTON_1, w4.BUTTON_DOWN, w4.BUTTON_2 });
         return s;
@@ -355,7 +407,7 @@ const Spell = struct {
             .name = "MOON SHIV",
             .price = 11,
             .alignment = -2,
-            .effect = Effect{ .damage_to_enemy = 1 },
+            .effect = Effect{ .damage_to_enemy = 2 },
         };
         s.set_spell(&[_]u8{ w4.BUTTON_DOWN, w4.BUTTON_2, w4.BUTTON_UP, w4.BUTTON_1 });
         return s;
@@ -705,12 +757,12 @@ const Enemy = struct {
         enemy.hp = enemy_max_hp;
         enemy.max_hp = enemy_max_hp;
         enemy.intent[0] = EnemyIntent{
-            .trigger_time = 3 * 60,
-            .effect = Effect{ .damage_to_player = 14 },
+            .trigger_time = 4 * 60,
+            .effect = Effect{ .damage_to_player = 35 },
         };
         enemy.intent[1] = EnemyIntent{
-            .trigger_time = 7 * 60,
-            .effect = Effect{ .enemy_shield = 10 },
+            .trigger_time = 6 * 60,
+            .effect = Effect{ .enemy_shield = 20 },
         };
         enemy.sprite = &sprites.enemy_boss;
         return enemy;
@@ -846,7 +898,7 @@ const Enemy = struct {
         };
         enemy.random_reward = RandomReward{
             .probability = 40,
-            .reward = Reward{ .spell_reward = Spell.spell_iron_plate() },
+            .reward = Reward{ .spell_reward = Spell.spell_ice_wall() },
         };
         enemy.guaranteed_reward = Reward{ .gold_reward = 2 };
         enemy.sprite = &sprites.enemy_militia;
