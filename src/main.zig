@@ -58,13 +58,14 @@ const Spell = struct {
     alignment: i8 = 0,
     current_progress: usize = 0,
     effect: Effect = Effect.no_effect,
-    frame_triggered: i16 = 0, // used for visual feedback
+    frame_triggered: i16 = -99, // used for visual feedback
 
     pub fn zero() Spell {
         var spell = Spell{
             .name = "",
             .input = undefined,
             .current_progress = 0,
+            .frame_triggered = -99,
             .effect = Effect.no_effect,
         };
         var i: usize = 0;
@@ -1274,7 +1275,7 @@ fn play_sfx_menu(volume: u8) void {
     instruments.instruments[2].play(volume);
 }
 
-// TODO title track
+const PauseMenu = enum { Off, InventoryMenu, OptionsMenu };
 
 const choices_max_size: usize = 5;
 const spell_book_full_size: usize = 8;
@@ -1286,7 +1287,7 @@ const State = struct {
     previous_input: u8 = 0,
     pager: pager.Pager = undefined,
     spell_index: isize = 0, // index keeping track of which spell is hilighted when displaying inventory
-    inventory_menu_flag: bool = false,
+    pause_menu: PauseMenu = PauseMenu.Off,
     state_register: GlobalState = GlobalState.title, // generic state holder used for temporary screens (inventory, map, etc...) to hold the next true state
     // global state
     state: GlobalState = GlobalState.title,
@@ -1380,7 +1381,10 @@ const State = struct {
         switch (effect) {
             Effect.no_effect => {},
             Effect.toggle_inventory_menu => {
-                self.inventory_menu_flag = !self.inventory_menu_flag;
+                self.pause_menu = switch (self.pause_menu) {
+                    PauseMenu.Off => PauseMenu.InventoryMenu,
+                    else => PauseMenu.Off,
+                };
             },
             Effect.player_heal => |amount| {
                 self.player_hp += @intCast(i16, amount);
@@ -2050,9 +2054,13 @@ pub fn process_fight(s: *State, released_keys: u8) void {
         s.apply_effect(s.inventory_menu_spell.effect);
         s.inventory_menu_spell.reset();
     }
-    if (s.inventory_menu_flag) {
+    if (s.pause_menu == PauseMenu.InventoryMenu) {
         s.state_register = GlobalState.fight;
         s.state = GlobalState.inventory;
+        return;
+    }
+    if (s.pause_menu == PauseMenu.OptionsMenu) {
+        process_options_helper(s, released_keys, GlobalState.fight);
         return;
     }
 
@@ -2204,13 +2212,17 @@ pub fn process_game_over(s: *State, released_keys: u8) void {
 
 pub fn process_inventory(s: *State, released_keys: u8) void {
     if (s.state_has_changed) {
-        s.set_choices_back();
+        s.set_choices_with_labels_2("Back", "Options");
         s.shop_list_index = 0;
     }
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
-        s.inventory_menu_flag = false;
+        s.pause_menu = PauseMenu.Off;
         s.state = s.state_register;
+    }
+    if (s.choices[1].is_completed()) {
+        s.state = s.state_register;
+        s.pause_menu = PauseMenu.OptionsMenu;
     }
 
     process_keys_spell_list(s, released_keys, &s.spellbook);
@@ -2249,6 +2261,10 @@ pub fn process_inventory_full(s: *State, released_keys: u8) void {
 }
 
 pub fn process_options(s: *State, released_keys: u8) void {
+    process_options_helper(s, released_keys, GlobalState.title_1);
+}
+pub fn process_options_helper(s: *State, released_keys: u8, exit_state: GlobalState) void {
+    //pub fn process_options_helper(s: *State, released_keys: u8, exit_state: GlobalState) void {
     // spell_index is reused to keep track of the hilighted options
     if (s.state_has_changed) {
         s.set_choices_with_labels_2("Change", "Exit");
@@ -2374,7 +2390,8 @@ pub fn process_options(s: *State, released_keys: u8) void {
     }
     if (s.choices[1].is_completed()) {
         _ = w4.diskw(&options, @sizeOf(@TypeOf(options)));
-        s.state = GlobalState.title_1;
+        s.state = exit_state;
+        s.pause_menu = PauseMenu.Off;
     }
 
     draw_spell_list(&s.choices, s, 10, 140);
