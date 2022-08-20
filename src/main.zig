@@ -748,7 +748,15 @@ const Enemy = struct {
     sprite: [*]const u8 = undefined,
 
     pub fn zero() Enemy {
-        return Enemy{};
+        var e = Enemy{};
+        var i: usize = 0;
+        while (i < e.intent.len) : (i += 1) {
+            e.intent[i] = EnemyIntent{
+                .trigger_time = 0,
+                .effect = Effect.no_effect,
+            };
+        }
+        return e;
     }
 
     pub fn enemy_barbarian() Enemy {
