@@ -784,12 +784,12 @@ const Enemy = struct {
 
     pub fn enemy_castle_bat() Enemy {
         var enemy = zero();
-        const enemy_max_hp = 20;
+        const enemy_max_hp = 25;
         enemy.hp = enemy_max_hp;
         enemy.max_hp = enemy_max_hp;
         enemy.intent[0] = EnemyIntent{
-            .trigger_time = 2 * 60,
-            .effect = Effect{ .vampirism_to_player = 2 },
+            .trigger_time = 4 * 60,
+            .effect = Effect{ .vampirism_to_player = 6 },
         };
         enemy.sprite = &sprites.enemy_castle_bat;
         return enemy;
@@ -815,12 +815,16 @@ const Enemy = struct {
 
     pub fn enemy_castle_schmoo() Enemy {
         var enemy = zero();
-        const enemy_max_hp = 14;
+        const enemy_max_hp = 44;
         enemy.hp = enemy_max_hp;
         enemy.max_hp = enemy_max_hp;
         enemy.intent[0] = EnemyIntent{
             .trigger_time = 3 * 60,
             .effect = Effect{ .damage_to_player = 5 },
+        };
+        enemy.intent[0] = EnemyIntent{
+            .trigger_time = 7 * 60,
+            .effect = Effect{ .damage_to_player = 13 },
         };
         enemy.sprite = &sprites.enemy_castle_schmoo;
         enemy.guaranteed_reward = Reward{ .gold_reward = 5 };
