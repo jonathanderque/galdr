@@ -739,12 +739,12 @@ const Enemy = struct {
 
     pub fn enemy_barbarian() Enemy {
         var enemy = zero();
-        const enemy_max_hp = 15;
+        const enemy_max_hp = 25;
         enemy.hp = enemy_max_hp;
         enemy.max_hp = enemy_max_hp;
         enemy.intent[0] = EnemyIntent{
             .trigger_time = 6 * 60,
-            .effect = Effect{ .damage_to_player = 5 },
+            .effect = Effect{ .damage_to_player = 9 },
         };
         enemy.guaranteed_reward = Reward{ .gold_reward = 5 };
         enemy.sprite = &sprites.enemy_barbarian;
@@ -753,7 +753,7 @@ const Enemy = struct {
 
     pub fn enemy_boss() Enemy {
         var enemy = zero();
-        const enemy_max_hp = 100;
+        const enemy_max_hp = 99;
         enemy.hp = enemy_max_hp;
         enemy.max_hp = enemy_max_hp;
         enemy.intent[0] = EnemyIntent{
@@ -907,12 +907,14 @@ const Enemy = struct {
 
     pub fn enemy_pirate() Enemy {
         var enemy = zero();
-        const enemy_max_hp = 15;
+        const enemy_max_hp = 45;
         enemy.hp = enemy_max_hp;
         enemy.max_hp = enemy_max_hp;
         enemy.intent[0] = EnemyIntent{
-            .trigger_time = 4 * 60,
-            .effect = Effect{ .damage_to_player = 3 },
+            .trigger_time = 6 * 60,
+            .effect = Effect{
+                .damage_to_player = 16,
+            },
         };
         enemy.guaranteed_reward = Reward.no_reward;
         enemy.sprite = &sprites.enemy_pirate;
@@ -921,12 +923,16 @@ const Enemy = struct {
 
     pub fn enemy_pirate_captain() Enemy {
         var enemy = zero();
-        const enemy_max_hp = 30;
+        const enemy_max_hp = 65;
         enemy.hp = enemy_max_hp;
         enemy.max_hp = enemy_max_hp;
         enemy.intent[0] = EnemyIntent{
             .trigger_time = 6 * 60,
-            .effect = Effect{ .damage_to_player = 7 },
+            .effect = Effect{ .damage_to_player = 22 },
+        };
+        enemy.intent[1] = EnemyIntent{
+            .trigger_time = 2 * 60,
+            .effect = Effect{ .enemy_shield = 7 },
         };
         enemy.guaranteed_reward = Reward.kidnapped_daughter_reward;
         enemy.sprite = &sprites.enemy_pirate_captain;
@@ -954,11 +960,11 @@ const Enemy = struct {
         enemy.max_hp = enemy_max_hp;
         enemy.intent[0] = EnemyIntent{
             .trigger_time = 4 * 60,
-            .effect = Effect{ .damage_to_player = 7 },
+            .effect = Effect{ .damage_to_player = 19 },
         };
         enemy.intent[1] = EnemyIntent{
             .trigger_time = 5 * 60,
-            .effect = Effect{ .enemy_shield = 3 },
+            .effect = Effect{ .enemy_shield = 15 },
         };
         enemy.guaranteed_reward = Reward{ .gold_reward = 10 };
         enemy.sprite = &sprites.enemy_sea_monster;
