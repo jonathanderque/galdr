@@ -149,7 +149,7 @@ const Spell = struct {
 
     pub fn spell_tutorial_basics_next() Spell {
         var s = Spell{
-            .name = "NEXT",
+            .name = "Next",
             .effect = Effect.no_effect,
         };
         s.set_spell(&[_]u8{ w4.BUTTON_RIGHT, w4.BUTTON_1 });
@@ -158,7 +158,7 @@ const Spell = struct {
 
     pub fn spell_tutorial_synergies_heal() Spell {
         var s = Spell{
-            .name = "HEAL",
+            .name = "Heal",
             .effect = Effect.no_effect,
         };
         s.set_spell(&[_]u8{ w4.BUTTON_LEFT, w4.BUTTON_1 });
@@ -167,7 +167,7 @@ const Spell = struct {
 
     pub fn spell_tutorial_synergies_next() Spell {
         var s = Spell{
-            .name = "NEXT",
+            .name = "Next",
             .effect = Effect.no_effect,
         };
         s.set_spell(&[_]u8{ w4.BUTTON_LEFT, w4.BUTTON_1, w4.BUTTON_RIGHT, w4.BUTTON_1 });
@@ -176,7 +176,7 @@ const Spell = struct {
 
     pub fn spell_sword() Spell {
         var s = Spell{
-            .name = "SWORD",
+            .name = "Sword",
             .price = 9,
             .alignment = -2,
             .effect = Effect{ .damage_to_enemy = 3 },
@@ -187,7 +187,7 @@ const Spell = struct {
 
     pub fn spell_squawk() Spell {
         var s = Spell{
-            .name = "SQUAWK",
+            .name = "Squawk",
             .price = 11,
             .alignment = 0,
             .effect = Effect{ .damage_to_enemy = 1 },
@@ -198,7 +198,7 @@ const Spell = struct {
 
     pub fn spell_fireball() Spell {
         var s = Spell{
-            .name = "FIREBALL",
+            .name = "Fireball",
             .price = 5,
             .alignment = -2,
             .effect = Effect{ .damage_to_enemy = 6 },
@@ -216,7 +216,7 @@ const Spell = struct {
 
     pub fn spell_ash() Spell {
         var s = Spell{
-            .name = "ASH",
+            .name = "Ash",
             .price = 5,
             .alignment = -1,
             .effect = Effect{ .damage_to_enemy = 2 },
@@ -232,7 +232,7 @@ const Spell = struct {
 
     pub fn spell_shade() Spell {
         var s = Spell{
-            .name = "SHADE",
+            .name = "Shade",
             .price = 12,
             .alignment = 0,
             .effect = Effect{ .player_shield = 4 },
@@ -248,7 +248,7 @@ const Spell = struct {
 
     pub fn spell_lightning() Spell {
         var s = Spell{
-            .name = "LIGHTNING",
+            .name = "Lightning",
             .alignment = 3,
             .price = 3,
             .effect = Effect{ .damage_to_enemy = 4 },
@@ -266,7 +266,7 @@ const Spell = struct {
 
     pub fn spell_bolt() Spell {
         var s = Spell{
-            .name = "BOLT",
+            .name = "Bolt",
             .alignment = 2,
             .price = 3,
             .effect = Effect{ .damage_to_enemy = 3 },
@@ -282,7 +282,7 @@ const Spell = struct {
 
     pub fn spell_shield() Spell {
         var s = Spell{
-            .name = "SHIELD",
+            .name = "Shield",
             .price = 12,
             .alignment = 2,
             .effect = Effect{ .player_shield = 5 },
@@ -298,7 +298,7 @@ const Spell = struct {
 
     pub fn spell_ice_wall() Spell {
         var s = Spell{
-            .name = "ICE WALL",
+            .name = "Ice Wall",
             .price = 4,
             .alignment = -2,
             .effect = Effect{ .player_shield = 5 },
@@ -314,7 +314,7 @@ const Spell = struct {
 
     pub fn spell_ice_shard() Spell {
         var s = Spell{
-            .name = "ICE SHARD",
+            .name = "Ice Shard",
             .price = 7,
             .alignment = -2,
             .effect = Effect{ .damage_to_enemy = 9 },
@@ -331,7 +331,7 @@ const Spell = struct {
 
     pub fn spell_mud_plate() Spell {
         var s = Spell{
-            .name = "MUD PLATE",
+            .name = "Mud Plate",
             .price = 3,
             .alignment = 2,
             .effect = Effect{ .player_shield = 4 },
@@ -347,8 +347,8 @@ const Spell = struct {
 
     pub fn spell_earth_ball() Spell {
         var s = Spell{
-            .name = "EARTH BALL",
-            .price = 3,
+            .name = "Earth Ball",
+            .price = 9,
             .alignment = 4,
             .effect = Effect{ .damage_to_enemy = 11 },
         };
@@ -365,8 +365,8 @@ const Spell = struct {
 
     pub fn spell_root() Spell {
         var s = Spell{
-            .name = "ROOT",
-            .price = 3,
+            .name = "Root",
+            .price = 14,
             .alignment = 4,
             .effect = Effect{ .vampirism_to_enemy = 5 },
         };
@@ -382,7 +382,7 @@ const Spell = struct {
 
     pub fn spell_wolf_bite() Spell {
         var wolf_bite = Spell{
-            .name = "WOLF BITE",
+            .name = "Wolf Bite",
             .price = 9,
             .alignment = -7,
             .effect = Effect{ .damage_to_enemy = 3 },
@@ -393,7 +393,7 @@ const Spell = struct {
 
     pub fn spell_heal() Spell {
         var s = Spell{
-            .name = "HEAL",
+            .name = "Heal",
             .price = 9,
             .alignment = 2,
             .effect = Effect{ .player_heal = 2 },
@@ -404,7 +404,7 @@ const Spell = struct {
 
     pub fn spell_sun_shiv() Spell {
         var s = Spell{
-            .name = "SUN SHIV",
+            .name = "Sun Shiv",
             .price = 11,
             .alignment = 2,
             .effect = Effect{ .damage_to_enemy = 2 },
@@ -415,7 +415,7 @@ const Spell = struct {
 
     pub fn spell_moon_shiv() Spell {
         var s = Spell{
-            .name = "MOON SHIV",
+            .name = "Moon Shiv",
             .price = 11,
             .alignment = -2,
             .effect = Effect{ .damage_to_enemy = 2 },
@@ -426,7 +426,7 @@ const Spell = struct {
 
     pub fn spell_holy_water() Spell {
         var spell = Spell{
-            .name = "HOLY WATER",
+            .name = "Holy Water",
             .price = 9,
             .alignment = 9,
             .effect = Effect{ .damage_to_enemy = 8 },
@@ -437,7 +437,7 @@ const Spell = struct {
 
     pub fn spell_crissaegrim() Spell {
         var spell = Spell{
-            .name = "CRISSAEGRIM",
+            .name = "Crissaegrim",
             .price = 25,
             .alignment = 9,
             .effect = Effect{ .damage_to_enemy = 14 },
@@ -449,7 +449,7 @@ const Spell = struct {
 
     pub fn spell_knife() Spell {
         var spell = Spell{
-            .name = "KNIFE",
+            .name = "Knife",
             .price = 2,
             .alignment = -5,
             .effect = Effect{ .damage_to_enemy = 2 },
@@ -461,7 +461,7 @@ const Spell = struct {
 
     pub fn spell_cross() Spell {
         var spell = Spell{
-            .name = "CROSS",
+            .name = "Cross",
             .price = 10,
             .alignment = 5,
             .effect = Effect{ .damage_to_enemy = 6 },
@@ -472,7 +472,7 @@ const Spell = struct {
 
     pub fn spell_whip() Spell {
         var spell = Spell{
-            .name = "WHIP",
+            .name = "Whip",
             .price = 13,
             .alignment = 7,
             .effect = Effect{ .damage_to_enemy = 10 },
@@ -483,7 +483,7 @@ const Spell = struct {
 
     pub fn spell_fangs() Spell {
         var spell = Spell{
-            .name = "FANGS",
+            .name = "Fangs",
             .price = 13,
             .alignment = -9,
             .effect = Effect{ .vampirism_to_enemy = 1 },
@@ -494,7 +494,7 @@ const Spell = struct {
 
     pub fn spell_cloak() Spell {
         var spell = Spell{
-            .name = "CLOAK",
+            .name = "Cloak",
             .price = 9,
             .alignment = -9,
             .effect = Effect{ .player_shield = 10 },
@@ -503,9 +503,9 @@ const Spell = struct {
         return spell;
     }
 
-    pub fn spell_mirror_shield() Spell {
+    pub fn spell_buckler() Spell {
         var spell = Spell{
-            .name = "MIRROR SHIELD",
+            .name = "Buckler",
             .price = 9,
             .alignment = 8,
             .effect = Effect{ .player_shield = 8 },
@@ -517,7 +517,7 @@ const Spell = struct {
     // curses
     pub fn spell_zap() Spell {
         var spell = Spell{
-            .name = "ZAP",
+            .name = "Zap",
             .price = 0,
             .alignment = -10,
             .effect = Effect{ .damage_to_player = 3 },
@@ -528,7 +528,7 @@ const Spell = struct {
 
     pub fn spell_burn() Spell {
         var spell = Spell{
-            .name = "BURN",
+            .name = "Burn",
             .price = 0,
             .alignment = 10,
             .effect = Effect{ .damage_to_player = 3 },
@@ -539,7 +539,7 @@ const Spell = struct {
 
     pub fn spell_rooted() Spell {
         var spell = Spell{
-            .name = "ROOTED",
+            .name = "Rooted",
             .price = 0,
             .alignment = 10,
             .effect = Effect{ .damage_to_player = 3 },
@@ -550,7 +550,7 @@ const Spell = struct {
 
     pub fn spell_frozen() Spell {
         var spell = Spell{
-            .name = "FROZEN",
+            .name = "Frozen",
             .price = 0,
             .alignment = 10,
             .effect = Effect{ .damage_to_player = 3 },
@@ -561,7 +561,7 @@ const Spell = struct {
 
     pub fn spell_cut() Spell {
         var spell = Spell{
-            .name = "CUT",
+            .name = "Cut",
             .price = 0,
             .alignment = 10,
             .effect = Effect{ .damage_to_player = 3 },
@@ -674,7 +674,7 @@ const Area = struct {
 };
 
 const training_area = Area{
-    .name = "WIZARD CAMP",
+    .name = "Wizard Camp",
     .event_count = 3,
     .event_pool = &[_]GlobalState{
         GlobalState.event_training_fight_1,
@@ -684,7 +684,7 @@ const training_area = Area{
 };
 
 const road_area = Area{
-    .name = "ROAD",
+    .name = "Road",
     .event_count = 3,
     .event_pool = &[_]GlobalState{
         GlobalState.event_chest_regular,
@@ -695,7 +695,7 @@ const road_area = Area{
 };
 
 const coast_area = Area{
-    .name = "COAST",
+    .name = "Coast",
     .event_count = 4,
     .event_pool = &[_]GlobalState{
         GlobalState.event_coast_seagull,
@@ -708,7 +708,7 @@ const coast_area = Area{
 };
 
 const pirate_area = Area{
-    .name = "PIRATE SHIP",
+    .name = "Pirate Ship",
     .event_count = 3,
     .event_pool = &[_]GlobalState{
         GlobalState.event_chest_regular,
@@ -718,7 +718,7 @@ const pirate_area = Area{
 };
 
 const swamp_area = Area{
-    .name = "SWAMP",
+    .name = "Swamp",
     .event_count = 4,
     .event_pool = &[_]GlobalState{
         GlobalState.event_chest_regular,
@@ -730,7 +730,7 @@ const swamp_area = Area{
 };
 
 const hard_swamp_area = Area{
-    .name = "SWAMP",
+    .name = "Swamp",
     .event_count = 4,
     .event_pool = &[_]GlobalState{
         GlobalState.event_chest_regular,
@@ -743,7 +743,7 @@ const hard_swamp_area = Area{
 };
 
 const forest_area = Area{
-    .name = "FOREST",
+    .name = "Forest",
     .event_count = 4,
     .event_pool = &[_]GlobalState{
         GlobalState.event_coin_muncher,
@@ -756,7 +756,7 @@ const forest_area = Area{
 };
 
 const medium_forest_area = Area{
-    .name = "FOREST",
+    .name = "Forest",
     .event_count = 4,
     .event_pool = &[_]GlobalState{
         GlobalState.event_sun_altar,
@@ -770,7 +770,7 @@ const medium_forest_area = Area{
 };
 
 const castle_area = Area{
-    .name = "CASTLE",
+    .name = "Castle",
     .event_count = 4,
     .event_pool = &[_]GlobalState{
         GlobalState.event_castle_bat,
@@ -782,7 +782,7 @@ const castle_area = Area{
 };
 
 const mine_area = Area{
-    .name = "MINES",
+    .name = "Mines",
     .event_count = 3,
     .event_pool = &[_]GlobalState{
         GlobalState.event_mine_shop,
@@ -793,7 +793,7 @@ const mine_area = Area{
 };
 
 const boss_area = Area{
-    .name = "ECLIPSE",
+    .name = "Eclipse",
     .event_count = 1,
     .event_pool = &[_]GlobalState{
         GlobalState.event_boss,
@@ -2115,7 +2115,7 @@ pub fn conditional_fight_intro(s: *State, released_keys: u8, enemy: Enemy, dialo
 
 pub fn shop_intro(s: *State, released_keys: u8, dialog: []const Dialog, shop_gold: i16, shop_items: []const Spell) void {
     if (s.state_has_changed) {
-        s.set_choices_with_labels_1("TO THE SHOP");
+        s.set_choices_with_labels_1("To The Shop");
 
         s.spell_index = 0;
         s.shop_list_index = 0;
@@ -2589,7 +2589,7 @@ pub fn process_inventory_full_2(s: *State, released_keys: u8) void {
 
 pub fn process_map(s: *State, released_keys: u8) void {
     if (s.state_has_changed) {
-        s.set_choices_with_labels_1("PROCEED");
+        s.set_choices_with_labels_1("Proceed");
     }
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
@@ -3397,7 +3397,7 @@ const coastal_shop_items = [_]Spell{
     Spell.spell_ice_shard(),
     Spell.spell_moon_shiv(),
     Spell.spell_fireball(),
-    Spell.spell_mirror_shield(),
+    Spell.spell_buckler(),
 };
 const coastal_shop_dialog = [_]Dialog{
     Dialog{ .text = "The merchant says:" },
