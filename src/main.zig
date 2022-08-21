@@ -38,6 +38,7 @@ const Effect = union(enum(u8)) {
     enemy_shield: i16,
     gold_payment: u16,
     alignment: i16,
+    curse: curse,
 };
 
 const spell_max_size: usize = 8;
@@ -512,6 +513,78 @@ const Spell = struct {
         spell.set_spell(&[_]u8{ w4.BUTTON_DOWN, w4.BUTTON_1, w4.BUTTON_LEFT, w4.BUTTON_LEFT });
         return spell;
     }
+
+    // curses
+    pub fn spell_zap() Spell {
+        var spell = Spell{
+            .name = "ZAP",
+            .price = 0,
+            .alignment = -10,
+            .effect = Effect{ .damage_to_player = 3 },
+        };
+        spell.set_spell(&[_]u8{ w4.BUTTON_LEFT, w4.BUTTON_1 });
+        return spell;
+    }
+
+    pub fn spell_burn() Spell {
+        var spell = Spell{
+            .name = "BURN",
+            .price = 0,
+            .alignment = 10,
+            .effect = Effect{ .damage_to_player = 3 },
+        };
+        spell.set_spell(&[_]u8{ w4.BUTTON_1, w4.BUTTON_DOWN });
+        return spell;
+    }
+
+    pub fn spell_rooted() Spell {
+        var spell = Spell{
+            .name = "ROOTED",
+            .price = 0,
+            .alignment = 10,
+            .effect = Effect{ .damage_to_player = 3 },
+        };
+        spell.set_spell(&[_]u8{ w4.BUTTON_UP, w4.BUTTON_2 });
+        return spell;
+    }
+
+    pub fn spell_frozen() Spell {
+        var spell = Spell{
+            .name = "FROZEN",
+            .price = 0,
+            .alignment = 10,
+            .effect = Effect{ .damage_to_player = 3 },
+        };
+        spell.set_spell(&[_]u8{ w4.BUTTON_2, w4.BUTTON_DOWN });
+        return spell;
+    }
+
+    pub fn spell_cut() Spell {
+        var spell = Spell{
+            .name = "CUT",
+            .price = 0,
+            .alignment = 10,
+            .effect = Effect{ .damage_to_player = 3 },
+        };
+        spell.set_spell(&[_]u8{ w4.BUTTON_DOWN, w4.BUTTON_2 });
+        return spell;
+    }
+};
+
+const curses = [_]Spell{
+    Spell.spell_zap(),
+    Spell.spell_burn(),
+    Spell.spell_rooted(),
+    Spell.spell_frozen(),
+    Spell.spell_cut(),
+};
+
+const curse = enum(usize) {
+    zap = 0,
+    burn,
+    rooted,
+    frozen,
+    cut,
 };
 
 const GlobalState = enum {
@@ -818,8 +891,16 @@ const Enemy = struct {
             .effect = Effect{ .damage_to_player = 35 },
         };
         enemy.intent[1] = EnemyIntent{
+            .trigger_time = 2 * 60,
+            .effect = Effect{ .curse = curse.burn },
+        };
+        enemy.intent[2] = EnemyIntent{
             .trigger_time = 6 * 60,
             .effect = Effect{ .enemy_shield = 20 },
+        };
+        enemy.intent[3] = EnemyIntent{
+            .trigger_time = 2 * 60,
+            .effect = Effect{ .curse = curse.zap },
         };
         enemy.sprite = &sprites.enemy_boss;
         return enemy;
@@ -979,6 +1060,10 @@ const Enemy = struct {
             .trigger_time = 3 * 60,
             .effect = Effect{ .enemy_shield = 18 },
         };
+        enemy.intent[2] = EnemyIntent{
+            .trigger_time = 2 * 60,
+            .effect = Effect{ .curse = curse.rooted },
+        };
         enemy.guaranteed_reward = Reward{ .gold_reward = 25 };
         enemy.random_reward = RandomReward{
             .probability = 50,
@@ -1060,6 +1145,10 @@ const Enemy = struct {
         enemy.intent[1] = EnemyIntent{
             .trigger_time = 2 * 60,
             .effect = Effect{ .enemy_shield = 7 },
+        };
+        enemy.intent[2] = EnemyIntent{
+            .trigger_time = 2 * 60,
+            .effect = Effect{ .curse = curse.cut },
         };
         enemy.guaranteed_reward = Reward.kidnapped_daughter_reward;
         enemy.sprite = &sprites.enemy_pirate_captain;
@@ -1168,6 +1257,10 @@ const Enemy = struct {
         enemy.intent[1] = EnemyIntent{
             .trigger_time = 5 * 60,
             .effect = Effect{ .enemy_shield = 20 },
+        };
+        enemy.intent[2] = EnemyIntent{
+            .trigger_time = 2 * 60,
+            .effect = Effect{ .curse = curse.frozen },
         };
         enemy.guaranteed_reward = Reward{ .gold_reward = 7 };
         enemy.random_reward = RandomReward{
@@ -1311,6 +1404,7 @@ const State = struct {
     player_shield: i16 = 0,
     player_alignment: i16 = 0, // -100, +100
     player_gold: i16 = 0,
+    player_curse: Spell = undefined,
     spellbook: [spell_book_max_size]Spell = undefined,
     reward_probability: u8 = 0,
     inventory_menu_spell: Spell = undefined,
@@ -1471,6 +1565,9 @@ const State = struct {
             },
             Effect.alignment => |alignment| {
                 self.change_alignment(alignment);
+            },
+            Effect.curse => |c| {
+                self.player_curse = curses[@enumToInt(c)];
             },
         }
     }
@@ -1661,21 +1758,34 @@ pub fn draw_spell(spell: *Spell, p: *pager.Pager, x: i32, y: i32) void {
     draw_spell_input(&spell.input, spell.current_progress, 10 + (12 * (1 + pager.fmg_letter_width)), y);
 }
 
+pub fn set_blink_color(s: *State, y: i32, spell: *Spell) void {
+    const blink_on = (options[0] == 1) and @mod(s.frame_counter, 10) < 5;
+    if (s.frame_counter > 0 and spell.frame_triggered + 30 > s.frame_counter) {
+        if (spell.is_defined() and blink_on) {
+            w4.DRAW_COLORS.* = 0x22;
+            w4.rect(10, y, 140, 9);
+            w4.DRAW_COLORS.* = 0x21;
+        }
+    } else {
+        w4.DRAW_COLORS.* = 0x02;
+    }
+}
+
+pub fn draw_curse(s: *State, x: i32, y: i32) void {
+    if (s.player_curse.is_defined()) {
+        draw_exclamation_mark(0, y);
+        set_blink_color(s, y, &s.player_curse);
+        draw_spell(&s.player_curse, &s.pager, x, y);
+        draw_effect(110, y, s, s.player_curse.effect);
+    }
+}
+
 pub fn draw_spell_list(spells: []Spell, s: *State, x: i32, y: i32) void {
     var i: usize = 0;
     var var_y = y;
     s.pager.set_progressive_display(false);
     while (i < spells.len) : (i += 1) {
-        const blink_on = (options[0] == 1) and @mod(s.frame_counter, 10) < 5;
-        if (s.frame_counter > 0 and spells[i].frame_triggered + 30 > s.frame_counter) {
-            if (spells[i].is_defined() and blink_on) {
-                w4.DRAW_COLORS.* = 0x22;
-                w4.rect(10, var_y, 140, 9);
-                w4.DRAW_COLORS.* = 0x21;
-            }
-        } else {
-            w4.DRAW_COLORS.* = 0x02;
-        }
+        set_blink_color(s, var_y, &spells[i]);
         draw_spell(&spells[i], &s.pager, x, var_y);
         var_y += 10;
     }
@@ -1721,6 +1831,10 @@ pub fn draw_heart(x: i32, y: i32) void {
 
 pub fn draw_fang(x: i32, y: i32) void {
     w4.blitSub(&sprites.effects, x, y, 9, 9, 45, 0, sprites.effects_width, w4.BLIT_1BPP);
+}
+
+pub fn draw_exclamation_mark(x: i32, y: i32) void {
+    w4.blitSub(&sprites.effects, x, y, 9, 9, 54, 0, sprites.effects_width, w4.BLIT_1BPP);
 }
 
 pub fn draw_moon(x: i32, y: i32) void {
@@ -1769,6 +1883,10 @@ pub fn draw_effect(x: i32, y: i32, s: *State, effect: Effect) void {
             draw_fang(x, y);
             s.pager.set_cursor(x + 12, y + 1);
             pager.fmg_number(&s.pager, @intCast(i32, dmg));
+        },
+        Effect.curse => |_curse| {
+            _ = _curse;
+            draw_exclamation_mark(x, y);
         },
         else => {},
     }
@@ -2035,8 +2153,10 @@ pub fn process_fight(s: *State, released_keys: u8) void {
         s.enemy_animation = 0;
         s.musicode.start_track(&empty_track, false);
         for (s.spellbook) |*spell| {
+            spell.reset();
             spell.frame_triggered = -40;
         }
+        s.player_curse = Spell.zero();
     } else {
         s.frame_counter += 1;
         if (@mod(s.frame_counter, 3) == 0) {
@@ -2064,6 +2184,7 @@ pub fn process_fight(s: *State, released_keys: u8) void {
         return;
     }
 
+    s.player_curse.process(released_keys);
     for (s.spellbook) |*spell| {
         spell.process(released_keys);
     }
@@ -2106,8 +2227,15 @@ pub fn process_fight(s: *State, released_keys: u8) void {
     draw_effect(111, 32, s, s.enemy.intent[s.enemy.intent_index].effect);
 
     w4.hline(0, 80, 160);
-    draw_spell_list(&s.spellbook, s, 10, 90);
+    draw_curse(s, 10, 81);
+    draw_spell_list(&s.spellbook, s, 10, 91);
 
+    if (s.player_curse.is_completed()) {
+        s.player_curse.frame_triggered = @intCast(i16, s.frame_counter);
+        s.apply_effect(s.player_curse.effect);
+        s.change_alignment(s.player_curse.alignment);
+        s.player_curse.reset();
+    }
     for (s.spellbook) |*spell| {
         if (spell.is_completed()) {
             spell.frame_triggered = @intCast(i16, s.frame_counter);
@@ -2124,6 +2252,7 @@ pub fn process_fight_end(s: *State, released_keys: u8) void {
         s.frame_counter = 0;
         w4.PALETTE[3] = 0xffffff;
         play_sfx_death();
+        s.player_curse = Spell.zero();
     } else {
         s.frame_counter += 1;
         w4.PALETTE[3] -= 0x030303;
