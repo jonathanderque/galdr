@@ -642,6 +642,7 @@ const GlobalState = enum {
     event_sun_altar_destroy,
     event_swamp_people,
     event_swamp_creature,
+    event_swamp_shop,
     event_sun_fountain,
     event_sun_fountain_skip,
     event_sun_fountain_damage,
@@ -738,7 +739,7 @@ const swamp_area = Area{
 
 const hard_swamp_area = Area{
     .name = "Swamp",
-    .event_count = 4,
+    .event_count = 5,
     .event_pool = &[_]GlobalState{
         GlobalState.event_chest_regular,
         GlobalState.event_chest_mimic,
@@ -746,6 +747,7 @@ const hard_swamp_area = Area{
         GlobalState.event_hard_swamp_creature,
         GlobalState.event_moon_altar,
         GlobalState.event_moon_fountain,
+        GlobalState.event_swamp_shop,
     },
 };
 
@@ -3464,6 +3466,17 @@ const healing_shop_dialog = [_]Dialog{
     Dialog{ .text = "\"Welcome to Hildin's Heap of Heals!\"" },
 };
 
+const swamp_shop_gold = 50;
+const swamp_shop_items = [_]Spell{
+    Spell.spell_ice_shard(),
+    Spell.spell_sun_shiv(),
+    Spell.spell_heal(),
+};
+// SHOP
+const swamp_shop_dialog = [_]Dialog{
+    Dialog{ .text = "\"Hildin is always up to do business, even in the slimiest places!\"" },
+};
+
 pub fn process_keys_spell_list(s: *State, released_keys: u8, spell_list: []Spell) void {
     if (released_keys == w4.BUTTON_DOWN) {
         s.spell_index += 1;
@@ -4087,6 +4100,7 @@ export fn update() void {
         GlobalState.event_sun_fountain_heal => text_event_confirm(&state, released_keys, &event_sun_fountain_heal_dialog),
         GlobalState.event_sun_fountain_refresh => text_event_confirm(&state, released_keys, &event_sun_fountain_refresh_dialog),
         GlobalState.event_sun_partisan => process_event_sun_partisan(&state, released_keys),
+        GlobalState.event_swamp_shop => shop_intro(&state, released_keys, &swamp_shop_dialog, swamp_shop_gold, &swamp_shop_items),
         GlobalState.event_training_fight_1 => fight_intro(&state, released_keys, Enemy.enemy_training_soldier_1(), &training_fight_dialog_1),
         GlobalState.event_training_fight_2 => fight_intro(&state, released_keys, Enemy.enemy_training_soldier_2(), &training_fight_dialog_2),
         GlobalState.event_training_bat => fight_intro(&state, released_keys, Enemy.enemy_training_bat(), &training_bat_dialog),
