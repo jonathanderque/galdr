@@ -6,6 +6,9 @@ This is a roguelike with realtime combat where your actions occur when you issue
 
 This game was created as part of the [WASM-4 JAM #2](https://itch.io/jam/wasm4-v2).
 
+<img src="img/galdr_title_screen.png" width=320 />
+<img src="img/galdr_fight_screen.png" width=320 />
+
 ## Building
 
 Build the cart by running:
