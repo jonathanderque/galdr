@@ -627,6 +627,11 @@ const GlobalState = enum {
     event_moon_altar_skip,
     event_moon_altar_pray,
     event_moon_altar_destroy,
+    event_moon_fountain,
+    event_moon_fountain_skip,
+    event_moon_fountain_damage,
+    event_moon_fountain_heal,
+    event_moon_fountain_refresh,
     event_pirate,
     event_pirate_captain,
     event_snake_pit,
@@ -738,7 +743,7 @@ const hard_swamp_area = Area{
         GlobalState.event_healer,
         GlobalState.event_hard_swamp_creature,
         GlobalState.event_moon_altar,
-        // add a shop
+        GlobalState.event_moon_fountain,
     },
 };
 
@@ -3804,6 +3809,58 @@ const event_sun_fountain_refresh_dialog = [_]Dialog{
     Dialog{ .text = "After resting for a bit, you move on to your next adventure." },
 };
 
+const event_moon_fountain_dialog = [_]Dialog{
+    Dialog{ .text = "You come across a grey fountain in the shade of a large tree." },
+    Dialog.newline,
+    Dialog{ .text = "You feel thirsty. Do you want to drink from the fountain?" },
+};
+const event_moon_fountain_skip_outcome = [_]Outcome{
+    Outcome{ .state = GlobalState.event_moon_fountain_skip },
+};
+const event_moon_fountain_sun_outcome = [_]Outcome{
+    Outcome{ .state = GlobalState.event_moon_fountain_damage },
+    Outcome{ .apply_effect = Effect{ .damage_to_player = 5 } },
+};
+const event_moon_fountain_moon_outcome = [_]Outcome{
+    Outcome{ .state = GlobalState.event_moon_fountain_heal },
+    Outcome{ .apply_effect = Effect{ .player_heal = 15 } },
+};
+const event_moon_fountain_refresh_outcome = [_]Outcome{
+    Outcome{ .state = GlobalState.event_moon_fountain_refresh },
+};
+
+pub fn process_event_moon_fountain(s: *State, released_keys: u8) void {
+    if (s.player_alignment < -20) {
+        text_event_choice_2(s, released_keys, &event_moon_fountain_dialog, "Skip", &event_moon_fountain_skip_outcome, "Drink", &event_moon_fountain_moon_outcome);
+    } else if (s.player_alignment > 20) {
+        text_event_choice_2(s, released_keys, &event_moon_fountain_dialog, "Skip", &event_moon_fountain_skip_outcome, "Drink", &event_moon_fountain_sun_outcome);
+    } else {
+        text_event_choice_2(s, released_keys, &event_moon_fountain_dialog, "Skip", &event_moon_fountain_skip_outcome, "Drink", &event_moon_fountain_refresh_outcome);
+    }
+}
+
+const event_moon_fountain_skip_dialog = [_]Dialog{
+    Dialog{ .text = "You continue your journey without drinking from suspicious fountain." },
+};
+
+const event_moon_fountain_damage_dialog = [_]Dialog{
+    Dialog{ .text = "The water has a foul taste and your belly immediately hurts." },
+    Dialog.newline,
+    Dialog{ .text = "You cast a spell to improve your condition but do not fully recover." },
+};
+
+const event_moon_fountain_heal_dialog = [_]Dialog{
+    Dialog{ .text = "The water is cool and you feel calm and relaxed." },
+    Dialog.newline,
+    Dialog{ .text = "After resting for a bit, you move on to your next adventure." },
+};
+
+const event_moon_fountain_refresh_dialog = [_]Dialog{
+    Dialog{ .text = "The water is tepid and tasteless." },
+    Dialog.newline,
+    Dialog{ .text = "After resting for a bit, you move on to your next adventure." },
+};
+
 const training_fight_dialog_1 = [_]Dialog{
     Dialog{ .text = "Your mentor says:" },
     Dialog.newline,
@@ -3951,6 +4008,11 @@ export fn update() void {
         GlobalState.event_sun_altar_destroy => text_event_confirm(&state, released_keys, &event_sun_altar_destroy_1_dialog),
         GlobalState.event_swamp_people => fight_intro(&state, released_keys, Enemy.enemy_swamp_people(), &swamp_people_dialog),
         GlobalState.event_swamp_creature => fight_intro(&state, released_keys, Enemy.enemy_swamp_creature(), &swamp_creature_dialog),
+        GlobalState.event_moon_fountain => process_event_moon_fountain(&state, released_keys),
+        GlobalState.event_moon_fountain_skip => text_event_confirm(&state, released_keys, &event_moon_fountain_skip_dialog),
+        GlobalState.event_moon_fountain_damage => text_event_confirm(&state, released_keys, &event_moon_fountain_damage_dialog),
+        GlobalState.event_moon_fountain_heal => text_event_confirm(&state, released_keys, &event_moon_fountain_heal_dialog),
+        GlobalState.event_moon_fountain_refresh => text_event_confirm(&state, released_keys, &event_moon_fountain_refresh_dialog),
         GlobalState.event_sun_fountain => process_event_sun_fountain(&state, released_keys),
         GlobalState.event_sun_fountain_skip => text_event_confirm(&state, released_keys, &event_sun_fountain_skip_dialog),
         GlobalState.event_sun_fountain_damage => text_event_confirm(&state, released_keys, &event_sun_fountain_damage_dialog),
