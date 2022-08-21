@@ -16,6 +16,82 @@ pub fn rand() u64 {
     return (rand_state >> 32) & 0xFFFFFFFF;
 }
 
+const Palette = struct {
+    bg_color: u32,
+    fg_color: u32,
+};
+
+const palettes = [_]Palette{
+    // 1-bit black and white
+    Palette{
+        .bg_color = 0x000000,
+        .fg_color = 0xcccccc,
+    },
+    // GB from downwell
+    Palette{
+        .bg_color = 0x323b28,
+        .fg_color = 0x6d7f56,
+    },
+    // VBOY from downwell
+    Palette{
+        .bg_color = 0x000000,
+        .fg_color = 0xab0000,
+    },
+    // Pastel from downwell
+    Palette{
+        .bg_color = 0x1d50c3,
+        .fg_color = 0xfe7160,
+    },
+    // Grandma from downwell
+    Palette{
+        .bg_color = 0x630e34,
+        .fg_color = 0xfeb17e,
+    },
+    // Purply from downwell
+    Palette{
+        .bg_color = 0x341a12,
+        .fg_color = 0x8964b4,
+    },
+    // Oldncold from downwell
+    Palette{
+        .bg_color = 0x041e37,
+        .fg_color = 0x69ccef,
+    },
+    // Dirtsnow from downwell
+    Palette{
+        .bg_color = 0xa4a4a4,
+        .fg_color = 0x4b4b4b,
+    },
+};
+
+pub fn change_palette(index: usize) void {
+    const p = palettes[index];
+    w4.PALETTE.* = .{
+        p.bg_color,
+        p.fg_color,
+        p.fg_color,
+        p.fg_color,
+    };
+}
+
+pub fn color_component_transition(from: i32, to: i32, current_step: u16, max_steps: u16) u32 {
+    const incr: i32 = @divTrunc((to - from) * current_step, max_steps);
+    return @intCast(u32, @intCast(i16, from) + incr);
+}
+
+pub fn rgb_transition(from: u32, to: u32, current_step: u16, max_steps: u16) u32 {
+    const from_b = @intCast(i32, from & 0xff);
+    const from_g = @intCast(i32, (from >> 8) & 0xff);
+    const from_r = @intCast(i32, (from >> 16) & 0xff);
+    const to_b = @intCast(i32, to & 0xff);
+    const to_g = @intCast(i32, (to >> 8) & 0xff);
+    const to_r = @intCast(i32, (to >> 16) & 0xff);
+    const result_b = color_component_transition(from_b, to_b, current_step, max_steps);
+    const result_g = color_component_transition(from_g, to_g, current_step, max_steps);
+    const result_r = color_component_transition(from_r, to_r, current_step, max_steps);
+    return (result_r & 0xff) << 16 | (result_g & 0xff) << 8 | (result_b & 0xff);
+}
+
 const Reward = union(enum(u8)) {
     no_reward: void,
     gold_reward: u16,
@@ -2354,12 +2430,12 @@ pub fn process_fight_end(s: *State, released_keys: u8) void {
     _ = released_keys;
     if (s.state_has_changed) {
         s.frame_counter = 0;
-        w4.PALETTE[3] = 0xffffff;
+        w4.PALETTE[3] = w4.PALETTE[1];
         play_sfx_death();
         s.player_curse = Spell.zero();
     } else {
         s.frame_counter += 1;
-        w4.PALETTE[3] -= 0x030303;
+        w4.PALETTE[3] = rgb_transition(w4.PALETTE[1], w4.PALETTE[0], s.frame_counter, 80);
         if (s.frame_counter >= 80) {
             if (s.player_hp == 0) {
                 s.state = GlobalState.game_over;
@@ -2496,8 +2572,8 @@ pub fn process_inventory_full(s: *State, released_keys: u8) void {
 pub fn process_options(s: *State, released_keys: u8) void {
     process_options_helper(s, released_keys, GlobalState.title_1);
 }
+
 pub fn process_options_helper(s: *State, released_keys: u8, exit_state: GlobalState) void {
-    //pub fn process_options_helper(s: *State, released_keys: u8, exit_state: GlobalState) void {
     // spell_index is reused to keep track of the hilighted options
     if (s.state_has_changed) {
         s.set_choices_with_labels_2("Change", "Exit");
@@ -2535,12 +2611,17 @@ pub fn process_options_helper(s: *State, released_keys: u8, exit_state: GlobalSt
     } else {
         pager.fmg_number(&s.pager, options[2]);
     }
+    pager.fmg_newline(&s.pager);
+
+    // Palette
+    pager.fmg_text(&s.pager, "  Palette: ");
+    pager.fmg_number(&s.pager, options[3]);
 
     draw_right_triangle(10, 25 + s.spell_index * (pager.fmg_letter_height + 1));
     if (released_keys == w4.BUTTON_UP and s.spell_index > 0) {
         s.spell_index -= 1;
     }
-    if (released_keys == w4.BUTTON_DOWN and s.spell_index < 2) {
+    if (released_keys == w4.BUTTON_DOWN and s.spell_index < 3) {
         s.spell_index += 1;
     }
 
@@ -2554,6 +2635,9 @@ pub fn process_options_helper(s: *State, released_keys: u8, exit_state: GlobalSt
         },
         2 => { // SFX volume
             pager.fmg_text(&s.pager, "Change the volume used for sound effects playback.");
+        },
+        3 => { // Palette
+            pager.fmg_text(&s.pager, "Change the color palette for the game.");
         },
         else => {},
     }
@@ -2575,6 +2659,13 @@ pub fn process_options_helper(s: *State, released_keys: u8, exit_state: GlobalSt
                 options[2] = 0;
             }
             play_sfx_menu(options[2]);
+        } else if (s.spell_index == 3) { // Palette
+            if (options[3] > 0) {
+                options[3] -= 1;
+            } else {
+                options[3] = palettes.len - 1;
+            }
+            change_palette(options[3]);
         }
     }
     if (released_keys == w4.BUTTON_RIGHT) {
@@ -2594,6 +2685,13 @@ pub fn process_options_helper(s: *State, released_keys: u8, exit_state: GlobalSt
                 options[2] = 100;
             }
             play_sfx_menu(options[2]);
+        } else if (s.spell_index == 3) { // Palette
+            if (options[3] < palettes.len - 1) {
+                options[3] += 1;
+            } else {
+                options[3] = 0;
+            }
+            change_palette(options[3]);
         }
     }
     process_choices_input(s, released_keys);
@@ -2617,6 +2715,13 @@ pub fn process_options_helper(s: *State, released_keys: u8, exit_state: GlobalSt
                     options[2] = 0;
                 }
                 play_sfx_menu(options[2]);
+            },
+            3 => { // Palette
+                options[3] += 1;
+                if (options[3] >= palettes.len) {
+                    options[3] = 0;
+                }
+                change_palette(options[3]);
             },
             else => {},
         }
@@ -2861,7 +2966,7 @@ pub fn process_title(s: *State, released_keys: u8) void {
         s.set_choices_with_labels_1("Skip");
         s.pager.set_progressive_display(false);
         s.moon_x = 20;
-        w4.PALETTE[3] = 0x000000;
+        w4.PALETTE[3] = w4.PALETTE[0];
         play_sfx_sweep();
     } else {
         s.frame_counter += 1;
@@ -2874,12 +2979,12 @@ pub fn process_title(s: *State, released_keys: u8) void {
     if (@mod(s.frame_counter, 5) == 0) {
         s.moon_x += 1;
     }
-    if (@mod(s.frame_counter, 3) == 0 and s.frame_counter < 120) {
-        w4.PALETTE[3] += 0x050505;
+    if (s.frame_counter < 120) {
+        w4.PALETTE[3] = rgb_transition(w4.PALETTE[0], w4.PALETTE[1], s.frame_counter, 120);
     }
 
     if (@mod(s.frame_counter, 3) == 0 and s.frame_counter > 200) {
-        w4.PALETTE[3] -= 0x050505;
+        w4.PALETTE[3] = rgb_transition(w4.PALETTE[1], w4.PALETTE[0], s.frame_counter - 200, 320 - 200);
     }
     if (s.frame_counter >= 320) {
         s.state = GlobalState.title_1;
@@ -2909,8 +3014,8 @@ pub fn process_title_1(s: *State, released_keys: u8) void {
         s.music_tick();
         s.frame_counter += 1;
     }
-    if (@mod(s.frame_counter, 3) == 0 and s.frame_counter < 120) {
-        w4.PALETTE[3] += 0x050505;
+    if (s.frame_counter < 120) {
+        w4.PALETTE[3] = rgb_transition(w4.PALETTE[0], w4.PALETTE[1], s.frame_counter, 120);
     }
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
@@ -3242,12 +3347,12 @@ pub fn process_event_boss_cutscene(s: *State, released_keys: u8) void {
     if (@mod(s.frame_counter, 10) == 0 and s.moon_x > 51) {
         s.moon_x -= 1;
     }
-    if (@mod(s.frame_counter, 3) == 0 and s.frame_counter < 120) {
-        w4.PALETTE[3] += 0x050505;
+    if (s.frame_counter < 120) {
+        w4.PALETTE[3] = rgb_transition(w4.PALETTE[0], w4.PALETTE[1], s.frame_counter, 120);
     }
 
-    if (@mod(s.frame_counter, 3) == 0 and s.frame_counter > 180) {
-        w4.PALETTE[3] -= 0x050505;
+    if (s.frame_counter > 180) {
+        w4.PALETTE[3] = rgb_transition(w4.PALETTE[1], w4.PALETTE[0], s.frame_counter - 180, 300 - 180);
     }
     if (s.frame_counter >= 300) {
         s.state = GlobalState.pick_random_event;
@@ -4247,21 +4352,16 @@ const empty_track = [_]u8{
 };
 
 var options = [_]u8{
-    1, // BLINK
-    50, // MUSIC VOLUME
-    50, // SFX VOLUME
+    1, // 0-BLINK
+    50, // 1-MUSIC VOLUME
+    50, // 2-SFX VOLUME
+    0, // 3-PALETTE
 };
 var state: State = undefined;
 
 export fn start() void {
-    w4.PALETTE.* = .{
-        0x000000,
-        0xcccccc,
-        0xcccccc,
-        0xcccccc,
-    };
-
     _ = w4.diskr(&options, @sizeOf(@TypeOf(options)));
+    change_palette(options[3]);
     state = State{
         .musicode = Musicode.new(&instruments.instruments),
     };
