@@ -1,7 +1,6 @@
 const w4 = @import("wasm4.zig");
 const pager = @import("pager.zig");
 const sprites = @import("sprites.zig");
-const notes = @import("notes.zig");
 const musicode = @import("musicode.zig");
 const instruments = @import("instruments.zig");
 const tracks = @import("tracks.zig");
@@ -4152,46 +4151,6 @@ const training_bat_dialog = [_]Dialog{
 
 const empty_track = [_]u8{
     Musicode.wait(1),
-};
-const damage_track = [_]u8{
-    Musicode.instr(4), // 1
-};
-const fight_death_sfx_track = [_]u8{
-    Musicode.instr(6), // 1
-};
-const title_track = [_]u8{
-    Musicode.instr(4), // 1
-    Musicode.instr(3),
-    Musicode.wait(15),
-    Musicode.instr(5),
-    Musicode.wait(15),
-    Musicode.instr(5),
-    Musicode.wait(15),
-    Musicode.instr(5),
-    Musicode.wait(15),
-    Musicode.instr(4), // 3
-    Musicode.wait(15),
-    Musicode.instr(5),
-    Musicode.wait(15),
-    Musicode.instr(5),
-    Musicode.wait(15),
-    Musicode.instr(5),
-    Musicode.wait(15),
-    Musicode.instr_with_note(1), // 1
-    0,                 98, // G2
-    // TODO add note
-    Musicode.instr(3), Musicode.wait(15),
-    Musicode.instr(5), Musicode.wait(15),
-    Musicode.instr(3), Musicode.wait(15),
-    Musicode.instr(5), Musicode.wait(15),
-    Musicode.instr(4), // 3
-    Musicode.wait(15),
-    Musicode.instr(5),
-    Musicode.wait(15),
-    Musicode.instr(5),
-    Musicode.wait(15),
-    Musicode.instr(5),
-    Musicode.wait(15),
 };
 
 var options = [_]u8{
