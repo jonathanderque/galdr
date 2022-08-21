@@ -68,4 +68,6 @@ pub const instruments = [_]Instrument{
     Instrument{ .freq1 = 100, .attack = 1, .sustain = 40, .sustain_vol = 80, .channel = w4.TONE_TRIANGLE },
     // lead long
     Instrument{ .freq1 = 100, .attack = 1, .sustain = 40, .sustain_vol = 20, .channel = w4.TONE_PULSE1 },
+    // block SFX
+    Instrument{ .freq1 = 150, .sustain = 5, .sustain_vol = 60, .channel = w4.TONE_NOISE },
 };

@@ -1522,6 +1522,13 @@ pub fn get_spell_list_size(spell_list: []Spell) usize {
     }
     return size;
 }
+
+fn play_sfx_block() void {
+    if (options[2] > 0) {
+        instruments.instruments[11].play(options[2]);
+    }
+}
+
 fn play_sfx_hit() void {
     if (options[2] > 0) {
         instruments.instruments[8].play(options[2]);
@@ -1676,6 +1683,7 @@ const State = struct {
                     play_sfx_hit();
                 } else {
                     self.player_shield -= dmg;
+                    play_sfx_block();
                 }
             },
             Effect.damage_to_enemy => |dmg| {
@@ -1689,6 +1697,7 @@ const State = struct {
                     play_sfx_hit();
                 } else {
                     self.enemy.shield -= dmg;
+                    play_sfx_block();
                 }
             },
             Effect.vampirism_to_player => |dmg| {
@@ -1707,6 +1716,7 @@ const State = struct {
                     play_sfx_hit();
                 } else {
                     self.player_shield -= dmg;
+                    play_sfx_block();
                 }
             },
             Effect.vampirism_to_enemy => |dmg| {
@@ -1725,6 +1735,7 @@ const State = struct {
                     play_sfx_hit();
                 } else {
                     self.enemy.shield -= dmg;
+                    play_sfx_block();
                 }
             },
             Effect.gold_payment => |amount| {
