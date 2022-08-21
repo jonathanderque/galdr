@@ -632,6 +632,7 @@ const GlobalState = enum {
     event_moon_fountain_damage,
     event_moon_fountain_heal,
     event_moon_fountain_refresh,
+    event_moon_partisan,
     event_pirate,
     event_pirate_captain,
     event_snake_pit,
@@ -646,6 +647,7 @@ const GlobalState = enum {
     event_sun_fountain_damage,
     event_sun_fountain_heal,
     event_sun_fountain_refresh,
+    event_sun_partisan,
     event_training_fight_1,
     event_training_fight_2,
     event_training_bat,
@@ -729,8 +731,8 @@ const swamp_area = Area{
         GlobalState.event_chest_regular,
         GlobalState.event_swamp_creature,
         GlobalState.event_swamp_people,
-        GlobalState.event_snake_pit,
         GlobalState.event_moon_altar,
+        GlobalState.event_moon_partisan,
     },
 };
 
@@ -756,7 +758,7 @@ const forest_area = Area{
         GlobalState.event_forest_wolf,
         GlobalState.event_healing_shop,
         GlobalState.event_cavern_man,
-        GlobalState.event_militia_ambush,
+        GlobalState.event_sun_partisan,
     },
 };
 
@@ -1119,6 +1121,28 @@ const Enemy = struct {
             .reward = Reward{ .spell_reward = Spell.spell_earth_ball() },
         };
         enemy.sprite = &sprites.enemy_mine_troll;
+        return enemy;
+    }
+
+    pub fn enemy_partisan() Enemy {
+        var enemy = zero();
+        const enemy_max_hp = 35;
+        enemy.hp = enemy_max_hp;
+        enemy.max_hp = enemy_max_hp;
+        enemy.intent[0] = EnemyIntent{
+            .trigger_time = 8 * 60,
+            .effect = Effect{ .damage_to_player = 13 },
+        };
+        enemy.intent[1] = EnemyIntent{
+            .trigger_time = 3 * 60,
+            .effect = Effect{ .enemy_shield = 7 },
+        };
+        enemy.random_reward = RandomReward{
+            .probability = 10,
+            .reward = Reward{ .spell_reward = Spell.spell_buckler() },
+        };
+        enemy.guaranteed_reward = Reward{ .gold_reward = 5 };
+        enemy.sprite = &sprites.enemy_partisan;
         return enemy;
     }
 
@@ -2652,6 +2676,7 @@ pub fn process_pick_character(s: *State, released_keys: u8) void {
     }
     s.text_tick();
     process_choices_input(s, released_keys);
+
     // Moon loadout
     if (s.choices[0].is_completed()) {
         state.spellbook[0] = Spell.spell_fireball();
@@ -3655,6 +3680,48 @@ pub fn process_event_moon_altar(s: *State, released_keys: u8) void {
     }
 }
 
+const moon_partisan_skip_dialog = [_]Dialog{
+    Dialog{ .text = "You run into a group of moon partisans." },
+    Dialog.newline,
+    Dialog.newline,
+    Dialog{ .text = "Happy to see one of them, they greet you and wish you good luck." },
+};
+
+const moon_partisan_fight_dialog = [_]Dialog{
+    Dialog{ .text = "You run into a group of moon partisans:" },
+    Dialog.newline,
+    Dialog.newline,
+    Dialog{ .text = "\"Hey you, stop right there where you are!\"" },
+};
+pub fn process_event_moon_partisan(s: *State, released_keys: u8) void {
+    if (s.player_alignment <= -20) {
+        text_event_confirm(&state, released_keys, &moon_partisan_skip_dialog);
+    } else {
+        fight_intro(&state, released_keys, Enemy.enemy_partisan(), &moon_partisan_fight_dialog);
+    }
+}
+
+const sun_partisan_skip_dialog = [_]Dialog{
+    Dialog{ .text = "You run into a group of sun partisans." },
+    Dialog.newline,
+    Dialog.newline,
+    Dialog{ .text = "Happy to see one of them, they greet you and wish you good luck." },
+};
+
+const sun_partisan_fight_dialog = [_]Dialog{
+    Dialog{ .text = "You run into a group of sun partisans:" },
+    Dialog.newline,
+    Dialog.newline,
+    Dialog{ .text = "\"A Moon Wizard! We don't like your kind around here..\"" },
+};
+pub fn process_event_sun_partisan(s: *State, released_keys: u8) void {
+    if (s.player_alignment >= 20) {
+        text_event_confirm(&state, released_keys, &sun_partisan_skip_dialog);
+    } else {
+        fight_intro(&state, released_keys, Enemy.enemy_partisan(), &sun_partisan_fight_dialog);
+    }
+}
+
 const militia_ambush_dialog = [_]Dialog{
     Dialog{ .text = "You spot a lone militia soldier coming your way." },
     Dialog.newline,
@@ -3998,6 +4065,7 @@ export fn update() void {
         GlobalState.event_moon_altar_skip => text_event_confirm(&state, released_keys, &event_moon_altar_skip_1_dialog),
         GlobalState.event_moon_altar_pray => text_event_confirm(&state, released_keys, &event_moon_altar_pray_1_dialog),
         GlobalState.event_moon_altar_destroy => text_event_confirm(&state, released_keys, &event_moon_altar_destroy_1_dialog),
+        GlobalState.event_moon_partisan => process_event_moon_partisan(&state, released_keys),
         GlobalState.event_militia_ambush => fight_intro(&state, released_keys, Enemy.enemy_militia_ambush(), &militia_ambush_dialog),
         GlobalState.event_pirate => fight_intro(&state, released_keys, Enemy.enemy_pirate(), &pirate_dialog),
         GlobalState.event_pirate_captain => fight_intro(&state, released_keys, Enemy.enemy_pirate_captain(), &pirate_captain_dialog),
@@ -4018,6 +4086,7 @@ export fn update() void {
         GlobalState.event_sun_fountain_damage => text_event_confirm(&state, released_keys, &event_sun_fountain_damage_dialog),
         GlobalState.event_sun_fountain_heal => text_event_confirm(&state, released_keys, &event_sun_fountain_heal_dialog),
         GlobalState.event_sun_fountain_refresh => text_event_confirm(&state, released_keys, &event_sun_fountain_refresh_dialog),
+        GlobalState.event_sun_partisan => process_event_sun_partisan(&state, released_keys),
         GlobalState.event_training_fight_1 => fight_intro(&state, released_keys, Enemy.enemy_training_soldier_1(), &training_fight_dialog_1),
         GlobalState.event_training_fight_2 => fight_intro(&state, released_keys, Enemy.enemy_training_soldier_2(), &training_fight_dialog_2),
         GlobalState.event_training_bat => fight_intro(&state, released_keys, Enemy.enemy_training_bat(), &training_bat_dialog),
