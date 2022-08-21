@@ -697,6 +697,8 @@ const GlobalState = enum {
     title_1,
     tutorial_basics,
     tutorial_synergies,
+    tutorial_fights,
+    tutorial_fights_1,
     tutorial_pause_menu,
     tutorial_alignment,
     tutorial_end,
@@ -1915,6 +1917,10 @@ pub fn draw_logo(x: i32, y: i32) void {
     w4.blit(&sprites.galdr_logo, x, y, sprites.galdr_logo_width, sprites.galdr_logo_height, w4.BLIT_1BPP);
 }
 
+pub fn draw_sword(x: i32, y: i32) void {
+    w4.blitSub(&sprites.effects, x, y, 9, 9, 0, 0, sprites.effects_width, w4.BLIT_1BPP);
+}
+
 pub fn draw_shield(x: i32, y: i32) void {
     w4.blitSub(&sprites.effects, x, y, 9, 9, 9, 0, sprites.effects_width, w4.BLIT_1BPP);
 }
@@ -1953,7 +1959,7 @@ pub fn draw_map_character(x: i32, y: i32) void {
 pub fn draw_effect(x: i32, y: i32, s: *State, effect: Effect) void {
     switch (effect) {
         Effect.damage_to_player, Effect.damage_to_enemy => |dmg| {
-            w4.blitSub(&sprites.effects, x, y, 9, 9, 0, 0, sprites.effects_width, w4.BLIT_1BPP);
+            draw_sword(x, y);
             s.pager.set_cursor(x + 12, y + 1);
             pager.fmg_number(&s.pager, @intCast(i32, dmg));
         },
@@ -2957,9 +2963,7 @@ pub fn process_tutorial_basics(s: *State, released_keys: u8) void {
 pub fn process_tutorial_synergies(s: *State, released_keys: u8) void {
     process_choices_input(s, released_keys);
     if (s.choices[1].is_completed()) {
-        s.reset_choices();
-        s.choices[0] = Spell.spell_tutorial_basics_next();
-        s.state = GlobalState.tutorial_pause_menu;
+        s.state = GlobalState.tutorial_fights;
     }
     s.pager.set_cursor(10, 10);
     pager.fmg_text(&s.pager, "Now, look at the spells below; you'll notice similarities between the input needed for these two spells.");
@@ -2978,7 +2982,76 @@ pub fn process_tutorial_synergies(s: *State, released_keys: u8) void {
     draw_spell_list(&s.choices, s, 10, 140);
 }
 
+pub fn process_tutorial_fights(s: *State, released_keys: u8) void {
+    if (s.state_has_changed) {
+        s.reset_choices();
+        s.choices[0] = Spell.spell_tutorial_basics_next();
+        s.frame_counter = 0;
+    } else {
+        s.frame_counter += 1;
+    }
+    process_choices_input(s, released_keys);
+    if (s.choices[0].is_completed()) {
+        s.state = GlobalState.tutorial_fights_1;
+    }
+
+    s.pager.set_cursor(10, 10);
+    pager.fmg_text(&s.pager, "When in a battle, you have the ability to know what your enemy is going to do.");
+    pager.fmg_newline(&s.pager);
+    pager.fmg_text(&s.pager, "Intent will be signfied as follows:");
+    pager.fmg_newline(&s.pager);
+    pager.fmg_newline(&s.pager);
+    draw_sword(s.pager.cursor_x, s.pager.cursor_y);
+    pager.fmg_text(&s.pager, "    when attacking");
+    pager.fmg_newline(&s.pager);
+    pager.fmg_newline(&s.pager);
+    draw_shield(s.pager.cursor_x, s.pager.cursor_y);
+    pager.fmg_text(&s.pager, "    when blocking");
+    pager.fmg_newline(&s.pager);
+    pager.fmg_newline(&s.pager);
+    draw_fang(s.pager.cursor_x, s.pager.cursor_y);
+    pager.fmg_text(&s.pager, "    when using vampirism");
+    pager.fmg_newline(&s.pager);
+    pager.fmg_newline(&s.pager);
+    draw_exclamation_mark(s.pager.cursor_x, s.pager.cursor_y);
+    pager.fmg_text(&s.pager, "    when casting a curse");
+
+    draw_spell_list(&s.choices, s, 10, 140);
+}
+
+pub fn process_tutorial_fights_1(s: *State, released_keys: u8) void {
+    if (s.state_has_changed) {
+        s.reset_choices();
+        s.choices[0] = Spell.spell_tutorial_basics_next();
+        s.frame_counter = 0;
+    } else {
+        s.frame_counter += 1;
+        if (s.frame_counter > 100) {
+            s.frame_counter = 0;
+        }
+    }
+    process_choices_input(s, released_keys);
+    if (s.choices[0].is_completed()) {
+        s.state = GlobalState.tutorial_pause_menu;
+    }
+
+    s.pager.set_cursor(10, 10);
+    pager.fmg_text(&s.pager, "Curses are like regular spells in your spellbook, but will inflict damage when synergising with your other spells.");
+    pager.fmg_newline(&s.pager);
+    pager.fmg_newline(&s.pager);
+    pager.fmg_text(&s.pager, "Curses are lifted at the end of the fight.");
+    pager.fmg_newline(&s.pager);
+    pager.fmg_newline(&s.pager);
+    pager.fmg_text(&s.pager, "You'll also now when your enemy will act with this progress \"bubble\": ");
+    draw_progress_bubble(s.pager.cursor_x, s.pager.cursor_y, s.frame_counter, 100);
+    draw_spell_list(&s.choices, s, 10, 140);
+}
+
 pub fn process_tutorial_pause_menu(s: *State, released_keys: u8) void {
+    if (s.state_has_changed) {
+        s.reset_choices();
+        s.choices[0] = Spell.spell_tutorial_basics_next();
+    }
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         s.reset_choices();
@@ -4299,6 +4372,8 @@ export fn update() void {
         GlobalState.title_1 => process_title_1(&state, released_keys),
         GlobalState.tutorial_basics => process_tutorial_basics(&state, released_keys),
         GlobalState.tutorial_synergies => process_tutorial_synergies(&state, released_keys),
+        GlobalState.tutorial_fights => process_tutorial_fights(&state, released_keys),
+        GlobalState.tutorial_fights_1 => process_tutorial_fights_1(&state, released_keys),
         GlobalState.tutorial_pause_menu => process_tutorial_pause_menu(&state, released_keys),
         GlobalState.tutorial_alignment => process_tutorial_alignment(&state, released_keys),
         GlobalState.tutorial_end => process_tutorial_end(&state, released_keys),
