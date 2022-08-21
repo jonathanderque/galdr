@@ -380,6 +380,24 @@ const Spell = struct {
         return s;
     }
 
+    pub fn spell_soul_steal() Spell {
+        var s = Spell{
+            .name = "Soul Steal",
+            .price = 20,
+            .alignment = -3,
+            .effect = Effect{ .vampirism_to_enemy = 6 },
+        };
+        s.set_spell(&[_]u8{
+            w4.BUTTON_LEFT,
+            w4.BUTTON_RIGHT,
+            w4.BUTTON_DOWN,
+            w4.BUTTON_LEFT,
+            w4.BUTTON_RIGHT,
+            w4.BUTTON_1,
+        });
+        return s;
+    }
+
     pub fn spell_wolf_bite() Spell {
         var wolf_bite = Spell{
             .name = "Wolf Bite",
@@ -611,6 +629,15 @@ const GlobalState = enum {
     event_coast_sea_monster,
     event_coin_muncher,
     event_credits,
+    event_dungeon_ambush,
+    event_dungeon,
+    event_dungeon_1,
+    event_dungeon_2,
+    event_dungeon_3,
+    event_dungeon_4,
+    event_dungeon_5,
+    event_dungeon_6,
+    event_dungeon_7,
     event_hard_swamp_creature,
     event_healer,
     event_healer_decline,
@@ -725,6 +752,14 @@ const pirate_area = Area{
     },
 };
 
+const dungeon_area = Area{
+    .name = "???",
+    .event_count = 1,
+    .event_pool = &[_]GlobalState{
+        GlobalState.event_dungeon,
+    },
+};
+
 const swamp_area = Area{
     .name = "Swamp",
     .event_count = 4,
@@ -773,8 +808,7 @@ const medium_forest_area = Area{
         GlobalState.event_chest_mimic,
         GlobalState.event_sun_fountain,
         GlobalState.event_forest_wolf,
-        GlobalState.event_militia_ambush,
-        // TODO more interesting fights ?
+        GlobalState.event_dungeon_ambush,
     },
 };
 
@@ -992,6 +1026,24 @@ const Enemy = struct {
             .effect = Effect{ .gold_payment = 1 },
         };
         enemy.sprite = &sprites.enemy_coin_muncher;
+        return enemy;
+    }
+
+    pub fn enemy_dungeon_guard() Enemy {
+        var enemy = zero();
+        const enemy_max_hp = 30;
+        enemy.hp = enemy_max_hp;
+        enemy.max_hp = enemy_max_hp;
+        enemy.intent[0] = EnemyIntent{
+            .trigger_time = 8 * 60,
+            .effect = Effect{ .damage_to_player = 10 },
+        };
+        enemy.intent[1] = EnemyIntent{
+            .trigger_time = 3 * 60,
+            .effect = Effect{ .enemy_shield = 12 },
+        };
+        enemy.guaranteed_reward = Reward.no_reward;
+        enemy.sprite = &sprites.enemy_militia;
         return enemy;
     }
 
@@ -3438,6 +3490,142 @@ const coastal_shop_dialog = [_]Dialog{
     Dialog{ .text = "\"I used to be a wizard like you. Then I took a wand in the knee.\"" },
 };
 
+const event_dungeon_ambush_sun_dialog = [_]Dialog{
+    Dialog{ .text = "As you make your way through the forest, you encounter a faction of sun soldiers." },
+    Dialog.newline,
+    Dialog.newline,
+    Dialog{ .text = "You share your quest objectives with them but they cannot help you at the moment." },
+};
+
+const event_dungeon_ambush_moon_dialog = [_]Dialog{
+    Dialog{ .text = "As you make your way through the forest, a faction of sun soldiers attacks you." },
+    Dialog.newline,
+    Dialog.newline,
+    Dialog{ .text = "Before you can defend yourself, you fall to the ground and lose conciousness...." },
+};
+
+const event_dungeon_ambush_moon_outcome = [_]Outcome{
+    Outcome{
+        .area = dungeon_area,
+    },
+};
+
+pub fn process_dungeon_ambush(s: *State, released_keys: u8) void {
+    if (s.player_alignment <= -10) {
+        text_event_choice_1(&state, released_keys, &event_dungeon_ambush_moon_dialog, "Confirm", &event_dungeon_ambush_moon_outcome);
+    } else {
+        text_event_confirm(&state, released_keys, &event_dungeon_ambush_sun_dialog);
+    }
+}
+
+pub fn process_dungeon(s: *State, released_keys: u8) void {
+    if (s.state_has_changed) {
+        s.pager.reset_steps();
+        s.set_choices_confirm();
+        s.spellbook[0] = Spell.spell_soul_steal();
+        var i: usize = 1;
+        while (i < s.spellbook.len) : (i += 1) {
+            s.spellbook[i] = Spell.zero();
+        }
+        s.player_hp = 1;
+        s.player_gold = 0;
+    }
+    s.text_tick();
+    process_choices_input(s, released_keys);
+    if (s.choices[0].is_completed()) {
+        s.state = GlobalState.event_dungeon_1;
+    }
+
+    w4.DRAW_COLORS.* = 0x02;
+    draw_player_hud(s);
+    s.pager.set_cursor(10, 30);
+    draw_dialog_list(&event_dungeon_dialog, s);
+    draw_spell_list(&s.choices, s, 10, 140);
+}
+
+const event_dungeon_dialog = [_]Dialog{
+    Dialog{ .text = "\"Hey!\"" },
+    Dialog.newline,
+    Dialog.newline,
+    Dialog{ .text = "You slowly open your eyes... Your whole body hurts." },
+};
+
+const event_dungeon_outcome = [_]Outcome{
+    Outcome{ .state = GlobalState.event_dungeon_1 },
+};
+
+const event_dungeon_dialog_1 = [_]Dialog{
+    Dialog{ .text = "\"Ah, nice to see you're finally coming to.\"" },
+    Dialog.newline,
+    Dialog.newline,
+    Dialog{ .text = "Looking around you, you seem to be in jail. The person talking to you is a guard outside of your cell." },
+};
+
+const event_dungeon_outcome_1 = [_]Outcome{
+    Outcome{ .state = GlobalState.event_dungeon_2 },
+};
+
+const event_dungeon_dialog_2 = [_]Dialog{
+    Dialog{ .text = "\"Looks like the soldiers got you beaten up pretty bad.\"" },
+    Dialog.newline,
+    Dialog.newline,
+    Dialog{ .text = "\"Don't be afraid, I'm here to help you.\"" },
+};
+
+const event_dungeon_outcome_2 = [_]Outcome{
+    Outcome{ .state = GlobalState.event_dungeon_3 },
+};
+
+const event_dungeon_dialog_3 = [_]Dialog{
+    Dialog{ .text = "\"I'd advise you to take some rest, but we have to act now if you want to get out of here.\"" },
+    Dialog.newline,
+    Dialog.newline,
+    Dialog{ .text = "The \"guard\" opens the door of your cell and helps you getting up." },
+};
+
+const event_dungeon_outcome_3 = [_]Outcome{
+    Outcome{ .state = GlobalState.event_dungeon_4 },
+};
+
+const event_dungeon_dialog_4 = [_]Dialog{
+    Dialog{ .text = "\"Come on, let's get you out.\"" },
+    Dialog.newline,
+    Dialog.newline,
+    Dialog{ .text = "You struggle to walk as the pain races through your body, but your mind is already focusing a little." },
+};
+
+const event_dungeon_outcome_4 = [_]Outcome{
+    Outcome{ .state = GlobalState.event_dungeon_5 },
+};
+
+const event_dungeon_dialog_5 = [_]Dialog{
+    Dialog{ .text = "\"Your spellbook?? I'm afraid it is gone for good.\"" },
+    Dialog.newline,
+    Dialog.newline,
+    Dialog{ .text = "\"But I stole this spell on my way here. I guess you can have it.\"" },
+};
+
+const event_dungeon_outcome_5 = [_]Outcome{
+    Outcome{ .state = GlobalState.event_dungeon_6 },
+};
+
+const event_dungeon_dialog_6 = [_]Dialog{
+    Dialog{ .text = "\"I can't go beyond that point or they'll suspect I was the one helping you. Good luck!!\"" },
+    Dialog.newline,
+    Dialog.newline,
+    Dialog{
+        .text = "Before you can thank him, your savior disappears in a dark corridor.",
+    },
+};
+
+const event_dungeon_outcome_6 = [_]Outcome{
+    Outcome{ .state = GlobalState.event_dungeon_7 },
+};
+
+const event_dungeon_dialog_7 = [_]Dialog{
+    Dialog{ .text = "On your way out of the dungeon, you stumble upon a guard at the entrance." },
+};
+
 const mine_shop_gold = 50;
 const mine_shop_items = [_]Spell{
     Spell.spell_root(),
@@ -4062,6 +4250,15 @@ export fn update() void {
         GlobalState.event_coast_seagull => fight_intro(&state, released_keys, Enemy.enemy_seagull(), &event_seagull_dialog),
         GlobalState.event_coast_sea_monster => conditional_fight_intro(&state, released_keys, Enemy.enemy_sea_monster(), &event_sea_monster_dialog),
         GlobalState.event_coin_muncher => fight_intro(&state, released_keys, Enemy.enemy_coin_muncher(), &coin_muncher_dialog),
+        GlobalState.event_dungeon_ambush => process_dungeon_ambush(&state, released_keys),
+        GlobalState.event_dungeon => process_dungeon(&state, released_keys),
+        GlobalState.event_dungeon_1 => text_event_choice_1(&state, released_keys, &event_dungeon_dialog_1, "Confirm", &event_dungeon_outcome_1),
+        GlobalState.event_dungeon_2 => text_event_choice_1(&state, released_keys, &event_dungeon_dialog_2, "Confirm", &event_dungeon_outcome_2),
+        GlobalState.event_dungeon_3 => text_event_choice_1(&state, released_keys, &event_dungeon_dialog_3, "Confirm", &event_dungeon_outcome_3),
+        GlobalState.event_dungeon_4 => text_event_choice_1(&state, released_keys, &event_dungeon_dialog_4, "Confirm", &event_dungeon_outcome_4),
+        GlobalState.event_dungeon_5 => text_event_choice_1(&state, released_keys, &event_dungeon_dialog_5, "Confirm", &event_dungeon_outcome_5),
+        GlobalState.event_dungeon_6 => text_event_choice_1(&state, released_keys, &event_dungeon_dialog_6, "Confirm", &event_dungeon_outcome_6),
+        GlobalState.event_dungeon_7 => fight_intro(&state, released_keys, Enemy.enemy_dungeon_guard(), &event_dungeon_dialog_7),
         GlobalState.event_credits => process_credits(&state, released_keys),
         GlobalState.event_hard_swamp_creature => fight_intro(&state, released_keys, Enemy.enemy_hard_swamp_creature(), &swamp_creature_dialog),
         GlobalState.event_healer => process_event_healer(&state, released_keys),
