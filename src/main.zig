@@ -3032,6 +3032,8 @@ pub fn process_title_1(s: *State, released_keys: u8) void {
     _ = rand();
 
     w4.DRAW_COLORS.* = 0x04;
+    s.pager.set_cursor(70, 00);
+    pager.f35_text(&s.pager, "WASM-4 JAM#2 BUILD");
     draw_logo(16, 50);
     w4.DRAW_COLORS.* = 0x02;
     draw_spell_list(&s.choices, s, 10, 130);
