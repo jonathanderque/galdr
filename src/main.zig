@@ -661,6 +661,7 @@ const GlobalState = enum {
     event_moon_partisan,
     event_pirate,
     event_pirate_captain,
+    event_rat,
     event_snake_pit,
     event_sun_altar,
     event_sun_altar_skip,
@@ -724,6 +725,7 @@ const road_area = Area{
         GlobalState.event_chest_regular,
         GlobalState.event_coin_muncher,
         GlobalState.event_snake_pit,
+        GlobalState.event_rat,
         GlobalState.event_militia_ambush,
     },
 };
@@ -1280,6 +1282,20 @@ const Enemy = struct {
         };
         enemy.guaranteed_reward = Reward{ .gold_reward = 2 };
         enemy.sprite = &sprites.enemy_snake;
+        return enemy;
+    }
+
+    pub fn enemy_rat() Enemy {
+        var enemy = zero();
+        const enemy_max_hp = 13;
+        enemy.hp = enemy_max_hp;
+        enemy.max_hp = enemy_max_hp;
+        enemy.intent[0] = EnemyIntent{
+            .trigger_time = 5 * 60,
+            .effect = Effect{ .damage_to_player = 4 },
+        };
+        enemy.guaranteed_reward = Reward{ .gold_reward = 1 };
+        enemy.sprite = &sprites.enemy_rat;
         return enemy;
     }
 
@@ -3939,6 +3955,10 @@ const pirate_captain_dialog = [_]Dialog{
     Dialog{ .text = "\"The girl?? She's mine!!!\"" },
 };
 
+const event_rat_dialog = [_]Dialog{
+    Dialog{ .text = "There are so many rats here... You try to kill those that come a bit too close." },
+};
+
 const snake_pit_dialog = [_]Dialog{
     Dialog{ .text = "You fall into a large man-made pit that someone filled with snakes!" },
     Dialog.newline,
@@ -4238,6 +4258,7 @@ export fn update() void {
         GlobalState.event_militia_ambush => fight_intro(&state, released_keys, Enemy.enemy_militia_ambush(), &militia_ambush_dialog),
         GlobalState.event_pirate => fight_intro(&state, released_keys, Enemy.enemy_pirate(), &pirate_dialog),
         GlobalState.event_pirate_captain => fight_intro(&state, released_keys, Enemy.enemy_pirate_captain(), &pirate_captain_dialog),
+        GlobalState.event_rat => fight_intro(&state, released_keys, Enemy.enemy_rat(), &event_rat_dialog),
         GlobalState.event_snake_pit => fight_intro(&state, released_keys, Enemy.enemy_snake_pit(), &snake_pit_dialog),
         GlobalState.event_sun_altar => process_event_sun_altar(&state, released_keys),
         GlobalState.event_sun_altar_skip => text_event_confirm(&state, released_keys, &event_sun_altar_skip_1_dialog),
