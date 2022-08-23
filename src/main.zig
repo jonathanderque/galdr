@@ -3158,7 +3158,7 @@ pub fn process_tutorial_fights_1(s: *State, released_keys: u8) void {
     pager.fmg_text(&s.pager, "Curses are lifted at the end of the fight.");
     pager.fmg_newline(&s.pager);
     pager.fmg_newline(&s.pager);
-    pager.fmg_text(&s.pager, "You'll also now when your enemy will act with this progress \"bubble\": ");
+    pager.fmg_text(&s.pager, "You'll also know when your enemy will act with this progress \"bubble\": ");
     draw_progress_bubble(s.pager.cursor_x, s.pager.cursor_y, s.frame_counter, 100);
     draw_spell_list(&s.choices, s, 10, 140);
 }
