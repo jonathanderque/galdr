@@ -116,11 +116,11 @@ pub const Musicode = struct {
     }
 
     pub fn instr_with_note(instr_id: usize) u8 {
-        return (@intCast(u8, instr_id) & 0b0011_1111) | 0b1000_0000;
+        return (@as(u8, @intCast(instr_id)) & 0b0011_1111) | 0b1000_0000;
     }
 
     pub fn instr(instr_id: usize) u8 {
-        return @intCast(u8, instr_id) | 0b1100_0000;
+        return @as(u8, @intCast(instr_id)) | 0b1100_0000;
     }
 };
 
@@ -239,9 +239,9 @@ pub const Musiscore = struct {
                 MusiscoreTag.instr_with_note => |instr_with_note| {
                     output[output_index] = Musicode.instr_with_note(instr_with_note.instr);
                     output_index += 1;
-                    output[output_index] = @intCast(u8, instr_with_note.note >> 8 & 0xff);
+                    output[output_index] = @as(u8, @intCast(instr_with_note.note >> 8 & 0xff));
                     output_index += 1;
-                    output[output_index] = @intCast(u8, instr_with_note.note & 0xff);
+                    output[output_index] = @as(u8, @intCast(instr_with_note.note & 0xff));
                     output_index += 1;
                 },
             }

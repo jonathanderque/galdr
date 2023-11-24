@@ -12,7 +12,7 @@ const rand_c: u64 = 1442695040888963407;
 var rand_state: u64 = 0;
 
 pub fn rand() u64 {
-    rand_state = rand_state * rand_a + rand_c;
+    rand_state = @addWithOverflow(@mulWithOverflow(rand_state, rand_a)[0], rand_c)[0];
     return (rand_state >> 32) & 0xFFFFFFFF;
 }
 
@@ -76,16 +76,16 @@ pub fn change_palette(index: usize) void {
 
 pub fn color_component_transition(from: i32, to: i32, current_step: u16, max_steps: u16) u32 {
     const incr: i32 = @divTrunc((to - from) * current_step, max_steps);
-    return @intCast(u32, @intCast(i16, from) + incr);
+    return @as(u32, @intCast(@as(i16, @intCast(from)) + incr));
 }
 
 pub fn rgb_transition(from: u32, to: u32, current_step: u16, max_steps: u16) u32 {
-    const from_b = @intCast(i32, from & 0xff);
-    const from_g = @intCast(i32, (from >> 8) & 0xff);
-    const from_r = @intCast(i32, (from >> 16) & 0xff);
-    const to_b = @intCast(i32, to & 0xff);
-    const to_g = @intCast(i32, (to >> 8) & 0xff);
-    const to_r = @intCast(i32, (to >> 16) & 0xff);
+    const from_b = @as(i32, @intCast(from & 0xff));
+    const from_g = @as(i32, @intCast((from >> 8) & 0xff));
+    const from_r = @as(i32, @intCast((from >> 16) & 0xff));
+    const to_b = @as(i32, @intCast(to & 0xff));
+    const to_g = @as(i32, @intCast((to >> 8) & 0xff));
+    const to_r = @as(i32, @intCast((to >> 16) & 0xff));
     const result_b = color_component_transition(from_b, to_b, current_step, max_steps);
     const result_g = color_component_transition(from_g, to_g, current_step, max_steps);
     const result_r = color_component_transition(from_r, to_r, current_step, max_steps);
@@ -1639,7 +1639,7 @@ const State = struct {
         switch (reward) {
             Reward.no_reward => {},
             Reward.gold_reward => |amount| {
-                self.player_gold += @intCast(i16, amount);
+                self.player_gold += @as(i16, @intCast(amount));
             },
             Reward.spell_reward => |spell| {
                 add_spell_to_list(spell, &self.spellbook);
@@ -1664,7 +1664,7 @@ const State = struct {
                 };
             },
             Effect.player_heal => |amount| {
-                self.player_hp += @intCast(i16, amount);
+                self.player_hp += @as(i16, @intCast(amount));
                 if (self.player_hp >= self.player_max_hp) {
                     self.player_hp = self.player_max_hp;
                 }
@@ -1741,20 +1741,20 @@ const State = struct {
             Effect.gold_payment => |amount| {
                 // warning the event must check beforehand that there is enough gold
                 if (amount <= self.player_gold) {
-                    self.player_gold -= @intCast(i16, amount);
+                    self.player_gold -= @as(i16, @intCast(amount));
                 }
             },
             Effect.player_shield => |amount| {
-                self.player_shield += @intCast(i16, amount);
+                self.player_shield += @as(i16, @intCast(amount));
             },
             Effect.enemy_shield => |amount| {
-                self.enemy.shield += @intCast(i16, amount);
+                self.enemy.shield += @as(i16, @intCast(amount));
             },
             Effect.alignment => |alignment| {
                 self.change_alignment(alignment);
             },
             Effect.curse => |c| {
-                self.player_curse = curses[@enumToInt(c)];
+                self.player_curse = curses[@intFromEnum(c)];
             },
         }
     }
@@ -1925,7 +1925,7 @@ pub fn draw_button_2(x: i32, y: i32, fill: bool) void {
 pub fn draw_spell_input(input: []const u8, current_progress: usize, x: i32, y: i32) void {
     var i: usize = 0;
     var var_x: i32 = x;
-    while (i < input.len or input[i] == end_of_spell) : (i += 1) {
+    while (i < input.len and input[i] != end_of_spell) : (i += 1) {
         switch (input[i]) {
             w4.BUTTON_1 => draw_button_1(var_x, y, i < current_progress),
             w4.BUTTON_2 => draw_button_2(var_x, y, i < current_progress),
@@ -2048,12 +2048,12 @@ pub fn draw_effect(x: i32, y: i32, s: *State, effect: Effect) void {
         Effect.damage_to_player, Effect.damage_to_enemy => |dmg| {
             draw_sword(x, y);
             s.pager.set_cursor(x + 12, y + 1);
-            pager.fmg_number(&s.pager, @intCast(i32, dmg));
+            pager.fmg_number(&s.pager, @as(i32, @intCast(dmg)));
         },
         Effect.player_shield, Effect.enemy_shield => |amount| {
             w4.blitSub(&sprites.effects, x, y, 9, 9, 9, 0, sprites.effects_width, w4.BLIT_1BPP);
             s.pager.set_cursor(x + 12, y + 1);
-            pager.fmg_number(&s.pager, @intCast(i32, amount));
+            pager.fmg_number(&s.pager, @as(i32, @intCast(amount)));
         },
         Effect.player_heal => |amount| {
             w4.blitSub(&sprites.effects, x, y, 9, 9, 18, 0, sprites.effects_width, w4.BLIT_1BPP);
@@ -2068,12 +2068,12 @@ pub fn draw_effect(x: i32, y: i32, s: *State, effect: Effect) void {
         Effect.gold_payment => |amount| {
             draw_coin(x, y);
             s.pager.set_cursor(x + 12, y + 1);
-            pager.fmg_number(&s.pager, -@intCast(i32, amount));
+            pager.fmg_number(&s.pager, -@as(i32, @intCast(amount)));
         },
         Effect.vampirism_to_player, Effect.vampirism_to_enemy => |dmg| {
             draw_fang(x, y);
             s.pager.set_cursor(x + 12, y + 1);
-            pager.fmg_number(&s.pager, @intCast(i32, dmg));
+            pager.fmg_number(&s.pager, @as(i32, @intCast(dmg)));
         },
         Effect.curse => |_curse| {
             _ = _curse;
@@ -2149,7 +2149,7 @@ pub fn draw_right_triangle(x: i32, y: i32) void {
 pub fn draw_spell_inventory_list(x: i32, y: i32, s: *State, list: []Spell, show_cursor: bool) void {
     var i: usize = 0;
     while (i < list.len) : (i += 1) {
-        const y_list = y + @intCast(i32, i * (pager.fmg_letter_height + 2));
+        const y_list = y + @as(i32, @intCast(i * (pager.fmg_letter_height + 2)));
         s.pager.set_cursor(x, y_list);
         if (show_cursor and i == s.spell_index) {
             draw_right_triangle(x + 2, y_list - 1);
@@ -2181,7 +2181,7 @@ pub fn draw_player_hud(s: *State) void {
     while (i < 5) : (i += 1) {
         w4.blit(&sprites.progress_bar, x + 10 + (i * sprites.progress_bar_width), y + 1, sprites.progress_bar_width, sprites.progress_bar_height, w4.BLIT_1BPP);
     }
-    w4.rect(x + 10, y + 1, @intCast(u32, @divTrunc(5 * sprites.progress_bar_width * s.player_hp, s.player_max_hp)), sprites.progress_bar_height);
+    w4.rect(x + 10, y + 1, @as(u32, @intCast(@divTrunc(5 * sprites.progress_bar_width * s.player_hp, s.player_max_hp))), sprites.progress_bar_height);
 
     const hp_x = x + 15 + 5 * sprites.progress_bar_width;
     s.pager.set_cursor(hp_x, y + 1);
@@ -2198,13 +2198,12 @@ pub fn draw_player_hud(s: *State) void {
 pub fn draw_enemy_hud(s: *State) void {
     const x: i32 = 90;
     const y: i32 = 80 - 20;
-    _ = s;
     draw_heart(x, y + 10);
     var i: i32 = 0;
     while (i < 2) : (i += 1) {
         w4.blit(&sprites.progress_bar, x + 10 + (i * sprites.progress_bar_width), y + 11, sprites.progress_bar_width, sprites.progress_bar_height, w4.BLIT_1BPP);
     }
-    w4.rect(x + 10, y + 11, @intCast(u32, @divTrunc(2 * sprites.progress_bar_width * s.enemy.hp, s.enemy.max_hp)), sprites.progress_bar_height);
+    w4.rect(x + 10, y + 11, @as(u32, @intCast(@divTrunc(2 * sprites.progress_bar_width * s.enemy.hp, s.enemy.max_hp))), sprites.progress_bar_height);
     const hp_x = x + 15 + 2 * sprites.progress_bar_width;
     s.pager.set_cursor(hp_x, y + 11);
     pager.fmg_number(&s.pager, s.enemy.hp);
@@ -2332,7 +2331,7 @@ pub fn shop_intro(s: *State, released_keys: u8, dialog: []const Dialog, shop_gol
 }
 
 pub fn process_choices_input(s: *State, released_keys: u8) void {
-    for (s.choices) |*spell| {
+    for (&s.choices) |*spell| {
         spell.process(released_keys);
     }
 }
@@ -2343,7 +2342,7 @@ pub fn process_fight(s: *State, released_keys: u8) void {
         s.player_animation = 0;
         s.enemy_animation = 0;
         s.musicode.start_track(&empty_track, false);
-        for (s.spellbook) |*spell| {
+        for (&s.spellbook) |*spell| {
             spell.reset();
             spell.frame_triggered = -40;
         }
@@ -2376,7 +2375,7 @@ pub fn process_fight(s: *State, released_keys: u8) void {
     }
 
     s.player_curse.process(released_keys);
-    for (s.spellbook) |*spell| {
+    for (&s.spellbook) |*spell| {
         spell.process(released_keys);
     }
 
@@ -2422,14 +2421,14 @@ pub fn process_fight(s: *State, released_keys: u8) void {
     draw_spell_list(&s.spellbook, s, 10, 91);
 
     if (s.player_curse.is_completed()) {
-        s.player_curse.frame_triggered = @intCast(i16, s.frame_counter);
+        s.player_curse.frame_triggered = @as(i16, @intCast(s.frame_counter));
         s.apply_effect(s.player_curse.effect);
         s.change_alignment(s.player_curse.alignment);
         s.player_curse.reset();
     }
-    for (s.spellbook) |*spell| {
+    for (&s.spellbook) |*spell| {
         if (spell.is_completed()) {
-            spell.frame_triggered = @intCast(i16, s.frame_counter);
+            spell.frame_triggered = @as(i16, @intCast(s.frame_counter));
             s.apply_effect(spell.effect);
             s.change_alignment(spell.alignment);
             spell.reset();
@@ -2485,7 +2484,7 @@ pub fn process_fight_end(s: *State, released_keys: u8) void {
 pub fn process_fight_reward(s: *State, released_keys: u8) void {
     if (s.state_has_changed) {
         s.set_choices_confirm();
-        s.reward_probability = @intCast(u8, @mod(rand(), 100));
+        s.reward_probability = @as(u8, @intCast(@mod(rand(), 100)));
         s.play_track_fanfare03();
     }
     process_choices_input(s, released_keys);
@@ -2547,7 +2546,7 @@ pub fn process_inventory(s: *State, released_keys: u8) void {
 
     process_keys_spell_list(s, released_keys, &s.spellbook);
 
-    const spell = s.spellbook[@intCast(usize, s.spell_index)];
+    const spell = s.spellbook[@as(usize, @intCast(s.spell_index))];
 
     w4.DRAW_COLORS.* = 0x02;
     draw_spell_details(10, 10, s, spell);
@@ -2754,12 +2753,12 @@ pub fn process_inventory_full_2(s: *State, released_keys: u8) void {
     if (s.shop_list_index == 0) {
         s.choices[0].name = "Discard";
         process_keys_spell_list(s, released_keys, &s.spellbook);
-        spell = s.spellbook[@intCast(usize, s.spell_index)];
+        spell = s.spellbook[@as(usize, @intCast(s.spell_index))];
     }
     if (s.shop_list_index == 1) {
         s.choices[0].name = "Pick up";
         process_keys_spell_list(s, released_keys, &s.shop_items);
-        spell = s.shop_items[@intCast(usize, s.spell_index)];
+        spell = s.shop_items[@as(usize, @intCast(s.spell_index))];
     }
 
     process_choices_input(s, released_keys);
@@ -2767,12 +2766,12 @@ pub fn process_inventory_full_2(s: *State, released_keys: u8) void {
         // dropping a spell
         if (s.shop_list_index == 0) {
             add_spell_to_list(spell, &s.shop_items);
-            remove_nth_spell_from_list(@intCast(usize, s.spell_index), &s.spellbook);
+            remove_nth_spell_from_list(@as(usize, @intCast(s.spell_index)), &s.spellbook);
         }
         // picking up a spell
         if (s.shop_list_index == 1) {
             add_spell_to_list(spell, &s.spellbook);
-            remove_nth_spell_from_list(@intCast(usize, s.spell_index), &s.shop_items);
+            remove_nth_spell_from_list(@as(usize, @intCast(s.spell_index)), &s.shop_items);
         }
         s.choices[0].reset();
     }
@@ -2817,14 +2816,14 @@ pub fn process_map(s: *State, released_keys: u8) void {
         return;
     }
 
-    const name_x = 80 - pager.fmg_letter_width * @intCast(i32, @divTrunc(s.area.name.len, 2));
+    const name_x = 80 - pager.fmg_letter_width * @as(i32, @intCast(@divTrunc(s.area.name.len, 2)));
     s.pager.set_cursor(name_x, 40);
     pager.fmg_text(&s.pager, s.area.name);
     const counter_x = 80 - pager.fmg_letter_width * (5 / 2);
     s.pager.set_cursor(counter_x, 60);
-    pager.fmg_number(&s.pager, @intCast(i32, s.area_counter));
+    pager.fmg_number(&s.pager, @as(i32, @intCast(s.area_counter)));
     pager.fmg_text(&s.pager, " - ");
-    pager.fmg_number(&s.pager, @intCast(i32, s.area_event_counter));
+    pager.fmg_number(&s.pager, @as(i32, @intCast(s.area_event_counter)));
 
     const map_y = 100;
     var map_x: i32 = 30;
@@ -2834,11 +2833,11 @@ pub fn process_map(s: *State, released_keys: u8) void {
         if (1 == s.area_event_counter) {
             draw_map_character(map_x - 6, map_y - 20);
         }
-        const map_x_increment: i32 = @divTrunc(100, @intCast(i32, s.area.event_count) - 1);
+        const map_x_increment: i32 = @divTrunc(100, @as(i32, @intCast(s.area.event_count)) - 1);
         map_x += map_x_increment;
         var i: usize = 1;
         while (i < s.area.event_count) : (i += 1) {
-            w4.hline(map_x - map_x_increment + 8, map_y + 2, @intCast(u32, map_x_increment - 10));
+            w4.hline(map_x - map_x_increment + 8, map_y + 2, @as(u32, @intCast(map_x_increment - 10)));
             if (i + 1 == s.area_event_counter) {
                 draw_map_character(map_x - 6, map_y - 20);
             }
@@ -2957,9 +2956,9 @@ pub fn process_pick_random_event(s: *State, released_keys: u8) void {
 
     const max_attempts = 128;
     var attempts: u16 = 0;
-    var idx: usize = @intCast(usize, @mod(rand(), s.area.event_pool.len));
+    var idx: usize = @as(usize, @intCast(@mod(rand(), s.area.event_pool.len)));
     while (s.visited_events[idx] and attempts < max_attempts) : (attempts += 1) {
-        idx = @intCast(usize, @mod(rand(), s.area.event_pool.len));
+        idx = @as(usize, @intCast(@mod(rand(), s.area.event_pool.len)));
     }
     if (attempts == max_attempts) {
         s.state = GlobalState.crossroad;
@@ -2971,7 +2970,6 @@ pub fn process_pick_random_event(s: *State, released_keys: u8) void {
 }
 
 pub fn process_title(s: *State, released_keys: u8) void {
-    _ = released_keys;
     if (s.state_has_changed) {
         s.frame_counter = 0;
         s.set_choices_with_labels_1("Skip");
@@ -3297,11 +3295,11 @@ pub fn process_crossroad(s: *State, released_keys: u8) void {
 
         // pick two areas / setup choices
         const area_pool = current_area_pool(s);
-        s.crossroad_index_1 = @intCast(usize, @mod(rand(), area_pool.len));
+        s.crossroad_index_1 = @as(usize, @intCast(@mod(rand(), area_pool.len)));
         if (area_pool.len > 1) {
-            s.crossroad_index_2 = @intCast(usize, @mod(rand(), area_pool.len));
+            s.crossroad_index_2 = @as(usize, @intCast(@mod(rand(), area_pool.len)));
             while (s.crossroad_index_2 == s.crossroad_index_1) {
-                s.crossroad_index_2 = @intCast(usize, @mod(rand(), area_pool.len));
+                s.crossroad_index_2 = @as(usize, @intCast(@mod(rand(), area_pool.len)));
             }
         } else {
             s.crossroad_index_2 = s.crossroad_index_1;
@@ -3872,7 +3870,7 @@ const swamp_shop_dialog = [_]Dialog{
 pub fn process_keys_spell_list(s: *State, released_keys: u8, spell_list: []Spell) void {
     if (released_keys == w4.BUTTON_DOWN) {
         s.spell_index += 1;
-        while (!spell_list[@intCast(usize, s.spell_index)].is_defined() and s.spell_index < spell_list.len) {
+        while (!spell_list[@as(usize, @intCast(s.spell_index))].is_defined() and s.spell_index < spell_list.len) {
             s.spell_index += 1;
         }
         if (s.spell_index >= spell_list.len) {
@@ -3881,7 +3879,7 @@ pub fn process_keys_spell_list(s: *State, released_keys: u8, spell_list: []Spell
     }
     // switch from one list to the other -> make sure we are within bounds of the new list
     if (released_keys == w4.BUTTON_LEFT or released_keys == w4.BUTTON_RIGHT) {
-        while (!spell_list[@intCast(usize, s.spell_index)].is_defined() and s.spell_index >= 0) {
+        while (!spell_list[@as(usize, @intCast(s.spell_index))].is_defined() and s.spell_index >= 0) {
             s.spell_index -= 1;
         }
         if (s.spell_index <= 0) { // should not happen unless empty spell list
@@ -3891,8 +3889,8 @@ pub fn process_keys_spell_list(s: *State, released_keys: u8, spell_list: []Spell
     if (released_keys == w4.BUTTON_UP) {
         s.spell_index -= 1;
         if (s.spell_index < 0) {
-            s.spell_index = @intCast(isize, spell_list.len - 1);
-            while (!spell_list[@intCast(usize, s.spell_index)].is_defined() and s.spell_index >= 0) {
+            s.spell_index = @as(isize, @intCast(spell_list.len - 1));
+            while (!spell_list[@as(usize, @intCast(s.spell_index))].is_defined() and s.spell_index >= 0) {
                 s.spell_index -= 1;
             }
             if (s.spell_index <= 0) { // should not happen unless empty spell list
@@ -3903,7 +3901,6 @@ pub fn process_keys_spell_list(s: *State, released_keys: u8, spell_list: []Spell
 }
 
 pub fn draw_shop_tabs(s: *State, draw_second_tab: bool) void {
-    _ = s;
     const y = 46;
     const tab_width = 69;
     const tab_height = 13;
@@ -3942,29 +3939,29 @@ pub fn process_shop(s: *State, released_keys: u8) void {
     if (s.shop_list_index == 0) {
         s.choices[0].name = "Sell";
         process_keys_spell_list(s, released_keys, &s.spellbook);
-        spell = s.spellbook[@intCast(usize, s.spell_index)];
+        spell = s.spellbook[@as(usize, @intCast(s.spell_index))];
     }
     if (s.shop_list_index == 1) {
         s.choices[0].name = "Buy";
         process_keys_spell_list(s, released_keys, &s.shop_items);
-        spell = s.shop_items[@intCast(usize, s.spell_index)];
+        spell = s.shop_items[@as(usize, @intCast(s.spell_index))];
     }
 
     process_choices_input(s, released_keys);
     if (s.choices[0].is_completed()) {
         // selling a spell
         if (s.shop_list_index == 0) {
-            s.player_gold += @intCast(i16, spell.price);
-            s.shop_gold -= @intCast(i16, spell.price);
+            s.player_gold += @as(i16, @intCast(spell.price));
+            s.shop_gold -= @as(i16, @intCast(spell.price));
             add_spell_to_list(spell, &s.shop_items);
-            remove_nth_spell_from_list(@intCast(usize, s.spell_index), &s.spellbook);
+            remove_nth_spell_from_list(@as(usize, @intCast(s.spell_index)), &s.spellbook);
         }
         // buying a spell
         if (s.shop_list_index == 1) {
-            s.player_gold -= @intCast(i16, spell.price);
-            s.shop_gold += @intCast(i16, spell.price);
+            s.player_gold -= @as(i16, @intCast(spell.price));
+            s.shop_gold += @as(i16, @intCast(spell.price));
             add_spell_to_list(spell, &s.spellbook);
-            remove_nth_spell_from_list(@intCast(usize, s.spell_index), &s.shop_items);
+            remove_nth_spell_from_list(@as(usize, @intCast(s.spell_index)), &s.shop_items);
         }
         s.choices[0].reset();
     }
@@ -4479,7 +4476,7 @@ export fn update() void {
         GlobalState.pick_character => process_pick_character(&state, released_keys),
         GlobalState.pick_character_2 => text_event_choice_1(&state, released_keys, &pick_character_2_dialog, "Confirm", &pick_character_2_outcome),
         GlobalState.shop => process_shop(&state, released_keys),
-        GlobalState.title => process_title(&state, released_keys),
+        GlobalState.title => process_title_1(&state, released_keys),
         GlobalState.title_1 => process_title_1(&state, released_keys),
         GlobalState.tutorial_basics => process_tutorial_basics(&state, released_keys),
         GlobalState.tutorial_synergies => process_tutorial_synergies(&state, released_keys),

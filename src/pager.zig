@@ -78,25 +78,26 @@ fn fmg_letter(pager: *Pager, letter: u8) void {
         else => fmg_letter_height,
     };
 
+    const lh: u32 = if (letter_height < 0) 0 else @intCast(letter_height);
     if (letter >= 'A' and letter <= 'Z') {
         var letter_x: u32 = (letter - 'A') * fmg_letter_width;
-        w4.blitSub(&fmg, pager.cursor_x, pager.get_y(), fmg_letter_width, letter_height, letter_x, 0, fmg_width, w4.BLIT_1BPP);
+        w4.blitSub(&fmg, pager.cursor_x, pager.get_y(), fmg_letter_width, lh, letter_x, 0, fmg_width, w4.BLIT_1BPP);
         pager.cursor_x += fmg_letter_width + 1;
     } else if (letter >= 'a' and letter <= 'z') {
         var letter_x: u32 = (letter - 'a') * fmg_letter_width;
-        w4.blitSub(&fmg, pager.cursor_x, pager.get_y(), fmg_letter_width, letter_height, letter_x, 2 * fmg_letter_height, fmg_width, w4.BLIT_1BPP);
+        w4.blitSub(&fmg, pager.cursor_x, pager.get_y(), fmg_letter_width, lh, letter_x, 2 * fmg_letter_height, fmg_width, w4.BLIT_1BPP);
         pager.cursor_x += fmg_letter_width + 1;
     } else if (letter >= '0' and letter <= '9') {
         var letter_x: u32 = (letter - '0') * fmg_letter_width;
-        w4.blitSub(&fmg, pager.cursor_x, pager.get_y(), fmg_letter_width, letter_height, letter_x, fmg_letter_height, fmg_width, w4.BLIT_1BPP);
+        w4.blitSub(&fmg, pager.cursor_x, pager.get_y(), fmg_letter_width, lh, letter_x, fmg_letter_height, fmg_width, w4.BLIT_1BPP);
         pager.cursor_x += fmg_letter_width + 1;
     } else if (letter >= '!' and letter <= '/') {
         var letter_x: u32 = (letter - '!') * fmg_letter_width;
-        w4.blitSub(&fmg, pager.cursor_x, pager.get_y(), fmg_letter_width, letter_height, letter_x, 3 * fmg_letter_height + 2, fmg_width, w4.BLIT_1BPP);
+        w4.blitSub(&fmg, pager.cursor_x, pager.get_y(), fmg_letter_width, lh, letter_x, 3 * fmg_letter_height + 2, fmg_width, w4.BLIT_1BPP);
         pager.cursor_x += fmg_letter_width + 1;
     } else if (letter >= ':' and letter <= '?') {
         var letter_x: u32 = (letter - ':' + 15) * fmg_letter_width;
-        w4.blitSub(&fmg, pager.cursor_x, pager.get_y(), fmg_letter_width, letter_height, letter_x, 3 * fmg_letter_height + 2, fmg_width, w4.BLIT_1BPP);
+        w4.blitSub(&fmg, pager.cursor_x, pager.get_y(), fmg_letter_width, lh, letter_x, 3 * fmg_letter_height + 2, fmg_width, w4.BLIT_1BPP);
         pager.cursor_x += fmg_letter_width + 1;
     } else if (letter == ' ') {
         pager.cursor_x += fmg_letter_width;
@@ -108,7 +109,7 @@ fn fmg_letter(pager: *Pager, letter: u8) void {
 
 // caller should guarantee there is no white space ([ \r\n\t]) in slice
 fn fmg_word(pager: *Pager, str: []const u8, start_idx: usize, end_idx: usize) void {
-    pager.maybe_warp(@intCast(i32, end_idx - start_idx) * fmg_letter_width, fmg_letter_height + 1);
+    pager.maybe_warp(@as(i32, @intCast(end_idx - start_idx)) * fmg_letter_width, fmg_letter_height + 1);
     var i: usize = start_idx;
     while (i < end_idx) : (i += 1) {
         fmg_letter(pager, str[i]);
@@ -120,7 +121,6 @@ pub fn fmg_text(pager: *Pager, str: []const u8) void {
     while (idx < str.len) {
         const new_idx = find_next_whitespace(str, idx);
         fmg_word(pager, str, idx, new_idx);
-        _ = pager;
         idx = new_idx;
     }
 }
@@ -137,7 +137,7 @@ fn fmg_number_positive(pager: *Pager, n: i32) void {
     var x: i32 = n;
     while (i < buffer_size and x > 0) : (i += 1) {
         const digit = @mod(x, 10);
-        buffer[i] = @intCast(u8, digit);
+        buffer[i] = @as(u8, @intCast(digit));
         x = @divFloor(x, 10);
     }
     i -= 1;
@@ -198,7 +198,7 @@ fn f47_letter(pager: *Pager, letter: u8) void {
 
 // caller should guarantee there is no white space ([ \r\n\t]) in slice
 fn f47_word(pager: *Pager, str: []const u8, start_idx: usize, end_idx: usize) void {
-    pager.maybe_warp(@intCast(i32, end_idx - start_idx) * f47_letter_width, f47_letter_height + 1);
+    pager.maybe_warp(@as(i32, @intCast(end_idx - start_idx)) * f47_letter_width, f47_letter_height + 1);
     var i: usize = start_idx;
     while (i < end_idx) : (i += 1) {
         f47_letter(pager, str[i]);
@@ -220,7 +220,6 @@ pub fn f47_text(pager: *Pager, str: []const u8) void {
     while (idx < str.len) {
         const new_idx = find_next_whitespace(str, idx);
         f47_word(pager, str, idx, new_idx);
-        _ = pager;
         idx = new_idx;
     }
 }
@@ -237,7 +236,7 @@ fn f47_number_positive(pager: *Pager, n: i32) void {
     var x: i32 = n;
     while (i < buffer_size and x > 0) : (i += 1) {
         const digit = @mod(x, 10);
-        buffer[i] = @intCast(u8, digit);
+        buffer[i] = @as(u8, @intCast(digit));
         x = @divFloor(x, 10);
     }
     i -= 1;
@@ -298,7 +297,7 @@ fn f35_letter(pager: *Pager, letter: u8) void {
 
 // caller should guarantee there is no white space ([ \r\n\t]) in slice
 fn f35_word(pager: *Pager, str: []const u8, start_idx: usize, end_idx: usize) void {
-    pager.maybe_warp(@intCast(i32, end_idx - start_idx) * f35_letter_width, f35_letter_height + 1);
+    pager.maybe_warp(@as(i32, @intCast(end_idx - start_idx)) * f35_letter_width, f35_letter_height + 1);
     var i: usize = start_idx;
     while (i < end_idx) : (i += 1) {
         f35_letter(pager, str[i]);
@@ -310,7 +309,6 @@ pub fn f35_text(pager: *Pager, str: []const u8) void {
     while (idx < str.len) {
         const new_idx = find_next_whitespace(str, idx);
         f35_word(pager, str, idx, new_idx);
-        _ = pager;
         idx = new_idx;
     }
 }
@@ -327,7 +325,7 @@ fn f35_number_positive(pager: *Pager, n: i32) void {
     var x: i32 = n;
     while (i < buffer_size and x > 0) : (i += 1) {
         const digit = @mod(x, 10);
-        buffer[i] = @intCast(u8, digit);
+        buffer[i] = @as(u8, @intCast(digit));
         x = @divFloor(x, 10);
     }
     i -= 1;
@@ -375,7 +373,7 @@ pub const Pager = struct {
 
     fn get_y(self: *Pager) i32 {
         if (self.animation_flag) {
-            var animated_y: i32 = @intCast(i32, @mod(self.steps + self.animation_step, 3)) - 2;
+            var animated_y: i32 = @as(i32, @intCast(@mod(self.steps + self.animation_step, 3))) - 2;
             //var animated_y: i32 = @intCast(i32, @mod(self.steps + self.animation_step, 2)) - 1;
 
             return self.cursor_y + animated_y;

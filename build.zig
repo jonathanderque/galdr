@@ -1,10 +1,14 @@
 const std = @import("std");
 
 pub fn build(b: *std.build.Builder) !void {
-    const lib = b.addSharedLibrary("galdr", "src/main.zig", .unversioned);
+    const optimize = b.standardOptimizeOption(.{});
+    const lib = b.addSharedLibrary(.{
+        .name = "galdr", //
+        .root_source_file = .{ .path = "src/main.zig" },
+        .target = .{ .cpu_arch = .wasm32, .os_tag = .freestanding },
+        .optimize = optimize,
+    });
 
-    lib.setBuildMode(.ReleaseSmall);
-    lib.setTarget(.{ .cpu_arch = .wasm32, .os_tag = .freestanding });
     lib.import_memory = true;
     lib.initial_memory = 65536;
     lib.max_memory = 65536;
@@ -14,7 +18,7 @@ pub fn build(b: *std.build.Builder) !void {
     // Export WASM-4 symbols
     lib.export_symbol_names = &[_][]const u8{ "start", "update" };
 
-    lib.install();
+    b.installArtifact(lib);
 
     const prefix = b.getInstallPath(.lib, "");
     const opt = b.addSystemCommand(&[_][]const u8{

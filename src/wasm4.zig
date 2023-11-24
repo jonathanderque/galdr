@@ -15,18 +15,18 @@ pub const SCREEN_SIZE: u32 = 160;
 // │                                                                           │
 // └───────────────────────────────────────────────────────────────────────────┘
 
-pub const PALETTE: *[4]u32 = @intToPtr(*[4]u32, 0x04);
-pub const DRAW_COLORS: *u16 = @intToPtr(*u16, 0x14);
-pub const GAMEPAD1: *const u8 = @intToPtr(*const u8, 0x16);
-pub const GAMEPAD2: *const u8 = @intToPtr(*const u8, 0x17);
-pub const GAMEPAD3: *const u8 = @intToPtr(*const u8, 0x18);
-pub const GAMEPAD4: *const u8 = @intToPtr(*const u8, 0x19);
-pub const MOUSE_X: *const i16 = @intToPtr(*const i16, 0x1a);
-pub const MOUSE_Y: *const i16 = @intToPtr(*const i16, 0x1c);
-pub const MOUSE_BUTTONS: *const u8 = @intToPtr(*const u8, 0x1e);
-pub const SYSTEM_FLAGS: *u8 = @intToPtr(*u8, 0x1f);
-pub const NETPLAY: *const u8 = @intToPtr(*const u8, 0x20);
-pub const FRAMEBUFFER: *[6400]u8 = @intToPtr(*[6400]u8, 0xA0);
+pub const PALETTE: *[4]u32 = @ptrFromInt(0x04);
+pub const DRAW_COLORS: *u16 = @ptrFromInt(0x14);
+pub const GAMEPAD1: *const u8 = @ptrFromInt(0x16);
+pub const GAMEPAD2: *const u8 = @ptrFromInt(0x17);
+pub const GAMEPAD3: *const u8 = @ptrFromInt(0x18);
+pub const GAMEPAD4: *const u8 = @ptrFromInt(0x19);
+pub const MOUSE_X: *const i16 = @ptrFromInt(0x1a);
+pub const MOUSE_Y: *const i16 = @ptrFromInt(0x1c);
+pub const MOUSE_BUTTONS: *const u8 = @ptrFromInt(0x1e);
+pub const SYSTEM_FLAGS: *u8 = @ptrFromInt(0x1f);
+pub const NETPLAY: *const u8 = @ptrFromInt(0x20);
+pub const FRAMEBUFFER: *[6400]u8 = @ptrFromInt(0xA0);
 
 pub const BUTTON_1: u8 = 1;
 pub const BUTTON_2: u8 = 2;
@@ -49,10 +49,10 @@ pub const SYSTEM_HIDE_GAMEPAD_OVERLAY: u8 = 2;
 // └───────────────────────────────────────────────────────────────────────────┘
 
 /// Copies pixels to the framebuffer.
-pub extern fn blit(sprite: [*]const u8, x: i32, y: i32, width: i32, height: i32, flags: u32) void;
+pub extern fn blit(sprite: [*]const u8, x: i32, y: i32, width: u32, height: u32, flags: u32) void;
 
 /// Copies a subregion within a larger sprite atlas to the framebuffer.
-pub extern fn blitSub(sprite: [*]const u8, x: i32, y: i32, width: i32, height: i32, src_x: u32, src_y: u32, stride: i32, flags: u32) void;
+pub extern fn blitSub(sprite: [*]const u8, x: i32, y: i32, width: u32, height: u32, src_x: u32, src_y: u32, stride: u32, flags: u32) void;
 
 pub const BLIT_2BPP: u32 = 1;
 pub const BLIT_1BPP: u32 = 0;
@@ -64,7 +64,7 @@ pub const BLIT_ROTATE: u32 = 8;
 pub extern fn line(x1: i32, y1: i32, x2: i32, y2: i32) void;
 
 /// Draws an oval (or circle).
-pub extern fn oval(x: i32, y: i32, width: i32, height: i32) void;
+pub extern fn oval(x: i32, y: i32, width: u32, height: u32) void;
 
 /// Draws a rectangle.
 pub extern fn rect(x: i32, y: i32, width: u32, height: u32) void;
